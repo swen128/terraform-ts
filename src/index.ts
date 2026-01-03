@@ -33,6 +33,27 @@ export type { LocalDef } from "./core/local.js";
 
 export { validateTree, detectCircularDependencies } from "./core/validate.js";
 
+export { generateLogicalId, generateFqn } from "./core/logical-id.js";
+
+export {
+  synthesizeResource,
+  synthesizeProvider,
+  synthesizeDataSource,
+  synthesizeVariable,
+  synthesizeOutput,
+  synthesizeBackend,
+  synthesizeLocal,
+  synthesizeStack,
+  collectProviders,
+  collectResources,
+  collectDataSources,
+  collectVariables,
+  collectOutputs,
+  collectLocals,
+  collectBackends,
+  buildRequiredProviders,
+} from "./core/synthesize.js";
+
 export type {
   TerraformJson,
   TerraformBlock,

@@ -11,7 +11,7 @@ This plan prioritizes types first, then identifies work that can be delegated to
 
 ---
 
-## Phase 0: Project Setup (Single Agent)
+## Phase 0: Project Setup (Single Agent) ✅ COMPLETED
 
 Set up tooling and configuration before writing any code.
 
@@ -20,131 +20,129 @@ Set up tooling and configuration before writing any code.
 ### 0.1 Package Configuration (`package.json`)
 
 ```
-[ ] name, version, type: "module"
-[ ] bin entry for CLI
-[ ] scripts: typecheck, lint, format, format:check, knip, check, test
-[ ] devDependencies: typescript, @biomejs/biome, eslint, knip, bun-types
-[ ] dependencies: (add as needed)
+[x] name, version, type: "module"
+[x] bin entry for CLI
+[x] scripts: typecheck, lint, format, format:check, knip, check, test
+[x] devDependencies: typescript, @biomejs/biome, eslint, knip, bun-types
+[x] dependencies: neverthrow
 ```
 
 ### 0.2 TypeScript Configuration (`tsconfig.json`)
 
 ```
-[ ] ESNext target and module
-[ ] Strict mode enabled
-[ ] Bun types
-[ ] Output to dist/
-[ ] Declaration and source maps
-[ ] noUnusedLocals, noUnusedParameters enabled
+[x] ESNext target and module
+[x] Strict mode enabled
+[x] Bun types
+[x] Output to dist/
+[x] Declaration and source maps
+[x] noUnusedLocals, noUnusedParameters enabled
 ```
 
 ### 0.3 Biome Configuration (`biome.json`)
 
 ```
-[ ] Formatter enabled, linter disabled
-[ ] 100-char line width, 2-space indent, LF line endings
-[ ] Double quotes, trailing commas, semicolons
+[x] Formatter enabled, linter disabled
+[x] 100-char line width, 2-space indent, LF line endings
+[x] Double quotes, trailing commas, semicolons
 ```
 
 ### 0.4 ESLint Configuration (`eslint.config.js`)
 
 ```
-[ ] TypeScript parser with project reference
-[ ] No any types, no type assertions
-[ ] No throw statements (use Result types)
-[ ] Exhaustive switch checks
-[ ] No console (except CLI)
-[ ] Strict boolean expressions
-[ ] Explicit function return types
+[x] TypeScript parser with project reference
+[x] No any types, no type assertions
+[x] No throw statements (use Result types)
+[x] Exhaustive switch checks
+[x] No console (except CLI)
+[x] Strict boolean expressions
+[x] Explicit function return types
 ```
 
 ### 0.5 Knip Configuration (`knip.json`)
 
 ```
-[ ] Entry point: bin/tfts.ts
-[ ] Project: src/**/*.ts
-[ ] Ignore test files
+[x] Entry point: bin/tfts.ts
+[x] Project: src/**/*.ts
+[x] Ignore test files
 ```
 
 ### 0.6 Other Files
 
 ```
-[ ] .gitignore (node_modules, dist, .env, etc.)
-[ ] bunfig.toml (test root)
+[x] .gitignore (node_modules, dist, .env, etc.)
+[x] bunfig.toml (test root)
 ```
 
 ---
 
-## Phase 1: Core Types (Single Agent)
+## Phase 1: Core Types (Single Agent) ✅ COMPLETED
 
 All type definitions must be completed first as they are dependencies for everything else.
 
 **Agent Assignment:** 1 agent writes all types in a single pass.
 
-### 1.1 Core Data Types (`src/core/types.ts`)
+### 1.1 Core Data Types (organized by feature)
 
 ```
-[ ] ConstructNode
-[ ] ConstructMetadata (discriminated union)
-[ ] ResourceDef
-[ ] ProviderDef
-[ ] DataSourceDef
-[ ] VariableDef
-[ ] OutputDef
-[ ] BackendDef
-[ ] LocalDef
-[ ] LifecycleDef
-[ ] ConditionDef
-[ ] ProvisionerDef
-[ ] ValidationDef
+[x] src/core/construct.ts - ConstructNode, ConstructMetadata
+[x] src/core/resource.ts - ResourceDef, LifecycleDef, ConditionDef, ProvisionerDef
+[x] src/core/provider.ts - ProviderDef
+[x] src/core/datasource.ts - DataSourceDef
+[x] src/core/variable.ts - VariableDef, ValidationDef
+[x] src/core/output.ts - OutputDef
+[x] src/core/backend.ts - BackendDef
+[x] src/core/local.ts - LocalDef
 ```
 
 ### 1.2 Token Types (`src/core/tokens.ts`)
 
 ```
-[ ] Token (discriminated union: ref | fn | raw)
-[ ] TokenResolver
-[ ] TokenContext
+[x] Token (abstract class with RefToken, FnToken, RawToken subclasses)
+[x] TerraformValue (union type for Terraform values)
+[x] TokenResolver
 ```
 
-### 1.3 Terraform JSON Types (`src/core/synthesize.ts`)
+### 1.3 Terraform JSON Types (`src/core/terraform-json.ts`)
 
 ```
-[ ] TerraformJson
-[ ] TerraformBlock
-[ ] RequiredProvider
-[ ] VariableBlock
-[ ] OutputBlock
+[x] TerraformJson
+[x] TerraformBlock
+[x] RequiredProvider
+[x] VariableBlock
+[x] OutputBlock
 ```
 
 ### 1.4 Error Types (`src/core/errors.ts`)
 
 ```
-[ ] TftsError (discriminated union)
-[ ] ValidationError
+[x] TftsError (discriminated union)
+[x] ValidationError
+[x] ValidationErrorCode
 ```
 
 ### 1.5 Config Types (`src/cli/config.ts`)
 
 ```
-[ ] CdktfConfig
-[ ] ProviderConstraint
+[x] CdktfConfig
+[x] ProviderConstraint
+[x] ModuleConstraint
 ```
 
 ### 1.6 Schema Types (`src/codegen/schema.ts`)
 
 ```
-[ ] ProviderSchema
-[ ] ResourceSchema
-[ ] SchemaBlock
-[ ] AttributeSchema
-[ ] BlockTypeSchema
-[ ] SchemaType
+[x] ProviderSchema
+[x] ProviderSchemaEntry
+[x] ResourceSchema
+[x] SchemaBlock
+[x] AttributeSchema
+[x] BlockTypeSchema
+[x] SchemaType
 ```
 
 ---
 
-## Phase 2: Core Functions (3 Agents in Parallel)
+## Phase 2: Core Functions (3 Agents in Parallel) ✅ COMPLETED
 
 After types are done, spawn 3 agents simultaneously:
 
@@ -157,39 +155,42 @@ After types are done, spawn 3 agents simultaneously:
 
 **Wait for all 3 agents to complete before Phase 3.**
 
-### Agent A: Tree Operations (`src/core/tree.ts`)
+### Agent A: Tree Operations (`src/core/tree.ts`) ✅
 
 ```
-[ ] addChild(tree, parentPath, child) → ConstructNode
-[ ] findNode(tree, path) → ConstructNode | undefined
-[ ] walkTree(tree, visitor) → T[]
-[ ] getChildren(node, kind) → ConstructNode[]
+[x] addChild(tree, parentPath, child) → ConstructNode
+[x] findNode(tree, path) → ConstructNode | undefined
+[x] walkTree(tree, visitor) → T[]
+[x] getChildren(node, kind) → ConstructNode[]
 ```
 
-### Agent B: Token System (`src/core/tokens.ts`)
+### Agent B: Token System (`src/core/tokens.ts`) ✅
+
+**Design Change:** Token is now a class hierarchy for `instanceof` checks.
 
 ```
-[ ] ref(fqn, attribute) → Token
-[ ] fn(name, ...args) → Token
-[ ] raw(expression) → Token
-[ ] tokenToString(token) → string
-[ ] isToken(value) → boolean
-[ ] containsTokens(value) → boolean
-[ ] resolveTokens(value, resolver) → unknown
+[x] Token (abstract class)
+[x] RefToken, FnToken, RawToken (concrete classes)
+[x] ref(fqn, attribute) → RefToken
+[x] fn(name, ...args) → FnToken
+[x] raw(expression) → RawToken
+[x] tokenToHcl(token) → string (renamed from tokenToString)
+[x] containsTokens(value) → boolean
+[x] resolveTokens(value, resolver) → TerraformValue
 ```
 
-### Agent C: Validation (`src/core/validate.ts`)
+### Agent C: Validation (`src/core/validate.ts`) ✅
+
+**Design Change:** Removed field validation (enforced at construction). Graph-only validation.
 
 ```
-[ ] validateTree(tree) → ValidationError[]
-[ ] validateNode(node) → ValidationError[]
-[ ] detectCircularDependencies(tree) → string[][] | null
-[ ] validateResourceConfig(node) → ValidationError[]
+[x] validateTree(tree) → ValidationError[] (duplicate IDs + circular deps)
+[x] detectCircularDependencies(tree) → string[][] | null
 ```
 
 ---
 
-## Phase 3: Synthesis (Single Agent)
+## Phase 3: Synthesis (Single Agent) ✅ COMPLETED
 
 Depends on: Phase 2 (all agents must complete first).
 
@@ -198,29 +199,30 @@ Depends on: Phase 2 (all agents must complete first).
 ### 3.1 ID Generation (`src/core/synthesize.ts`)
 
 ```
-[ ] generateLogicalId(path) → string
-[ ] generateFqn(resourceType, logicalId) → string
+[x] generateLogicalId(path) → string (with CDKTF-compatible hashing)
+[x] generateFqn(resourceType, logicalId) → string
 ```
 
 ### 3.2 Element Synthesis (`src/core/synthesize.ts`)
 
 ```
-[ ] synthesizeResource(node) → Record<string, unknown>
-[ ] synthesizeProvider(node) → Record<string, unknown>
-[ ] synthesizeDataSource(node) → Record<string, unknown>
-[ ] synthesizeVariable(node) → VariableBlock
-[ ] synthesizeOutput(node) → OutputBlock
-[ ] synthesizeBackend(node) → Record<string, unknown>
-[ ] synthesizeLocal(node) → unknown
+[x] synthesizeResource(node, resource) → ResourceSynthResult
+[x] synthesizeProvider(provider) → ProviderSynthResult
+[x] synthesizeDataSource(node, datasource) → DataSourceSynthResult
+[x] synthesizeVariable(node, variable) → { id, block }
+[x] synthesizeOutput(node, output) → { id, block }
+[x] synthesizeBackend(backend) → Record<string, Record<string, unknown>>
+[x] synthesizeLocal(node, local) → { id, value }
 ```
 
 ### 3.3 Stack Synthesis (`src/core/synthesize.ts`)
 
 ```
-[ ] synthesizeStack(stack) → TerraformJson
-[ ] collectProviders(stack) → ConstructNode[]
-[ ] collectResources(stack) → ConstructNode[]
-[ ] buildRequiredProviders(providers) → Record<string, RequiredProvider>
+[x] synthesizeStack(stack) → TerraformJson
+[x] collectProviders(stack) → ProviderNode[]
+[x] collectResources(stack) → ResourceNode[]
+[x] collectDataSources, collectVariables, collectOutputs, collectLocals, collectBackends
+[x] buildRequiredProviders(providers) → Record<string, RequiredProvider>
 ```
 
 ---
@@ -410,19 +412,19 @@ Depends on: Phase 5 (both agents must complete first).
 ## Dependency Graph
 
 ```
-Phase 0: Project Setup (1 agent)
+Phase 0: Project Setup (1 agent) ✅
     │
     ▼
-Phase 1: Types (1 agent)
+Phase 1: Types (1 agent) ✅
     │
     ▼
-Phase 2: Core Functions (3 agents in parallel)
+Phase 2: Core Functions (3 agents in parallel) ✅
     ├── Agent A: Tree Ops ─────────┐
     ├── Agent B: Tokens ───────────┼──► wait for all
     └── Agent C: Validation ───────┘
                                    │
                                    ▼
-                    Phase 3: Synthesis (1 agent)
+                    Phase 3: Synthesis (1 agent) ✅
                                    │
                                    ▼
                     Phase 4: Facade (4 agents in parallel)
@@ -444,89 +446,53 @@ Phase 2: Core Functions (3 agents in parallel)
 
 ## Agent Summary
 
-| Phase | Description | Agents | Parallel |
-|-------|-------------|--------|----------|
-| 0     | Project Setup | 1 | No |
-| 1     | Core Types | 1 | No |
-| 2     | Core Functions | 3 | Yes |
-| 3     | Synthesis | 1 | No |
-| 4     | Facade | 4 | Yes |
-| 5     | CLI & Codegen | 2 | Yes |
-| 6     | Integration | 1 | No |
+| Phase | Description | Agents | Parallel | Status |
+|-------|-------------|--------|----------|--------|
+| 0     | Project Setup | 1 | No | ✅ Done |
+| 1     | Core Types | 1 | No | ✅ Done |
+| 2     | Core Functions | 3 | Yes | ✅ Done |
+| 3     | Synthesis | 1 | No | ✅ Done |
+| 4     | Facade | 4 | Yes | 🔄 Next |
+| 5     | CLI & Codegen | 2 | Yes | Pending |
+| 6     | Integration | 1 | No | Pending |
 
 **Total: 13 agent tasks, max 4 concurrent agents**
 
 ---
 
-## Execution Order
+## Test Strategy Per Phase
 
-### Phase 0: Project Setup (1 agent)
-
-```
-Agent: package.json
-       tsconfig.json
-       biome.json
-       eslint.config.js
-       knip.json
-       .gitignore
-       bunfig.toml
-```
-
-### Phase 1: Types (1 agent)
-
-```
-Agent: src/core/types.ts
-       src/core/tokens.ts (types only)
-       src/core/errors.ts
-       src/cli/config.ts (types only)
-       src/codegen/schema.ts (types only)
-```
-
-### Phase 2: Core Functions (3 agents in parallel)
-
-```
-Agent A: src/core/tree.ts
-Agent B: src/core/tokens.ts (functions)
-Agent C: src/core/validate.ts
-```
-
-### Phase 3: Synthesis (1 agent)
-
-```
-Agent: src/core/synthesize.ts
-```
-
-### Phase 4: Facade (4 agents in parallel)
-
-```
-Agent D: src/facade/construct.ts → src/facade/app.ts → src/facade/stack.ts
-Agent E: src/facade/resource.ts, src/facade/provider.ts, src/facade/datasource.ts
-Agent F: src/facade/variable.ts, src/facade/output.ts, src/facade/local.ts
-Agent G: src/facade/backends/*.ts
-```
-
-### Phase 5: CLI & Codegen (2 agents in parallel)
-
-```
-Agent H: src/cli/config.ts → src/cli/synth.ts → src/cli/index.ts → bin/tfts.ts
-Agent I: src/codegen/schema.ts → src/codegen/generator.ts → src/codegen/templates.ts → src/cli/get.ts
-```
-
-### Phase 6: Integration (1 agent)
-
-```
-Agent: src/index.ts, tests/
-```
+| Phase | Test Type | Status |
+|-------|-----------|--------|
+| 1     | Type compilation only | ✅ |
+| 2     | Unit tests for pure functions | ✅ (45 tests) |
+| 3     | Unit tests for synthesis functions | ✅ (87 tests total) |
+| 4     | Integration tests (facade → core → JSON) | Pending |
+| 5     | CLI tests, codegen output tests | Pending |
+| 6     | End-to-end tests | Pending |
 
 ---
 
-## Test Strategy Per Phase
+## Design Decisions Made
 
-| Phase | Test Type |
-|-------|-----------|
-| 1     | Type compilation only |
-| 2     | Unit tests for pure functions |
-| 3     | Snapshot tests for synthesis output |
-| 4     | Integration tests (facade → core → JSON) |
-| 5     | CLI tests, codegen output tests |
-| 6     | End-to-end tests |
+### Logical ID Generation (CDKTF-compatible)
+- Uses MD5 hash of path joined with `/` to ensure uniqueness
+- Single-component paths return without hash suffix
+- Multi-component paths get 8-char uppercase hex hash suffix
+- Special characters removed from human-readable part but preserved in hash
+- `Default` components are completely filtered
+- `Resource` components are filtered from human part but included in hash
+
+### Token as Class Hierarchy
+- `Token` is an abstract class with `RefToken`, `FnToken`, `RawToken` subclasses
+- Enables `instanceof Token` checks without type predicates or `in` operator
+- Each subclass has `toHcl()` method
+
+### Validation Simplified
+- Removed field validation (empty strings, required fields) - enforced at construction
+- Keep only graph-level validation: duplicate IDs, circular dependencies
+- Trust the type system for field types
+
+### TerraformValue Type
+- Union of primitives, Token, arrays, and objects
+- Used for function arguments and config values
