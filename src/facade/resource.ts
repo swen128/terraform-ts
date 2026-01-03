@@ -31,17 +31,20 @@ export abstract class TerraformResource extends Construct {
 
   private readonly overrides: Map<string, unknown> = new Map();
 
-  constructor(
+  protected constructor(
     scope: TerraformStack,
     id: string,
     terraformResourceType: string,
+    resourceConfig: Readonly<Record<string, unknown>>,
     config: TerraformResourceConfig = {},
   ) {
     super(scope, id, {
       kind: "resource",
       resource: {
         terraformResourceType,
-        config: {},
+        config: resourceConfig,
+        lifecycle: config.lifecycle,
+        provisioners: config.provisioners,
       },
     });
 
@@ -66,40 +69,10 @@ export abstract class TerraformResource extends Construct {
   }
 
   interpolationForAttribute(attribute: string): Token {
-    return raw(`${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}`);
+    return raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`);
   }
 
-  protected abstract synthesizeAttributes(): Record<string, unknown>;
-
-  synthesizeResourceDef(): {
-    readonly terraformResourceType: string;
-    readonly provider?: string;
-    readonly dependsOn?: readonly Token[];
-    readonly count?: number | Token;
-    readonly forEach?: Token;
-    readonly lifecycle?: LifecycleDef;
-    readonly provisioners?: readonly ProvisionerDef[];
-    readonly config: Readonly<Record<string, unknown>>;
-    readonly overrides: ReadonlyMap<string, unknown>;
-  } {
-    const dependsOnTokens =
-      this.dependsOn?.map((c) => {
-        if (c instanceof TerraformResource) {
-          return raw(`${c.terraformResourceType}.${c.friendlyUniqueId}`);
-        }
-        return raw(c.node.id);
-      }) ?? undefined;
-
-    return {
-      terraformResourceType: this.terraformResourceType,
-      provider: this.provider?.fqn,
-      dependsOn: dependsOnTokens,
-      count: this.count,
-      forEach: this.forEach,
-      lifecycle: this.lifecycle,
-      provisioners: this.provisioners,
-      config: this.synthesizeAttributes(),
-      overrides: this.overrides,
-    };
+  getStringAttribute(attribute: string): string {
+    return `\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`;
   }
 }

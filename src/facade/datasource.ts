@@ -4,7 +4,6 @@ import type { TerraformProvider } from "./provider.js";
 import type { Token } from "../core/tokens.js";
 import { raw } from "../core/tokens.js";
 import { generateLogicalId, generateFqn } from "../core/logical-id.js";
-import { TerraformResource } from "./resource.js";
 
 export type TerraformDataSourceConfig = {
   readonly dependsOn?: readonly Construct[];
@@ -19,17 +18,18 @@ export abstract class TerraformDataSource extends Construct {
   dependsOn?: Construct[];
   provider?: TerraformProvider;
 
-  constructor(
+  protected constructor(
     scope: TerraformStack,
     id: string,
     terraformResourceType: string,
+    dataSourceConfig: Readonly<Record<string, unknown>>,
     config: TerraformDataSourceConfig = {},
   ) {
     super(scope, id, {
       kind: "datasource",
       datasource: {
         terraformResourceType,
-        config: {},
+        config: dataSourceConfig,
       },
     });
 
@@ -44,33 +44,10 @@ export abstract class TerraformDataSource extends Construct {
   }
 
   interpolationForAttribute(attribute: string): Token {
-    return raw(`data.${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}`);
+    return raw(`\${data.${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`);
   }
 
-  protected abstract synthesizeAttributes(): Record<string, unknown>;
-
-  synthesizeDataSourceDef(): {
-    readonly terraformResourceType: string;
-    readonly provider?: string;
-    readonly dependsOn?: readonly Token[];
-    readonly config: Readonly<Record<string, unknown>>;
-  } {
-    const dependsOnTokens =
-      this.dependsOn?.map((c) => {
-        if (c instanceof TerraformResource) {
-          return raw(`${c.terraformResourceType}.${c.friendlyUniqueId}`);
-        }
-        if (c instanceof TerraformDataSource) {
-          return raw(`data.${c.terraformResourceType}.${c.friendlyUniqueId}`);
-        }
-        return raw(c.node.id);
-      }) ?? undefined;
-
-    return {
-      terraformResourceType: this.terraformResourceType,
-      provider: this.provider?.fqn,
-      dependsOn: dependsOnTokens,
-      config: this.synthesizeAttributes(),
-    };
+  getStringAttribute(attribute: string): string {
+    return `\${data.${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`;
   }
 }

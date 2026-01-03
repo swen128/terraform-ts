@@ -13,44 +13,28 @@ export abstract class TerraformProvider extends Construct {
   readonly alias?: string;
   readonly fqn: string;
 
-  constructor(
+  protected constructor(
     scope: TerraformStack,
     id: string,
     terraformProviderSource: string,
-    version: string | undefined,
+    providerConfig: Readonly<Record<string, unknown>>,
     config: TerraformProviderConfig = {},
   ) {
     super(scope, id, {
       kind: "provider",
       provider: {
         terraformProviderSource,
-        version,
+        version: undefined,
         alias: config.alias,
-        config: {},
+        config: providerConfig,
       },
     });
 
     this.terraformProviderSource = terraformProviderSource;
-    this.version = version;
+    this.version = undefined;
     this.alias = config.alias;
 
     const providerName = terraformProviderSource.split("/").pop() ?? terraformProviderSource;
     this.fqn = config.alias !== undefined ? `${providerName}.${config.alias}` : providerName;
-  }
-
-  protected abstract synthesizeAttributes(): Record<string, unknown>;
-
-  synthesizeProviderDef(): {
-    readonly terraformProviderSource: string;
-    readonly version?: string;
-    readonly alias?: string;
-    readonly config: Readonly<Record<string, unknown>>;
-  } {
-    return {
-      terraformProviderSource: this.terraformProviderSource,
-      version: this.version,
-      alias: this.alias,
-      config: this.synthesizeAttributes(),
-    };
   }
 }
