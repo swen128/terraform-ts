@@ -16,36 +16,34 @@ import type { LocalDef } from "./local.js";
 import { generateLogicalId } from "./logical-id.js";
 import { Token, tokenToHcl } from "./tokens.js";
 
-// --- Value Resolution ---
+// --- HCL Serialization ---
 
-const resolveValue = (value: unknown): unknown => {
+const valueToHcl = (value: unknown): unknown => {
   if (value instanceof Token) {
     return tokenToHcl(value);
   }
   if (Array.isArray(value)) {
-    return value.map(resolveValue);
+    return value.map(valueToHcl);
   }
   if (typeof value === "object" && value !== null) {
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      result[k] = resolveValue(v);
+      result[k] = valueToHcl(v);
     }
     return result;
   }
   return value;
 };
 
-const resolveConfig = (config: Readonly<Record<string, unknown>>): Record<string, unknown> => {
+const configToHcl = (config: Readonly<Record<string, unknown>>): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(config)) {
-    result[k] = resolveValue(v);
+    result[k] = valueToHcl(v);
   }
   return result;
 };
 
-const resolveDependsOn = (
-  dependsOn: readonly Token[] | undefined,
-): readonly string[] | undefined =>
+const dependsOnToHcl = (dependsOn: readonly Token[] | undefined): readonly string[] | undefined =>
   dependsOn === undefined || dependsOn.length === 0
     ? undefined
     : dependsOn.map((t) => tokenToHcl(t));
@@ -96,7 +94,7 @@ const synthesizeProvisioner = (
   provisioner: ProvisionerDef,
 ): Record<string, Record<string, unknown>> => {
   const result: Record<string, unknown> = {
-    ...resolveConfig(provisioner.config),
+    ...configToHcl(provisioner.config),
   };
 
   if (provisioner.when !== undefined) {
@@ -122,7 +120,7 @@ export const synthesizeResource = (
   resource: ResourceDef,
 ): ResourceSynthResult => {
   const logicalId = generateLogicalId(node.path);
-  const config = resolveConfig(resource.config);
+  const config = configToHcl(resource.config);
 
   const result: Record<string, unknown> = { ...config };
 
@@ -130,13 +128,13 @@ export const synthesizeResource = (
     result["provider"] = resource.provider;
   }
 
-  const dependsOn = resolveDependsOn(resource.dependsOn);
+  const dependsOn = dependsOnToHcl(resource.dependsOn);
   if (dependsOn !== undefined) {
     result["depends_on"] = dependsOn;
   }
 
   if (resource.count !== undefined) {
-    result["count"] = resolveValue(resource.count);
+    result["count"] = valueToHcl(resource.count);
   }
 
   if (resource.forEach !== undefined) {
@@ -165,7 +163,7 @@ type ProviderSynthResult = {
 };
 
 export const synthesizeProvider = (provider: ProviderDef): ProviderSynthResult => {
-  const config = resolveConfig(provider.config);
+  const config = configToHcl(provider.config);
   const result: Record<string, unknown> = { ...config };
 
   if (provider.alias !== undefined) {
@@ -192,7 +190,7 @@ export const synthesizeDataSource = (
   datasource: DataSourceDef,
 ): DataSourceSynthResult => {
   const logicalId = generateLogicalId(node.path);
-  const config = resolveConfig(datasource.config);
+  const config = configToHcl(datasource.config);
 
   const result: Record<string, unknown> = { ...config };
 
@@ -200,7 +198,7 @@ export const synthesizeDataSource = (
     result["provider"] = datasource.provider;
   }
 
-  const dependsOn = resolveDependsOn(datasource.dependsOn);
+  const dependsOn = dependsOnToHcl(datasource.dependsOn);
   if (dependsOn !== undefined) {
     result["depends_on"] = dependsOn;
   }
@@ -227,7 +225,7 @@ export const synthesizeVariable = (
 
   const block: VariableBlock = {
     ...(variable.type !== undefined && { type: variable.type }),
-    ...(variable.default !== undefined && { default: resolveValue(variable.default) }),
+    ...(variable.default !== undefined && { default: valueToHcl(variable.default) }),
     ...(variable.description !== undefined && { description: variable.description }),
     ...(variable.sensitive !== undefined && { sensitive: variable.sensitive }),
     ...(variable.nullable !== undefined && { nullable: variable.nullable }),
@@ -245,10 +243,10 @@ export const synthesizeOutput = (
   output: OutputDef,
 ): { readonly id: string; readonly block: OutputBlock } => {
   const logicalId = generateLogicalId(node.path);
-  const dependsOn = resolveDependsOn(output.dependsOn);
+  const dependsOn = dependsOnToHcl(output.dependsOn);
 
   const block: OutputBlock = {
-    value: resolveValue(output.value),
+    value: valueToHcl(output.value),
     ...(output.description !== undefined && { description: output.description }),
     ...(output.sensitive !== undefined && { sensitive: output.sensitive }),
     ...(dependsOn !== undefined && { depends_on: dependsOn }),
@@ -258,7 +256,7 @@ export const synthesizeOutput = (
 };
 
 export const synthesizeBackend = (backend: BackendDef): Record<string, Record<string, unknown>> => {
-  const config = resolveConfig(backend.config);
+  const config = configToHcl(backend.config);
   return { [backend.type]: config };
 };
 
@@ -267,7 +265,7 @@ export const synthesizeLocal = (
   local: LocalDef,
 ): { readonly id: string; readonly value: unknown } => {
   const logicalId = generateLogicalId(node.path);
-  return { id: logicalId, value: resolveValue(local.expression) };
+  return { id: logicalId, value: valueToHcl(local.expression) };
 };
 
 // --- Collection Types ---
