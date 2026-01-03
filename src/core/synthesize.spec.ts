@@ -337,7 +337,7 @@ describe("synthesizeVariable", () => {
     const result = synthesizeVariable(node, variable);
 
     expect(result).toEqual({
-      id: "stack_region_FA458601",
+      id: "region",
       block: {
         type: "string",
         description: "The region",
@@ -392,7 +392,7 @@ describe("synthesizeOutput", () => {
     const result = synthesizeOutput(node, output);
 
     expect(result).toEqual({
-      id: "stack_instance_id_573F320B",
+      id: "instance_id",
       block: {
         value: "${aws_instance.main.id}",
         description: "The instance ID",
@@ -451,7 +451,7 @@ describe("synthesizeLocal", () => {
     const result = synthesizeLocal(node, local);
 
     expect(result).toEqual({
-      id: "stack_config_B92807A7",
+      id: "config",
       value: { name: "test", value: 42 },
     });
   });
@@ -616,10 +616,10 @@ describe("synthesizeStack", () => {
     const result = synthesizeStack(stack);
 
     expect(result.variable).toEqual({
-      "my-stack_region_1796B7A4": { type: "string", default: "us-east-1" },
+      region: { type: "string", default: "us-east-1" },
     });
     expect(result.output).toEqual({
-      "my-stack_selected_region_709B5E6B": { value: "${var.region.value}" },
+      selected_region: { value: "${var.region.value}" },
     });
   });
 
@@ -633,7 +633,7 @@ describe("synthesizeStack", () => {
     const result = synthesizeStack(stack);
 
     expect(result.locals).toEqual({
-      "my-stack_config_C44C4FB5": { env: "production" },
+      config: { env: "production" },
     });
   });
 

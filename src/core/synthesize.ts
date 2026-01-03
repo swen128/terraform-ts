@@ -221,7 +221,8 @@ export const synthesizeVariable = (
   node: ConstructNode,
   variable: VariableDef,
 ): { readonly id: string; readonly block: VariableBlock } => {
-  const logicalId = generateLogicalId(node.path);
+  // Variables use their declared name directly, not a path-based logical ID
+  const logicalId = node.id;
 
   const block: VariableBlock = {
     ...(variable.type !== undefined && { type: variable.type }),
@@ -242,7 +243,8 @@ export const synthesizeOutput = (
   node: ConstructNode,
   output: OutputDef,
 ): { readonly id: string; readonly block: OutputBlock } => {
-  const logicalId = generateLogicalId(node.path);
+  // Outputs use their declared name directly, not a path-based logical ID
+  const logicalId = node.id;
   const dependsOn = dependsOnToHcl(output.dependsOn);
 
   const block: OutputBlock = {
@@ -264,8 +266,8 @@ export const synthesizeLocal = (
   node: ConstructNode,
   local: LocalDef,
 ): { readonly id: string; readonly value: unknown } => {
-  const logicalId = generateLogicalId(node.path);
-  return { id: logicalId, value: valueToHcl(local.expression) };
+  // Locals use their declared name directly, not a path-based logical ID
+  return { id: node.id, value: valueToHcl(local.expression) };
 };
 
 // --- Collection Types ---
