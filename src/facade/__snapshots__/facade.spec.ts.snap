@@ -75,3 +75,278 @@ exports[`Facade Integration multiple stacks are isolated 2`] = `
   },
 }
 `;
+
+exports[`Backends LocalBackend with default config 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "local": {},
+    },
+  },
+}
+`;
+
+exports[`Backends LocalBackend with path 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "local": {
+        "path": "./terraform.tfstate",
+        "workspace_dir": "./.terraform/workspaces",
+      },
+    },
+  },
+}
+`;
+
+exports[`Backends GcsBackend 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "gcs": {
+        "bucket": "my-terraform-state",
+        "prefix": "terraform/state",
+      },
+    },
+  },
+}
+`;
+
+exports[`Backends GcsBackend with impersonation 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "gcs": {
+        "bucket": "my-terraform-state",
+        "impersonate_service_account": "terraform@project.iam.gserviceaccount.com",
+        "prefix": "terraform/state",
+      },
+    },
+  },
+}
+`;
+
+exports[`Backends RemoteBackend with workspace name 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "remote": {
+        "organization": "my-org",
+        "workspaces": {
+          "name": "my-workspace",
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Backends RemoteBackend with workspace prefix 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "remote": {
+        "hostname": "app.terraform.io",
+        "organization": "my-org",
+        "workspaces": {
+          "prefix": "my-app-",
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`Variables variable with all types 1`] = `
+{
+  "variable": {
+    "bool_var": {
+      "default": true,
+      "type": "bool",
+    },
+    "list_var": {
+      "default": [
+        "a",
+        "b",
+        "c",
+      ],
+      "type": "list(string)",
+    },
+    "map_var": {
+      "default": {
+        "key1": "value1",
+        "key2": "value2",
+      },
+      "type": "map(string)",
+    },
+    "number_var": {
+      "default": 42,
+      "type": "number",
+    },
+    "string_var": {
+      "default": "hello",
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Variables variable with nullable 1`] = `
+{
+  "variable": {
+    "non_nullable_var": {
+      "default": "required",
+      "nullable": false,
+      "type": "string",
+    },
+    "nullable_var": {
+      "default": null,
+      "nullable": true,
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Variables variable with sensitive 1`] = `
+{
+  "variable": {
+    "password": {
+      "description": "Database password",
+      "sensitive": true,
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Variables variable with validation 1`] = `
+{
+  "variable": {
+    "instance_type": {
+      "default": "t2.micro",
+      "type": "string",
+      "validation": [
+        {
+          "condition": "can(regex("^t2\\\\.", var.instance_type))",
+          "error_message": "Must be a t2 instance type",
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`Variables variable with multiple validations 1`] = `
+{
+  "variable": {
+    "port": {
+      "type": "number",
+      "validation": [
+        {
+          "condition": "var.port > 0",
+          "error_message": "Port must be positive",
+        },
+        {
+          "condition": "var.port < 65536",
+          "error_message": "Port must be less than 65536",
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`Outputs output with sensitive 1`] = `
+{
+  "output": {
+    "secret_output": {
+      "description": "A sensitive output",
+      "sensitive": true,
+      "value": "sensitive-data",
+    },
+  },
+}
+`;
+
+exports[`Outputs output with complex value 1`] = `
+{
+  "output": {
+    "config": {
+      "value": {
+        "enabled": true,
+        "endpoint": "https://api.example.com",
+        "port": 443,
+      },
+    },
+  },
+}
+`;
+
+exports[`Outputs output with list value 1`] = `
+{
+  "output": {
+    "zones": {
+      "description": "Availability zones",
+      "value": [
+        "us-east-1a",
+        "us-east-1b",
+        "us-east-1c",
+      ],
+    },
+  },
+}
+`;
+
+exports[`Locals local with complex object 1`] = `
+{
+  "locals": {
+    "settings": {
+      "cache": {
+        "enabled": true,
+        "ttl": 300,
+      },
+      "database": {
+        "host": "localhost",
+        "name": "mydb",
+        "port": 5432,
+      },
+    },
+  },
+}
+`;
+
+exports[`Locals local with token reference 1`] = `
+{
+  "locals": {
+    "full_name": "my-app-\${var.region}",
+  },
+  "variable": {
+    "region": {
+      "default": "us-east-1",
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Locals local with list expression 1`] = `
+{
+  "locals": {
+    "ports": [
+      80,
+      443,
+      8080,
+    ],
+  },
+}
+`;
+
+exports[`Locals multiple locals referencing each other 1`] = `
+{
+  "locals": {
+    "base_name": "my-app",
+    "full_name": "\${local.base_name}-production",
+  },
+}
+`;
