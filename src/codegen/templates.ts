@@ -27,7 +27,7 @@ export const resourceTemplate = (
   const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformResource {
-  constructor(scope: Construct, id: string, config: ${className}Props) {
+  constructor(scope: Construct, id: string, config: ${className}Config) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);
@@ -43,7 +43,7 @@ export const providerTemplate = (
   const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
 
   return `export class ${className}Provider extends TerraformProvider {
-  constructor(scope: Construct, id: string, config: ${className}ProviderProps = {}) {
+  constructor(scope: Construct, id: string, config: ${className}ProviderConfig = {}) {
     super(scope, id, "${source}", {
 ${attrsObject}
     }, config);
@@ -70,7 +70,7 @@ export const dataSourceTemplate = (
   const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformDataSource {
-  constructor(scope: Construct, id: string, config: ${className}Props) {
+  constructor(scope: Construct, id: string, config: ${className}Config) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);
@@ -92,28 +92,4 @@ export const configInterfaceTemplate = (
   return `export type ${name} = {
 ${lines.join("\n")}
 }${extendsClause};`;
-};
-
-export const indexTemplate = (
-  resources: readonly string[],
-  dataSources: readonly string[],
-): string => {
-  const exports: string[] = [];
-
-  for (const resource of resources) {
-    exports.push(`export { ${resource} } from "./${toFileName(resource)}.js";`);
-  }
-
-  for (const dataSource of dataSources) {
-    exports.push(`export { ${dataSource} } from "./${toFileName(dataSource)}.js";`);
-  }
-
-  return exports.join("\n");
-};
-
-const toFileName = (className: string): string => {
-  return className
-    .replace(/([A-Z])/g, "-$1")
-    .toLowerCase()
-    .replace(/^-/, "");
 };

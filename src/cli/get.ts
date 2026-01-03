@@ -1,7 +1,8 @@
 import { ok, err, type Result } from "neverthrow";
 import * as fs from "node:fs/promises";
+import { join } from "node:path";
 import { readConfig, type ConfigError } from "./config.js";
-import { generateProvider } from "../codegen/generator.js";
+import { generateProviderFiles } from "../codegen/generator.js";
 import { fetchProviderSchema, type SchemaError } from "../codegen/schema.js";
 
 export type GetOptions = {
@@ -35,11 +36,13 @@ export const runGet = async (options: GetOptions): Promise<Result<void, GetError
       return err({ kind: "schema", error: schemaResult.error });
     }
 
-    const code = generateProvider(provider.name, schemaResult.value);
+    const files = generateProviderFiles(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
     await fs.mkdir(providerDir, { recursive: true });
-    await fs.writeFile(`${providerDir}/index.ts`, code);
+    for (const [fileName, content] of files) {
+      await fs.writeFile(join(providerDir, fileName), content);
+    }
   }
 
   return ok(undefined);
@@ -57,11 +60,13 @@ export const generateBindings = async (
       return err({ kind: "schema", error: schemaResult.error });
     }
 
-    const code = generateProvider(provider.name, schemaResult.value);
+    const files = generateProviderFiles(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
     await fs.mkdir(providerDir, { recursive: true });
-    await fs.writeFile(`${providerDir}/index.ts`, code);
+    for (const [fileName, content] of files) {
+      await fs.writeFile(join(providerDir, fileName), content);
+    }
   }
 
   return ok(undefined);

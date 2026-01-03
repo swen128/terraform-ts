@@ -83,8 +83,9 @@ export {
   generateResource,
   generateDataSource,
   generateConfig,
-  generateIndex,
   generateProvider,
+  generateProviderFiles,
+  type GeneratedFiles,
 } from "./codegen/generator.js";
 export { fetchProviderSchema, parseSchemaType } from "./codegen/schema.js";
 

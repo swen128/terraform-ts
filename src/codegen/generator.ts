@@ -5,13 +5,18 @@ import {
   providerTemplate,
   dataSourceTemplate,
   configInterfaceTemplate,
-  indexTemplate,
   type AttributeGetter,
   type PropMapping,
 } from "./templates.js";
 
-const IMPORTS = `import type { Construct, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
-import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";`;
+const RESOURCE_IMPORTS = `import type { Construct, TokenString, TerraformResourceConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+import { TerraformResource } from "tfts";`;
+
+const DATASOURCE_IMPORTS = `import type { Construct, TokenString, TerraformDataSourceConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+import { TerraformDataSource } from "tfts";`;
+
+const PROVIDER_IMPORTS = `import type { Construct, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+import { TerraformProvider } from "tfts";`;
 
 // Properties defined in base classes that cannot be overridden
 const RESERVED_NAMES = new Set([
@@ -30,52 +35,60 @@ const RESERVED_NAMES = new Set([
   "fqn",
 ]);
 
-export const generateProvider = (name: string, schema: ProviderSchema): string => {
+export type GeneratedFiles = ReadonlyMap<string, string>;
+
+export const generateProviderFiles = (name: string, schema: ProviderSchema): GeneratedFiles => {
   const entries = Object.entries(schema.provider_schemas);
   if (entries.length === 0) {
-    return `// No schema available for provider ${name}\nexport {};\n`;
+    return new Map([["index.ts", `// No schema available for provider ${name}\nexport {};\n`]]);
   }
 
   const firstEntry = entries[0];
   if (firstEntry === undefined) {
-    return `// No schema available for provider ${name}\nexport {};\n`;
+    return new Map([["index.ts", `// No schema available for provider ${name}\nexport {};\n`]]);
   }
 
   const [source, entry] = firstEntry;
   const providerName = toPascalCase(name);
+  const files = new Map<string, string>();
+  const exports: string[] = [];
 
-  const parts: string[] = [IMPORTS];
-
-  // Provider class
+  // Provider file
   const providerConfig = generateConfigWithNestedTypes(
-    `${providerName}ProviderProps`,
+    `${providerName}ProviderConfig`,
     entry.provider,
     "TerraformProviderConfig",
   );
   const providerClass = providerTemplate(providerName, source, providerConfig.props);
-  parts.push(...providerConfig.types);
-  parts.push(providerClass);
+  const providerContent = [PROVIDER_IMPORTS, ...providerConfig.types, providerClass].join("\n\n");
+  files.set("provider.ts", providerContent);
+  exports.push(`export { ${providerName}Provider } from "./provider.js";`);
+  exports.push(`export type { ${providerName}ProviderConfig } from "./provider.js";`);
 
-  // Resources
+  // Resource files
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
-    const className = resourceNameToClassName(resourceName);
+    const className = terraformNameToClassName(resourceName);
+    const fileName = terraformNameToFileName(resourceName);
     const config = generateConfigWithNestedTypes(
-      `${className}Props`,
+      `${className}Config`,
       resourceSchema.block,
       "TerraformResourceConfig",
     );
     const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
-    parts.push(...config.types);
-    parts.push(resourceClass);
+    const content = [RESOURCE_IMPORTS, ...config.types, resourceClass].join("\n\n");
+    files.set(`${fileName}.ts`, content);
+    exports.push(`export { ${className} } from "./${fileName}.js";`);
+    exports.push(`export type { ${className}Config } from "./${fileName}.js";`);
   }
 
-  // Data sources
+  // Data source files
   for (const [dataSourceName, dataSourceSchema] of Object.entries(
     entry.data_source_schemas ?? {},
   )) {
-    const className = `Data${resourceNameToClassName(dataSourceName)}`;
+    const className = `Data${terraformNameToClassName(dataSourceName)}`;
+    const fileName = `data-${terraformNameToFileName(dataSourceName)}`;
     const config = generateConfigWithNestedTypes(
-      `${className}Props`,
+      `${className}Config`,
       dataSourceSchema.block,
       "TerraformDataSourceConfig",
     );
@@ -85,34 +98,54 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
       config.props,
       config.getters,
     );
-    parts.push(...config.types);
-    parts.push(dataSourceClass);
+    const content = [DATASOURCE_IMPORTS, ...config.types, dataSourceClass].join("\n\n");
+    files.set(`${fileName}.ts`, content);
+    exports.push(`export { ${className} } from "./${fileName}.js";`);
+    exports.push(`export type { ${className}Config } from "./${fileName}.js";`);
   }
 
+  // Index file
+  files.set("index.ts", exports.join("\n") + "\n");
+
+  return files;
+};
+
+// Legacy single-file generator (kept for backward compatibility)
+export const generateProvider = (name: string, schema: ProviderSchema): string => {
+  const files = generateProviderFiles(name, schema);
+  // Combine all files except index.ts into one
+  const parts: string[] = [];
+  for (const [fileName, content] of files) {
+    if (fileName !== "index.ts") {
+      // Strip imports from non-first files to avoid duplicates
+      if (parts.length === 0) {
+        parts.push(content);
+      } else {
+        const lines = content.split("\n");
+        const nonImportLines = lines.filter(
+          (line) => !line.startsWith("import ") && line.trim() !== "",
+        );
+        parts.push(nonImportLines.join("\n"));
+      }
+    }
+  }
   return parts.join("\n\n");
 };
 
 export const generateResource = (name: string, schema: ResourceSchema): string => {
-  const className = resourceNameToClassName(name);
-  const config = generateConfigInterface(`${className}Props`, schema.block);
+  const className = terraformNameToClassName(name);
+  const config = generateConfigInterface(`${className}Config`, schema.block);
   return `${config.code}\n\n${resourceTemplate(className, name, config.props)}`;
 };
 
 export const generateDataSource = (name: string, schema: ResourceSchema): string => {
-  const className = `Data${resourceNameToClassName(name)}`;
-  const config = generateConfigInterface(`${className}Props`, schema.block);
+  const className = `Data${terraformNameToClassName(name)}`;
+  const config = generateConfigInterface(`${className}Config`, schema.block);
   return `${config.code}\n\n${dataSourceTemplate(className, name, config.props)}`;
 };
 
 export const generateConfig = (name: string, schema: SchemaBlock): string => {
   return generateConfigInterface(name, schema).code;
-};
-
-export const generateIndex = (
-  resources: readonly string[],
-  dataSources: readonly string[],
-): string => {
-  return indexTemplate(resources, dataSources);
 };
 
 type ConfigResult = {
@@ -229,7 +262,18 @@ const toTfName = (s: string): string => {
   return s.replace(/-/g, "_");
 };
 
-const resourceNameToClassName = (name: string): string => {
-  // google_storage_bucket -> GoogleStorageBucket
-  return toPascalCase(name);
+const terraformNameToClassName = (name: string): string => {
+  // google_storage_bucket -> StorageBucket (strip provider prefix)
+  // random_password -> Password
+  const parts = name.split("_");
+  // Remove first part (provider name)
+  const withoutProvider = parts.slice(1).join("_");
+  return toPascalCase(withoutProvider || name);
+};
+
+const terraformNameToFileName = (name: string): string => {
+  // google_storage_bucket -> storage-bucket
+  const parts = name.split("_");
+  const withoutProvider = parts.slice(1).join("-");
+  return withoutProvider || name.replace(/_/g, "-");
 };
