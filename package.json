@@ -1,5 +1,5 @@
 {
-  "name": "terraform-ts",
+  "name": "tfts",
   "version": "0.1.0",
   "description": "TypeScript-first infrastructure as code for Terraform",
   "type": "module",

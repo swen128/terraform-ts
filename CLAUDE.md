@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-terraform-ts is a TypeScript-first infrastructure-as-code framework that generates Terraform JSON. It's a lightweight, type-safe alternative to CDKTF with no JSII dependency.
+tfts is a TypeScript-first infrastructure-as-code framework that generates Terraform JSON. It's a lightweight, type-safe alternative to CDKTF with no JSII dependency.
 
 Key differentiator: Computed attributes return `TokenString` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time.
 
@@ -27,6 +27,7 @@ bun run check               # Run all checks (format, typecheck, test, lint, kni
 ```bash
 bunx tfts get               # Generate provider bindings from cdktf.json
 bunx tfts synth             # Synthesize Terraform JSON
+bunx tfts diff              # Run terraform plan on stacks
 ```
 
 ## Architecture
