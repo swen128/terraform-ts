@@ -6,9 +6,10 @@ import {
   dataSourceTemplate,
   configInterfaceTemplate,
   indexTemplate,
+  type AttributeGetter,
 } from "./templates.js";
 
-const IMPORTS = `import type { TerraformStack } from "tfts";
+const IMPORTS = `import type { TerraformStack, TokenString } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";`;
 
 export const generateProvider = (name: string, schema: ProviderSchema): string => {
@@ -37,7 +38,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas)) {
     const className = resourceNameToClassName(resourceName);
     const config = generateConfigWithNestedTypes(`${className}Config`, resourceSchema.block);
-    const resourceClass = resourceTemplate(className, resourceName, config.props);
+    const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
     parts.push(...config.types);
     parts.push(resourceClass);
   }
@@ -46,7 +47,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   for (const [dataSourceName, dataSourceSchema] of Object.entries(entry.data_source_schemas)) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
     const config = generateConfigWithNestedTypes(`${className}Config`, dataSourceSchema.block);
-    const dataSourceClass = dataSourceTemplate(className, dataSourceName, config.props);
+    const dataSourceClass = dataSourceTemplate(className, dataSourceName, config.props, config.getters);
     parts.push(...config.types);
     parts.push(dataSourceClass);
   }
@@ -85,6 +86,7 @@ type ConfigResult = {
 type ConfigWithNestedResult = {
   readonly types: readonly string[];
   readonly props: readonly string[];
+  readonly getters: readonly AttributeGetter[];
 };
 
 const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult => {
@@ -131,6 +133,11 @@ const generateConfigWithNestedTypes = (
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
+  // Collect getters for computed attributes
+  const getters: readonly AttributeGetter[] = attrEntries
+    .filter(([, attr]) => attr.computed === true)
+    .map(([attrName]) => ({ name: toSnakeCase(attrName) }));
+
   const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
   const blockLines = blockEntries.map(([blockName, blockType]) => {
     const nestedName = `${name}${toPascalCase(blockName)}`;
@@ -150,6 +157,7 @@ const generateConfigWithNestedTypes = (
   return {
     types: [...nestedTypes, configInterfaceTemplate(name, [...attrLines, ...blockLines])],
     props: [...attrProps, ...blockProps],
+    getters,
   };
 };
 

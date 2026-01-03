@@ -3,7 +3,7 @@ import type { TerraformStack } from "./stack.js";
 import type { TerraformProvider } from "./provider.js";
 import type { LifecycleDef, ProvisionerDef } from "../core/resource.js";
 import type { Token } from "../core/tokens.js";
-import { raw } from "../core/tokens.js";
+import { raw, TokenString } from "../core/tokens.js";
 import { generateLogicalId, generateFqn } from "../core/logical-id.js";
 
 export type TerraformResourceLifecycle = LifecycleDef;
@@ -72,7 +72,7 @@ export abstract class TerraformResource extends Construct {
     return raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`);
   }
 
-  getStringAttribute(attribute: string): string {
-    return `\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`;
+  getStringAttribute(attribute: string): TokenString {
+    return new TokenString(raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`));
   }
 }

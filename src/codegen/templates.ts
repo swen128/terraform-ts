@@ -1,16 +1,31 @@
+export type AttributeGetter = {
+  readonly name: string;
+};
+
 export const resourceTemplate = (
   className: string,
   terraformType: string,
   props: readonly string[],
+  getters: readonly AttributeGetter[] = [],
 ): string => {
   const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
+
+  const getterMethods = getters
+    .map((g) => {
+      return `  get ${g.name}(): TokenString {
+    return this.getStringAttribute("${g.name}");
+  }`;
+    })
+    .join("\n\n");
+
+  const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformResource {
   constructor(scope: TerraformStack, id: string, config: ${className}Config) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);
-  }
+  }${gettersSection}
 }`;
 };
 
@@ -34,15 +49,26 @@ export const dataSourceTemplate = (
   className: string,
   terraformType: string,
   props: readonly string[],
+  getters: readonly AttributeGetter[] = [],
 ): string => {
   const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
+
+  const getterMethods = getters
+    .map((g) => {
+      return `  get ${g.name}(): TokenString {
+    return this.getStringAttribute("${g.name}");
+  }`;
+    })
+    .join("\n\n");
+
+  const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformDataSource {
   constructor(scope: TerraformStack, id: string, config: ${className}Config) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);
-  }
+  }${gettersSection}
 }`;
 };
 

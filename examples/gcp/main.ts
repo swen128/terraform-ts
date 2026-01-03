@@ -30,7 +30,7 @@ new GoogleComputeInstance(stack, "web-server", {
   ],
   network_interface: [
     {
-      network: network.getStringAttribute("self_link"),
+      network: network.self_link,
       access_config: [{}],
     },
   ],
@@ -38,7 +38,7 @@ new GoogleComputeInstance(stack, "web-server", {
 });
 
 new TerraformOutput(stack, "network_id", {
-  value: network.getStringAttribute("id"),
+  value: network.id,
   description: "The network ID",
 });
 

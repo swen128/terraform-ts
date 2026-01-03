@@ -8,6 +8,12 @@ export type {
   RawToken,
   TokenResolver,
   TokenValue,
+  TfString,
+  TfNumber,
+  TfBoolean,
+  TfStringList,
+  TfNumberList,
+  TfStringMap,
 } from "./core/tokens.js";
 export {
   TOKEN_SYMBOL,
@@ -17,6 +23,7 @@ export {
   tokenToHcl,
   containsTokens,
   resolveTokens,
+  TokenString,
 } from "./core/tokens.js";
 
 export type { TftsError, ValidationError, ValidationErrorCode } from "./core/errors.js";

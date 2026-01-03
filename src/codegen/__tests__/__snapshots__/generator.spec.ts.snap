@@ -1,7 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`generateProvider generates provider with resources and data sources 1`] = `
-"import type { TerraformStack } from "tfts";
+"import type { TerraformStack, TokenString } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
 export type SimpleConfig = {
@@ -49,6 +49,10 @@ export class SimpleResource extends TerraformResource {
       items: config.items,
     }, config);
   }
+
+  get id(): TokenString {
+    return this.getStringAttribute("id");
+  }
 }
 
 export type DataSimpleDataConfig = {
@@ -62,6 +66,10 @@ export class DataSimpleData extends TerraformDataSource {
       id: config.id,
       name: config.name,
     }, config);
+  }
+
+  get name(): TokenString {
+    return this.getStringAttribute("name");
   }
 }"
 `;

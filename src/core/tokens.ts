@@ -107,3 +107,29 @@ export const resolveTokens = (value: TerraformValue, resolver: TokenResolver): T
   }
   return value;
 };
+
+// TokenString: opaque wrapper for deferred string values
+// No string methods exposed - prevents misuse like .toUpperCase()
+export class TokenString {
+  private readonly _token: Token;
+
+  constructor(token: Token) {
+    this._token = token;
+  }
+
+  toString(): string {
+    return this._token.toHcl();
+  }
+
+  toToken(): Token {
+    return this._token;
+  }
+}
+
+// Union types for construct config arguments
+export type TfString = string | TokenString;
+export type TfNumber = number | TokenString;
+export type TfBoolean = boolean | TokenString;
+export type TfStringList = readonly string[] | TokenString;
+export type TfNumberList = readonly number[] | TokenString;
+export type TfStringMap = Readonly<Record<string, string>> | TokenString;
