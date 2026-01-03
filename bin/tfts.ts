@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// tfts CLI entry point
+import { run } from "../src/cli/index.js";
 
-console.log("tfts - TypeScript-only Terraform CDK");
-console.log("Commands: synth, get");
+const exitCode = await run(process.argv);
+process.exit(exitCode);

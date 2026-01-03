@@ -345,50 +345,50 @@ Spawn 2 agents simultaneously:
 ### Agent H: CLI
 
 ```
-[ ] src/cli/config.ts
-    [ ] readConfig(path) → CdktfConfig
-    [ ] parseProviderConstraint(spec) → ProviderConstraint
-    [ ] validateConfig(config) → ValidationError[]
+[x] src/cli/config.ts
+    [x] readConfig(path) → CdktfConfig
+    [x] parseProviderConstraint(spec) → ProviderConstraint
+    [x] validateConfig(config) → ValidationError[]
 
-[ ] src/cli/synth.ts
-    [ ] runSynth(options) → void
-    [ ] executeApp(command) → void
-    [ ] writeOutput(json, outdir) → void
-    [ ] writeManifest(stacks, outdir) → void
+[x] src/cli/synth.ts
+    [x] runSynth(options) → void
+    [x] executeApp(command) → void
+    [x] writeOutput(json, outdir) → void
+    [x] writeManifest(stacks, outdir) → void
 
-[ ] src/cli/index.ts
-    [ ] CLI entry point
-    [ ] Command parsing (synth, get)
-    [ ] --help, --version handling
+[x] src/cli/index.ts
+    [x] CLI entry point
+    [x] Command parsing (synth, get)
+    [x] --help, --version handling
 
-[ ] bin/tfts.ts
-    [ ] Shebang entry point
+[x] bin/tfts.ts
+    [x] Shebang entry point
 ```
 
 ### Agent I: Code Generation
 
 ```
-[ ] src/codegen/schema.ts
-    [ ] fetchProviderSchema(provider, version) → ProviderSchema
-    [ ] parseSchemaType(type) → TypeScriptType
-    [ ] getProviderUrl(namespace, name, version) → string
+[x] src/codegen/schema.ts
+    [x] fetchProviderSchema(provider, version) → ProviderSchema
+    [x] parseSchemaType(type) → TypeScriptType
+    [x] getProviderUrl(namespace, name, version) → string
 
-[ ] src/codegen/generator.ts
-    [ ] generateProvider(schema) → string
-    [ ] generateResource(name, schema) → string
-    [ ] generateDataSource(name, schema) → string
-    [ ] generateConfig(name, schema) → string
-    [ ] generateIndex(resources, dataSources) → string
+[x] src/codegen/generator.ts
+    [x] generateProvider(schema) → string
+    [x] generateResource(name, schema) → string
+    [x] generateDataSource(name, schema) → string
+    [x] generateConfig(name, schema) → string
+    [x] generateIndex(resources, dataSources) → string
 
-[ ] src/codegen/templates.ts
-    [ ] resourceTemplate
-    [ ] providerTemplate
-    [ ] dataSourceTemplate
-    [ ] configInterfaceTemplate
+[x] src/codegen/templates.ts
+    [x] resourceTemplate
+    [x] providerTemplate
+    [x] dataSourceTemplate
+    [x] configInterfaceTemplate
 
-[ ] src/cli/get.ts
-    [ ] runGet(options) → void
-    [ ] generateBindings(providers, outdir) → void
+[x] src/cli/get.ts
+    [x] runGet(options) → void
+    [x] generateBindings(providers, outdir) → void
 ```
 
 ---

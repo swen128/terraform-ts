@@ -1,22 +1,82 @@
-export type CdktfConfig = {
-  readonly language: "typescript";
-  readonly app: string;
-  readonly output: string;
-  readonly terraformProviders?: readonly ProviderConstraint[];
-  readonly terraformModules?: readonly ModuleConstraint[];
-  readonly codeMakerOutput?: string;
-  readonly projectId?: string;
-  readonly sendCrashReports?: boolean;
+import { ok, err, type Result } from "neverthrow";
+import { z } from "zod";
+
+const ProviderConstraintSchema = z.object({
+  name: z.string(),
+  source: z.string(),
+  version: z.string().optional(),
+});
+
+const ModuleConstraintSchema = z.object({
+  name: z.string(),
+  source: z.string(),
+  version: z.string().optional(),
+});
+
+const CdktfConfigSchema = z.object({
+  language: z.literal("typescript"),
+  app: z.string().min(1),
+  output: z.string().min(1),
+  terraformProviders: z.array(ProviderConstraintSchema).optional(),
+  terraformModules: z.array(ModuleConstraintSchema).optional(),
+  codeMakerOutput: z.string().optional(),
+  projectId: z.string().optional(),
+  sendCrashReports: z.boolean().optional(),
+});
+
+export type CdktfConfig = z.infer<typeof CdktfConfigSchema>;
+export type ProviderConstraint = z.infer<typeof ProviderConstraintSchema>;
+export type ModuleConstraint = z.infer<typeof ModuleConstraintSchema>;
+
+export type ConfigError = {
+  readonly field: string;
+  readonly message: string;
 };
 
-export type ProviderConstraint = {
-  readonly name: string;
-  readonly source: string;
-  readonly version?: string;
+export const readConfig = async (path: string): Promise<Result<CdktfConfig, ConfigError>> => {
+  const file = Bun.file(path);
+  const exists = await file.exists();
+  if (!exists) {
+    return err({ field: "path", message: `Config file not found: ${path}` });
+  }
+
+  const text = await file.text();
+  const parsed: unknown = JSON.parse(text);
+
+  return parseConfig(parsed);
 };
 
-export type ModuleConstraint = {
-  readonly name: string;
-  readonly source: string;
-  readonly version?: string;
+export const parseConfig = (parsed: unknown): Result<CdktfConfig, ConfigError> => {
+  const result = CdktfConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    if (issue !== undefined) {
+      return err({ field: issue.path.join(".") || "root", message: issue.message });
+    }
+    return err({ field: "root", message: "Invalid config" });
+  }
+  return ok(result.data);
+};
+
+export const parseProviderConstraint = (spec: string): ProviderConstraint => {
+  const parts = spec.split("@");
+  const sourceAndName = parts[0] ?? spec;
+  const version = parts[1];
+
+  const sourceParts = sourceAndName.split("/");
+  const name = sourceParts[sourceParts.length - 1] ?? sourceAndName;
+
+  return {
+    name,
+    source: sourceAndName,
+    version,
+  };
+};
+
+export const validateConfig = (config: unknown): readonly ConfigError[] => {
+  const result = parseConfig(config);
+  if (result.isErr()) {
+    return [result.error];
+  }
+  return [];
 };

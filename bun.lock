@@ -5,6 +5,7 @@
       "name": "tfts",
       "dependencies": {
         "neverthrow": "^8.2.0",
+        "zod": "^4.3.4",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.2.0",

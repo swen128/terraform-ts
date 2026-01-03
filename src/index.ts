@@ -62,7 +62,24 @@ export type {
   OutputBlock,
 } from "./core/terraform-json.js";
 
-export type { CdktfConfig, ProviderConstraint, ModuleConstraint } from "./cli/config.js";
+export {
+  parseProviderConstraint,
+  validateConfig,
+  type CdktfConfig,
+  type ProviderConstraint,
+  type ModuleConstraint,
+  type ConfigError,
+} from "./cli/config.js";
+export { writeOutput, writeManifest } from "./cli/synth.js";
+export { generateBindings } from "./cli/get.js";
+export {
+  generateResource,
+  generateDataSource,
+  generateConfig,
+  generateIndex,
+  generateProvider,
+} from "./codegen/generator.js";
+export { getProviderUrl, fetchProviderSchema, parseSchemaType } from "./codegen/schema.js";
 
 export type {
   ProviderSchema,
