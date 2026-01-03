@@ -48,7 +48,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
 
   // Provider class
   const providerConfig = generateConfigWithNestedTypes(
-    `${providerName}Config`,
+    `${providerName}ProviderProps`,
     entry.provider,
     "TerraformProviderConfig",
   );
@@ -60,7 +60,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
     const className = resourceNameToClassName(resourceName);
     const config = generateConfigWithNestedTypes(
-      `${className}Config`,
+      `${className}Props`,
       resourceSchema.block,
       "TerraformResourceConfig",
     );
@@ -75,7 +75,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   )) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
     const config = generateConfigWithNestedTypes(
-      `${className}Config`,
+      `${className}Props`,
       dataSourceSchema.block,
       "TerraformDataSourceConfig",
     );
@@ -94,13 +94,13 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
 
 export const generateResource = (name: string, schema: ResourceSchema): string => {
   const className = resourceNameToClassName(name);
-  const config = generateConfigInterface(`${className}Config`, schema.block);
+  const config = generateConfigInterface(`${className}Props`, schema.block);
   return `${config.code}\n\n${resourceTemplate(className, name, config.props)}`;
 };
 
 export const generateDataSource = (name: string, schema: ResourceSchema): string => {
   const className = `Data${resourceNameToClassName(name)}`;
-  const config = generateConfigInterface(`${className}Config`, schema.block);
+  const config = generateConfigInterface(`${className}Props`, schema.block);
   return `${config.code}\n\n${dataSourceTemplate(className, name, config.props)}`;
 };
 

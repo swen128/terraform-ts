@@ -4,13 +4,13 @@ exports[`generateProvider generates provider with resources and data sources 1`]
 "import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
-export type SimpleConfig = {
+export type SimpleProviderProps = {
   readonly apiKey: TfString;
   readonly region?: TfString;
 } & TerraformProviderConfig;
 
 export class SimpleProvider extends TerraformProvider {
-  constructor(scope: TerraformStack, id: string, config: SimpleConfig = {}) {
+  constructor(scope: TerraformStack, id: string, config: SimpleProviderProps = {}) {
     super(scope, id, "registry.terraform.io/hashicorp/simple", {
       api_key: config.apiKey,
       region: config.region,
@@ -18,27 +18,27 @@ export class SimpleProvider extends TerraformProvider {
   }
 }
 
-export type SimpleResourceConfigConfig = {
+export type SimpleResourcePropsConfig = {
   readonly key: TfString;
   readonly value?: TfString;
 };
 
-export type SimpleResourceConfigItems = {
+export type SimpleResourcePropsItems = {
   readonly name: TfString;
 };
 
-export type SimpleResourceConfig = {
+export type SimpleResourceProps = {
   readonly id?: TfString;
   readonly name: TfString;
   readonly enabled?: TfBoolean;
   readonly count?: TfNumber;
   readonly tags?: TfStringMap;
-  readonly config?: SimpleResourceConfigConfig;
-  readonly items: readonly SimpleResourceConfigItems[];
+  readonly config?: SimpleResourcePropsConfig;
+  readonly items: readonly SimpleResourcePropsItems[];
 } & TerraformResourceConfig;
 
 export class SimpleResource extends TerraformResource {
-  constructor(scope: TerraformStack, id: string, config: SimpleResourceConfig) {
+  constructor(scope: TerraformStack, id: string, config: SimpleResourceProps) {
     super(scope, id, "simple_resource", {
       id: config.id,
       name: config.name,
@@ -55,13 +55,13 @@ export class SimpleResource extends TerraformResource {
   }
 }
 
-export type DataSimpleDataConfig = {
+export type DataSimpleDataProps = {
   readonly id: TfString;
   readonly name?: TfString;
 } & TerraformDataSourceConfig;
 
 export class DataSimpleData extends TerraformDataSource {
-  constructor(scope: TerraformStack, id: string, config: DataSimpleDataConfig) {
+  constructor(scope: TerraformStack, id: string, config: DataSimpleDataProps) {
     super(scope, id, "simple_data", {
       id: config.id,
       name: config.name,
