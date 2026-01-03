@@ -1,0 +1,67 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`generateProvider generates provider with resources and data sources 1`] = `
+"import type { TerraformStack } from "tfts";
+import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
+
+export type SimpleConfig = {
+  readonly api_key: string;
+  readonly region?: string;
+};
+
+export class SimpleProvider extends TerraformProvider {
+  constructor(scope: TerraformStack, id: string, config: SimpleConfig = {}) {
+    super(scope, id, "registry.terraform.io/hashicorp/simple", {
+      api_key: config.api_key,
+      region: config.region,
+    }, config);
+  }
+}
+
+export type SimpleResourceConfigConfig = {
+  readonly key: string;
+  readonly value?: string;
+};
+
+export type SimpleResourceConfigItems = {
+  readonly name: string;
+};
+
+export type SimpleResourceConfig = {
+  readonly id?: string;
+  readonly name: string;
+  readonly enabled?: boolean;
+  readonly count?: number;
+  readonly tags?: Readonly<Record<string, string>>;
+  readonly config?: SimpleResourceConfigConfig;
+  readonly items: readonly SimpleResourceConfigItems[];
+};
+
+export class SimpleResource extends TerraformResource {
+  constructor(scope: TerraformStack, id: string, config: SimpleResourceConfig) {
+    super(scope, id, "simple_resource", {
+      id: config.id,
+      name: config.name,
+      enabled: config.enabled,
+      count: config.count,
+      tags: config.tags,
+      config: config.config,
+      items: config.items,
+    }, config);
+  }
+}
+
+export type DataSimpleDataConfig = {
+  readonly id: string;
+  readonly name?: string;
+};
+
+export class DataSimpleData extends TerraformDataSource {
+  constructor(scope: TerraformStack, id: string, config: DataSimpleDataConfig) {
+    super(scope, id, "simple_data", {
+      id: config.id,
+      name: config.name,
+    }, config);
+  }
+}"
+`;
