@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "keywords": [
     "terraform",
@@ -22,11 +23,11 @@
     "cdktf",
     "typescript"
   ],
-  "author": "",
+  "author": "PND",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/swen128/terraform-ts"
   },
   "scripts": {
     "build": "tsc",
