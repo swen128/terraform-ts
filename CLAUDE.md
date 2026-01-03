@@ -1,111 +1,83 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Project Overview
 
-## APIs
+terraform-ts is a TypeScript-first infrastructure-as-code framework that generates Terraform JSON. It's a lightweight, type-safe alternative to CDKTF with no JSII dependency.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+Key differentiator: Computed attributes return `TokenString` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time.
 
-## Testing
+## Commands
 
-Use `bun test` to run tests.
+```bash
+bun test                    # Run all tests
+bun test src/core           # Run tests in a specific directory
+bun test --watch            # Run tests in watch mode
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+bun run build               # Compile TypeScript to dist/
+bun run typecheck           # Type check without emitting
+bun run lint                # Run ESLint
+bun run format              # Format with Biome
+bun run knip                # Find unused exports/files
+bun run check               # Run all checks (format, typecheck, test, lint, knip)
 ```
 
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+**CLI (after build):**
+```bash
+bunx tfts get               # Generate provider bindings from cdktf.json
+bunx tfts synth             # Synthesize Terraform JSON
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+## Architecture
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
+```
+src/
+├── core/       # Functional, data-oriented types and pure functions
+├── facade/     # User-facing OOP classes that delegate to core
+├── codegen/    # Generates TypeScript from Terraform provider schemas
+└── cli/        # CLI commands (synth, get)
 ```
 
-With the following `frontend.tsx`:
+### Core vs Facade Pattern
 
-```tsx#frontend.tsx
-import React from "react";
+**Core layer** (`src/core/`): Purely functional with no methods on data types. Handles synthesis, validation, and tree traversal.
 
-// import .css files directly and it works
-import './index.css';
+**Facade layer** (`src/facade/`): OOP-style classes extending `Construct` with fluent interfaces. Internally converts to core types for processing.
 
-import { createRoot } from "react-dom/client";
+### Token System
 
-const root = createRoot(document.body);
+The type-safe interpolation system in `src/core/tokens.ts`:
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
+- `Token` (abstract) → `RefToken`, `FnToken`, `RawToken`
+- `TokenString` - Opaque wrapper that only allows `.toString()` and `.toToken()`
+- Union types for config properties:
+  - `TfString = string | TokenString`
+  - `TfNumber = number | TokenString`
+  - `TfBoolean = boolean | TokenString`
 
-root.render(<Frontend />);
-```
+Resources expose computed attributes as `TokenString`, ensuring compile-time safety.
 
-Then, run index.ts
+### Construct Tree
 
-```sh
-bun --hot ./index.ts
-```
+- `App` (root) → `TerraformStack` (branch) → Resources/Providers/Variables (leaves)
+- Each node has immutable metadata and a tree path
+- Tree is validated for circular dependencies before synthesis
+- `src/core/synthesize.ts` converts the tree to Terraform JSON
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+### Code Generation
+
+`src/codegen/generator.ts` generates provider bindings:
+1. Fetches Terraform provider schemas via `terraform providers schema -json`
+2. Generates TypeScript classes for providers, resources, and data sources
+3. Handles snake_case → camelCase conversion for config properties
+
+## Code Style
+
+ESLint enforces strict functional patterns:
+- No `any` types or type assertions
+- No throwing exceptions (use `neverthrow` Result types)
+- Explicit return types on all functions
+- No non-null assertions
+
+Use `bun run check` before committing.
