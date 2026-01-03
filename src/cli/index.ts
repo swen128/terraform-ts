@@ -1,9 +1,10 @@
 import { runSynth, type SynthOptions } from "./synth.js";
 import { runGet, type GetOptions, type GetError } from "./get.js";
+import { runDiff, type DiffOptions, type DiffError } from "./diff.js";
 
 const VERSION = "0.1.0";
 
-type Command = "synth" | "get" | "help" | "version";
+type Command = "synth" | "get" | "diff" | "help" | "version";
 
 type ParsedArgs = {
   readonly command: Command;
@@ -34,7 +35,7 @@ const parseArgs = (argv: readonly string[]): ParsedArgs => {
       } else {
         options[key] = true;
       }
-    } else if (arg === "synth" || arg === "get") {
+    } else if (arg === "synth" || arg === "get" || arg === "diff") {
       command = arg;
     } else {
       positional.push(arg);
@@ -53,6 +54,7 @@ Usage: tfts <command> [options]
 Commands:
   synth     Synthesize Terraform configuration
   get       Generate provider bindings
+  diff      Show changes (terraform plan)
 
 Options:
   --help, -h      Show help
@@ -65,6 +67,14 @@ Synth Options:
 
 Get Options:
   --output        Output directory for generated bindings
+
+Diff Options:
+  --app           App command to run
+  --output        Output directory
+  --config        Config file path (default: cdktf.json)
+  --stack         Target a specific stack
+  --refresh-only  Only refresh state, don't plan changes
+  --skip-synth    Skip synthesis, use existing output
 `);
 };
 
@@ -111,6 +121,23 @@ export const run = async (argv: readonly string[]): Promise<number> => {
       }
       return 0;
     }
+    case "diff": {
+      const options: DiffOptions = {
+        app: typeof parsed.options["app"] === "string" ? parsed.options["app"] : undefined,
+        output: typeof parsed.options["output"] === "string" ? parsed.options["output"] : undefined,
+        configPath:
+          typeof parsed.options["config"] === "string" ? parsed.options["config"] : undefined,
+        stack: typeof parsed.options["stack"] === "string" ? parsed.options["stack"] : undefined,
+        refreshOnly: parsed.options["refresh-only"] === true,
+        skipSynth: parsed.options["skip-synth"] === true,
+      };
+      const result = await runDiff(options);
+      if (result.isErr()) {
+        console.error(`Error: ${formatDiffError(result.error)}`);
+        return 1;
+      }
+      return 0;
+    }
   }
 };
 
@@ -132,6 +159,19 @@ const formatGetError = (error: GetError): string => {
     case "schema":
       return error.error.message;
     case "io":
+      return error.message;
+  }
+};
+
+const formatDiffError = (error: DiffError): string => {
+  switch (error.kind) {
+    case "config":
+      return error.error.message;
+    case "exec":
+      return error.message;
+    case "io":
+      return error.message;
+    case "terraform":
       return error.message;
   }
 };
