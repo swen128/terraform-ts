@@ -1,8 +1,8 @@
-# tfts Design Document
+# terraform-ts Design Document
 
 ## Overview
 
-tfts is structured in three layers:
+terraform-ts is structured in three layers:
 
 1. **Core Layer** - Pure functional implementation with immutable data structures
 2. **Facade Layer** - CDK-compatible API that translates to the core
@@ -49,7 +49,7 @@ Users write TypeScript code using CDK-compatible classes. The facade internally 
 
 ```typescript
 // main.ts
-import { App, TerraformStack, TerraformOutput } from "tfts";
+import { App, TerraformStack, TerraformOutput } from "terraform-ts";
 import { GoogleProvider } from "./.gen/providers/google/provider";
 import { GoogleComputeInstance } from "./.gen/providers/google/compute-instance";
 import { GoogleComputeNetwork } from "./.gen/providers/google/compute-network";
@@ -840,7 +840,7 @@ function parseProviderConstraint(spec: string): ProviderConstraint;
 ### 6.1 Command Structure
 
 ```
-tfts <command> [options]
+terraform-ts <command> [options]
 
 Commands:
   synth   Synthesize Terraform JSON from TypeScript code
@@ -854,7 +854,7 @@ Global Options:
 ### 6.2 Synth Command
 
 ```
-tfts synth [options]
+terraform-ts synth [options]
 
 Options:
   --app, -a       Command to run the app (overrides cdktf.json)
@@ -871,7 +871,7 @@ Options:
 ### 6.3 Get Command
 
 ```
-tfts get [options]
+terraform-ts get [options]
 
 Options:
   --output, -o    Output directory for generated bindings (default: .gen)
@@ -907,9 +907,9 @@ ami.id.toUpperCase();  // Compiles ✓ but broken at runtime
 ami.id.substring(0, 5);  // Compiles ✓ but broken at runtime
 ```
 
-### 7.2 tfts Solution: TokenString + Union Types
+### 7.2 terraform-ts Solution: TokenString + Union Types
 
-tfts uses an opaque `TokenString` wrapper for computed attributes:
+terraform-ts uses an opaque `TokenString` wrapper for computed attributes:
 
 ```typescript
 // Opaque wrapper - no string methods exposed
@@ -977,7 +977,7 @@ resource.port + 1;
 
 ### 7.5 Comparison
 
-| Aspect                | CDKTF (string)                 | tfts (TfString)               |
+| Aspect                | CDKTF (string)                 | terraform-ts (TfString)               |
 |-----------------------|--------------------------------|-------------------------------|
 | `ami.id.toUpperCase()`| Compiles ✓ (broken at runtime) | Compile error ✗               |
 | `{ ami: "literal" }`  | Works ✓                        | Works ✓                       |
@@ -985,4 +985,4 @@ resource.port + 1;
 | `` `prefix-${ami.id}` ``| Works ✓                      | Works ✓                       |
 | Pass to `fn(s: string)`| Works ✓                       | Compile error ✗ (intentional) |
 
-The key insight: CDKTF lies to TypeScript ("this is a string" when it's actually a deferred reference). tfts tells the truth ("this is either a literal OR a deferred reference").
+The key insight: CDKTF lies to TypeScript ("this is a string" when it's actually a deferred reference). terraform-ts tells the truth ("this is either a literal OR a deferred reference").

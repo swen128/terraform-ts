@@ -1,10 +1,10 @@
-# tfts
+# terraform-ts
 
 TypeScript-first infrastructure as code for Terraform. A lightweight, type-safe alternative to CDKTF.
 
 ## Overview
 
-tfts lets you define Terraform infrastructure using TypeScript with full type safety. It generates Terraform JSON that you can apply with the standard Terraform CLI.
+terraform-ts lets you define Terraform infrastructure using TypeScript with full type safety. It generates Terraform JSON that you can apply with the standard Terraform CLI.
 
 Key differences from CDKTF:
 
@@ -21,7 +21,7 @@ Key differences from CDKTF:
 ### Installation
 
 ```bash
-bun add tfts
+bun add terraform-ts
 ```
 
 ### Project Setup
@@ -55,7 +55,7 @@ bunx tfts get
 Create `main.ts`:
 
 ```typescript
-import { App, TerraformStack, TerraformOutput } from "tfts";
+import { App, TerraformStack, TerraformOutput } from "terraform-ts";
 import { GoogleProvider, GoogleComputeNetwork } from "./.gen/providers/google/index.js";
 
 const app = new App();
@@ -100,10 +100,10 @@ The main difference: computed attributes return `TokenString` instead of `string
 // CDKTF - compiles but broken at runtime
 network.id.toUpperCase();
 
-// tfts - compile error (TokenString has no .toUpperCase())
+// terraform-ts - compile error (TokenString has no .toUpperCase())
 network.id.toUpperCase(); // Error!
 
-// tfts - template literals work via toString()
+// terraform-ts - template literals work via toString()
 `prefix-${network.id}`;
 ```
 
@@ -130,12 +130,12 @@ new MyDatabase(stack, "db", {
 });
 ```
 
-In tfts, update config properties that accept tokens to use `TfString`:
+In terraform-ts, update config properties that accept tokens to use `TfString`:
 
 ```typescript
-import { TfString } from "tfts";
+import { TfString } from "terraform-ts";
 
-// tfts
+// terraform-ts
 interface MyDatabaseConfig {
   name: string;      // Literal only - keep as string
   vpcId: TfString;   // Accepts tokens - use TfString
@@ -148,8 +148,8 @@ interface MyDatabaseConfig {
 // CDKTF
 import { App, TerraformStack } from "cdktf";
 
-// tfts
-import { App, TerraformStack } from "tfts";
+// terraform-ts
+import { App, TerraformStack } from "terraform-ts";
 ```
 
 ### Supported Constructs

@@ -1,4 +1,4 @@
-import { App, TerraformStack, TerraformOutput } from "tfts";
+import { App, TerraformStack, TerraformOutput } from "terraform-ts";
 import {
   GoogleProvider,
   GoogleComputeNetwork,
