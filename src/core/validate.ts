@@ -1,8 +1,6 @@
 import type { ConstructNode, ConstructMetadata } from "./construct.js";
 import type { ValidationError, ValidationErrorCode } from "./errors.js";
-import type { LifecycleDef } from "./resource.js";
 import { RefToken, Token } from "./tokens.js";
-import type { ValidationDef } from "./variable.js";
 
 const createError = (
   path: readonly string[],
@@ -106,368 +104,109 @@ export const detectCircularDependencies = (tree: ConstructNode): readonly string
 const validateAppMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "app" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  if (metadata.outdir === "" || typeof metadata.outdir !== "string") {
-    errors.push(
-      createError(
-        node.path,
-        "App requires 'outdir' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.outdir === ""
+    ? [
+        createError(
+          node.path,
+          "App requires 'outdir' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
+        ),
+      ]
+    : [];
 
 const validateStackMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "stack" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  if (metadata.stackName === "" || typeof metadata.stackName !== "string") {
-    errors.push(
-      createError(
-        node.path,
-        "Stack requires 'stackName' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  return errors;
-};
-
-const validateLifecycle = (
-  path: readonly string[],
-  lifecycle: NonNullable<LifecycleDef>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  if (
-    lifecycle.createBeforeDestroy !== undefined &&
-    typeof lifecycle.createBeforeDestroy !== "boolean"
-  ) {
-    errors.push(
-      createError(path, "lifecycle.createBeforeDestroy must be a boolean", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (lifecycle.preventDestroy !== undefined && typeof lifecycle.preventDestroy !== "boolean") {
-    errors.push(
-      createError(path, "lifecycle.preventDestroy must be a boolean", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (lifecycle.ignoreChanges !== undefined) {
-    if (lifecycle.ignoreChanges !== "all" && !Array.isArray(lifecycle.ignoreChanges)) {
-      errors.push(
+): readonly ValidationError[] =>
+  metadata.stackName === ""
+    ? [
         createError(
-          path,
-          "lifecycle.ignoreChanges must be 'all' or an array of strings",
-          "INVALID_FIELD_TYPE",
+          node.path,
+          "Stack requires 'stackName' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
         ),
-      );
-    } else if (Array.isArray(lifecycle.ignoreChanges)) {
-      for (const item of lifecycle.ignoreChanges) {
-        if (typeof item !== "string") {
-          errors.push(
-            createError(
-              path,
-              "lifecycle.ignoreChanges array must contain only strings",
-              "INVALID_FIELD_TYPE",
-            ),
-          );
-          break;
-        }
-      }
-    }
-  }
-
-  if (lifecycle.precondition !== undefined) {
-    for (const cond of lifecycle.precondition) {
-      if (typeof cond.errorMessage !== "string") {
-        errors.push(
-          createError(
-            path,
-            "lifecycle.precondition.errorMessage must be a string",
-            "INVALID_FIELD_TYPE",
-          ),
-        );
-      }
-    }
-  }
-
-  if (lifecycle.postcondition !== undefined) {
-    for (const cond of lifecycle.postcondition) {
-      if (typeof cond.errorMessage !== "string") {
-        errors.push(
-          createError(
-            path,
-            "lifecycle.postcondition.errorMessage must be a string",
-            "INVALID_FIELD_TYPE",
-          ),
-        );
-      }
-    }
-  }
-
-  return errors;
-};
+      ]
+    : [];
 
 export const validateResourceConfig = (node: ConstructNode): readonly ValidationError[] => {
   if (node.metadata.kind !== "resource") {
     return [];
   }
 
-  const errors: ValidationError[] = [];
-  const resource = node.metadata.resource;
-
-  if (resource.terraformResourceType === "" || typeof resource.terraformResourceType !== "string") {
-    errors.push(
-      createError(
-        node.path,
-        "Resource requires 'terraformResourceType' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  if (resource.provider !== undefined && typeof resource.provider !== "string") {
-    errors.push(
-      createError(node.path, "Resource 'provider' must be a string", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (resource.lifecycle !== undefined) {
-    errors.push(...validateLifecycle(node.path, resource.lifecycle));
-  }
-
-  if (resource.provisioners !== undefined) {
-    for (const prov of resource.provisioners) {
-      if (prov.type !== "local-exec" && prov.type !== "remote-exec" && prov.type !== "file") {
-        errors.push(
-          createError(
-            node.path,
-            "Provisioner type must be 'local-exec', 'remote-exec', or 'file'",
-            "INVALID_FIELD_TYPE",
-          ),
-        );
-      }
-      if (prov.when !== undefined && prov.when !== "create" && prov.when !== "destroy") {
-        errors.push(
-          createError(
-            node.path,
-            "Provisioner 'when' must be 'create' or 'destroy'",
-            "INVALID_FIELD_TYPE",
-          ),
-        );
-      }
-      if (
-        prov.onFailure !== undefined &&
-        prov.onFailure !== "continue" &&
-        prov.onFailure !== "fail"
-      ) {
-        errors.push(
-          createError(
-            node.path,
-            "Provisioner 'onFailure' must be 'continue' or 'fail'",
-            "INVALID_FIELD_TYPE",
-          ),
-        );
-      }
-    }
-  }
-
-  return errors;
+  return node.metadata.resource.terraformResourceType === ""
+    ? [
+        createError(
+          node.path,
+          "Resource requires 'terraformResourceType' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
+        ),
+      ]
+    : [];
 };
 
 const validateProviderMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "provider" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const provider = metadata.provider;
-
-  if (
-    provider.terraformProviderSource === "" ||
-    typeof provider.terraformProviderSource !== "string"
-  ) {
-    errors.push(
-      createError(
-        node.path,
-        "Provider requires 'terraformProviderSource' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  if (provider.version !== undefined && typeof provider.version !== "string") {
-    errors.push(
-      createError(node.path, "Provider 'version' must be a string", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (provider.alias !== undefined && typeof provider.alias !== "string") {
-    errors.push(createError(node.path, "Provider 'alias' must be a string", "INVALID_FIELD_TYPE"));
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.provider.terraformProviderSource === ""
+    ? [
+        createError(
+          node.path,
+          "Provider requires 'terraformProviderSource' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
+        ),
+      ]
+    : [];
 
 const validateDatasourceMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "datasource" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const datasource = metadata.datasource;
-
-  if (
-    datasource.terraformResourceType === "" ||
-    typeof datasource.terraformResourceType !== "string"
-  ) {
-    errors.push(
-      createError(
-        node.path,
-        "DataSource requires 'terraformResourceType' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  if (datasource.provider !== undefined && typeof datasource.provider !== "string") {
-    errors.push(
-      createError(node.path, "DataSource 'provider' must be a string", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  return errors;
-};
-
-const validateSingleValidationDef = (
-  path: readonly string[],
-  v: ValidationDef,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  if (typeof v.errorMessage !== "string") {
-    errors.push(
-      createError(
-        path,
-        "Variable validation 'errorMessage' must be a string",
-        "INVALID_FIELD_TYPE",
-      ),
-    );
-  }
-
-  return errors;
-};
-
-const validateVariableMetadata = (
-  node: ConstructNode,
-  metadata: Extract<ConstructMetadata, { kind: "variable" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const variable = metadata.variable;
-
-  if (variable.type !== undefined && typeof variable.type !== "string") {
-    errors.push(createError(node.path, "Variable 'type' must be a string", "INVALID_FIELD_TYPE"));
-  }
-
-  if (variable.description !== undefined && typeof variable.description !== "string") {
-    errors.push(
-      createError(node.path, "Variable 'description' must be a string", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (variable.sensitive !== undefined && typeof variable.sensitive !== "boolean") {
-    errors.push(
-      createError(node.path, "Variable 'sensitive' must be a boolean", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (variable.nullable !== undefined && typeof variable.nullable !== "boolean") {
-    errors.push(
-      createError(node.path, "Variable 'nullable' must be a boolean", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (variable.validation !== undefined) {
-    for (const v of variable.validation) {
-      errors.push(...validateSingleValidationDef(node.path, v));
-    }
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.datasource.terraformResourceType === ""
+    ? [
+        createError(
+          node.path,
+          "DataSource requires 'terraformResourceType' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
+        ),
+      ]
+    : [];
 
 const validateOutputMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "output" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const output = metadata.output;
-
-  if (output.value === undefined) {
-    errors.push(createError(node.path, "Output requires 'value'", "MISSING_REQUIRED_FIELD"));
-  }
-
-  if (output.description !== undefined && typeof output.description !== "string") {
-    errors.push(
-      createError(node.path, "Output 'description' must be a string", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  if (output.sensitive !== undefined && typeof output.sensitive !== "boolean") {
-    errors.push(
-      createError(node.path, "Output 'sensitive' must be a boolean", "INVALID_FIELD_TYPE"),
-    );
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.output.value === undefined
+    ? [createError(node.path, "Output requires 'value'", "MISSING_REQUIRED_FIELD")]
+    : [];
 
 const validateBackendMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "backend" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const backend = metadata.backend;
-
-  if (backend.type === "" || typeof backend.type !== "string") {
-    errors.push(
-      createError(
-        node.path,
-        "Backend requires 'type' to be a non-empty string",
-        "MISSING_REQUIRED_FIELD",
-      ),
-    );
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.backend.type === ""
+    ? [
+        createError(
+          node.path,
+          "Backend requires 'type' to be a non-empty string",
+          "MISSING_REQUIRED_FIELD",
+        ),
+      ]
+    : [];
 
 const validateLocalMetadata = (
   node: ConstructNode,
   metadata: Extract<ConstructMetadata, { kind: "local" }>,
-): readonly ValidationError[] => {
-  const errors: ValidationError[] = [];
-  const local = metadata.local;
-
-  if (local.expression === undefined) {
-    errors.push(createError(node.path, "Local requires 'expression'", "MISSING_REQUIRED_FIELD"));
-  }
-
-  return errors;
-};
+): readonly ValidationError[] =>
+  metadata.local.expression === undefined
+    ? [createError(node.path, "Local requires 'expression'", "MISSING_REQUIRED_FIELD")]
+    : [];
 
 export const validateNode = (node: ConstructNode): readonly ValidationError[] => {
   const errors: ValidationError[] = [];
 
-  if (node.id === "" || typeof node.id !== "string") {
+  if (node.id === "") {
     errors.push(
       createError(
         node.path,
@@ -475,10 +214,6 @@ export const validateNode = (node: ConstructNode): readonly ValidationError[] =>
         "MISSING_REQUIRED_FIELD",
       ),
     );
-  }
-
-  if (!Array.isArray(node.path)) {
-    errors.push(createError([], "Node 'path' must be an array", "INVALID_FIELD_TYPE"));
   }
 
   switch (node.metadata.kind) {
@@ -498,7 +233,6 @@ export const validateNode = (node: ConstructNode): readonly ValidationError[] =>
       errors.push(...validateDatasourceMetadata(node, node.metadata));
       break;
     case "variable":
-      errors.push(...validateVariableMetadata(node, node.metadata));
       break;
     case "output":
       errors.push(...validateOutputMetadata(node, node.metadata));
