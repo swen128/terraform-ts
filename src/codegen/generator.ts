@@ -64,7 +64,7 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   files.set("provider/index.ts", providerContent);
   namespaceExports.push(`export * as provider from "./provider/index.js";`);
 
-  // Resource files (each in its own subdirectory)
+  // Resource files (each in lib/ subdirectory for CDKTF compatibility)
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
     const className = terraformNameToClassName(resourceName);
     const dirName = terraformNameToFileName(resourceName);
@@ -76,11 +76,11 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
     );
     const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
     const content = [RESOURCE_IMPORTS, ...config.types, resourceClass].join("\n\n");
-    files.set(`${dirName}/index.ts`, content);
-    namespaceExports.push(`export * as ${namespaceName} from "./${dirName}/index.js";`);
+    files.set(`lib/${dirName}/index.ts`, content);
+    namespaceExports.push(`export * as ${namespaceName} from "./lib/${dirName}/index.js";`);
   }
 
-  // Data source files (each in its own subdirectory)
+  // Data source files (each in lib/ subdirectory for CDKTF compatibility)
   for (const [dataSourceName, dataSourceSchema] of Object.entries(
     entry.data_source_schemas ?? {},
   )) {
@@ -100,8 +100,8 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
       config.getters,
     );
     const content = [DATASOURCE_IMPORTS, ...config.types, dataSourceClass].join("\n\n");
-    files.set(`${dirName}/index.ts`, content);
-    namespaceExports.push(`export * as ${namespaceName} from "./${dirName}/index.js";`);
+    files.set(`lib/${dirName}/index.ts`, content);
+    namespaceExports.push(`export * as ${namespaceName} from "./lib/${dirName}/index.js";`);
   }
 
   // Index file with namespace exports
@@ -213,12 +213,9 @@ const generateConfigWithNestedTypes = (
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
-  // Collect getters for computed attributes (excluding reserved names)
+  // Collect getters for all attributes (excluding reserved names)
   const getters: readonly AttributeGetter[] = attrEntries
-    .filter(
-      ([attrName, attr]) =>
-        attr.computed === true && !RESERVED_NAMES.has(snakeToCamelCase(attrName)),
-    )
+    .filter(([attrName]) => !RESERVED_NAMES.has(snakeToCamelCase(attrName)))
     .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: snakeToCamelCase(attrName) }));
 
   const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({

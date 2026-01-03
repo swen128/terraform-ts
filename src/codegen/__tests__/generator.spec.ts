@@ -37,3 +37,50 @@ describe("generateProviderFiles", () => {
     expect(indexContent).not.toContain("export * as storagebucket from");
   });
 });
+
+describe("nesting modes", () => {
+  test("single nesting mode generates single object type, not array", () => {
+    const schema = loadFixture("nesting-modes");
+    const result = generateProvider("test", schema);
+
+    // Single nesting mode should be single object
+    expect(result).toContain("readonly singleBlock?: ResourceConfigSingleBlock;");
+    expect(result).not.toContain("readonly singleBlock?: readonly ResourceConfigSingleBlock[];");
+
+    // List nesting mode should be array
+    expect(result).toContain("readonly listBlock?: readonly ResourceConfigListBlock[];");
+
+    // Set nesting mode should be array
+    expect(result).toContain("readonly setBlock?: readonly ResourceConfigSetBlock[];");
+  });
+});
+
+describe("attribute getters", () => {
+  test("generates getters for ALL attributes, not just computed", () => {
+    const schema = loadFixture("nesting-modes");
+    const result = generateProvider("test", schema);
+
+    // Should have getters for computed attributes
+    expect(result).toContain("get id(): TokenString {");
+    expect(result).toContain("get secretId(): TokenString {");
+    expect(result).toContain("get location(): TokenString {");
+
+    // Should ALSO have getter for required (non-computed) attribute
+    expect(result).toContain("get name(): TokenString {");
+  });
+});
+
+describe("lib directory structure", () => {
+  test("generates lib/ directory for CDKTF compatibility", () => {
+    const schema = loadFixture("multiword-provider");
+    const files = generateProviderFiles("google", schema);
+
+    // Should have lib/ prefix
+    expect(files.has("lib/alloydb-cluster/index.ts")).toBe(true);
+    expect(files.has("lib/storage-bucket/index.ts")).toBe(true);
+
+    // Root index should export from lib/
+    const indexContent = files.get("index.ts");
+    expect(indexContent).toContain('from "./lib/alloydb-cluster');
+  });
+});

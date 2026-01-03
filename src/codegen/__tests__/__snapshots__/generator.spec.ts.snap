@@ -49,6 +49,15 @@ export class Resource extends TerraformResource {
   get id(): TokenString {
     return this.getStringAttribute("id");
   }
+  get name(): TokenString {
+    return this.getStringAttribute("name");
+  }
+  get enabled(): TokenString {
+    return this.getStringAttribute("enabled");
+  }
+  get tags(): TokenString {
+    return this.getStringAttribute("tags");
+  }
 }
 
 export type DataDataConfig = {
@@ -61,6 +70,9 @@ export class DataData extends TerraformDataSource {
       id: config.id,
       name: config.name,
     }, config);
+  }
+  get id(): TokenString {
+    return this.getStringAttribute("id");
   }
   get name(): TokenString {
     return this.getStringAttribute("name");

@@ -1,0 +1,70 @@
+{
+  "format_version": "1.0",
+  "provider_schemas": {
+    "registry.terraform.io/test/test": {
+      "provider": {
+        "attributes": {}
+      },
+      "resource_schemas": {
+        "test_resource": {
+          "version": 0,
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "required": true
+              },
+              "secret_id": {
+                "type": "string",
+                "computed": true
+              },
+              "location": {
+                "type": "string",
+                "computed": true
+              }
+            },
+            "block_types": {
+              "single_block": {
+                "nesting_mode": "single",
+                "block": {
+                  "attributes": {
+                    "value": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                }
+              },
+              "list_block": {
+                "nesting_mode": "list",
+                "block": {
+                  "attributes": {
+                    "value": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                }
+              },
+              "set_block": {
+                "nesting_mode": "set",
+                "block": {
+                  "attributes": {
+                    "value": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
