@@ -8,6 +8,9 @@ import {
   indexTemplate,
 } from "./templates.js";
 
+const IMPORTS = `import type { TerraformStack } from "tfts";
+import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";`;
+
 export const generateProvider = (name: string, schema: ProviderSchema): string => {
   const entries = Object.entries(schema.provider_schemas);
   if (entries.length === 0) {
@@ -22,29 +25,29 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   const [source, entry] = firstEntry;
   const providerName = toPascalCase(name);
 
-  const parts: string[] = [];
+  const parts: string[] = [IMPORTS];
 
   // Provider class
-  const providerConfig = generateConfigInterface(`${providerName}Config`, entry.provider);
+  const providerConfig = generateConfigWithNestedTypes(`${providerName}Config`, entry.provider);
   const providerClass = providerTemplate(providerName, source, providerConfig.props);
-  parts.push(providerConfig.code);
+  parts.push(...providerConfig.types);
   parts.push(providerClass);
 
   // Resources
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas)) {
     const className = resourceNameToClassName(resourceName);
-    const config = generateConfigInterface(`${className}Config`, resourceSchema.block);
+    const config = generateConfigWithNestedTypes(`${className}Config`, resourceSchema.block);
     const resourceClass = resourceTemplate(className, resourceName, config.props);
-    parts.push(config.code);
+    parts.push(...config.types);
     parts.push(resourceClass);
   }
 
   // Data sources
   for (const [dataSourceName, dataSourceSchema] of Object.entries(entry.data_source_schemas)) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
-    const config = generateConfigInterface(`${className}Config`, dataSourceSchema.block);
+    const config = generateConfigWithNestedTypes(`${className}Config`, dataSourceSchema.block);
     const dataSourceClass = dataSourceTemplate(className, dataSourceName, config.props);
-    parts.push(config.code);
+    parts.push(...config.types);
     parts.push(dataSourceClass);
   }
 
@@ -79,39 +82,72 @@ type ConfigResult = {
   readonly props: readonly string[];
 };
 
+type ConfigWithNestedResult = {
+  readonly types: readonly string[];
+  readonly props: readonly string[];
+};
+
 const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult => {
-  const props: string[] = [];
-  const lines: string[] = [];
+  const attrEntries = Object.entries(block.attributes ?? {});
+  const blockEntries = Object.entries(block.block_types ?? {});
 
-  if (block.attributes !== undefined) {
-    for (const [attrName, attr] of Object.entries(block.attributes)) {
-      const tsType = parseSchemaType(attr.type);
-      const optional = attr.optional === true || attr.computed === true;
-      const propName = toSnakeCase(attrName);
-      props.push(propName);
-      lines.push(`  readonly ${propName}${optional ? "?" : ""}: ${tsType};`);
-    }
-  }
+  const attrProps = attrEntries.map(([attrName]) => toSnakeCase(attrName));
+  const attrLines = attrEntries.map(([attrName, attr]) => {
+    const tsType = parseSchemaType(attr.type);
+    const optional = attr.optional === true || attr.computed === true;
+    const propName = toSnakeCase(attrName);
+    return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
+  });
 
-  if (block.block_types !== undefined) {
-    for (const [blockName, blockType] of Object.entries(block.block_types)) {
-      const nestedName = `${name}${toPascalCase(blockName)}`;
-      const propName = toSnakeCase(blockName);
-      props.push(propName);
+  const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
+  const blockLines = blockEntries.map(([blockName, blockType]) => {
+    const nestedName = `${name}${toPascalCase(blockName)}`;
+    const propName = toSnakeCase(blockName);
+    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
+    return isList
+      ? `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`
+      : `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
+  });
 
-      const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-      const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
+  return {
+    code: configInterfaceTemplate(name, [...attrLines, ...blockLines]),
+    props: [...attrProps, ...blockProps],
+  };
+};
 
-      if (isList) {
-        lines.push(`  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`);
-      } else {
-        lines.push(`  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`);
-      }
-    }
-  }
+const generateConfigWithNestedTypes = (name: string, block: SchemaBlock): ConfigWithNestedResult => {
+  const attrEntries = Object.entries(block.attributes ?? {});
+  const blockEntries = Object.entries(block.block_types ?? {});
 
-  const code = configInterfaceTemplate(name, lines);
-  return { code, props };
+  const attrProps = attrEntries.map(([attrName]) => toSnakeCase(attrName));
+  const attrLines = attrEntries.map(([attrName, attr]) => {
+    const tsType = parseSchemaType(attr.type);
+    const optional = attr.optional === true || attr.computed === true;
+    const propName = toSnakeCase(attrName);
+    return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
+  });
+
+  const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
+  const blockLines = blockEntries.map(([blockName, blockType]) => {
+    const nestedName = `${name}${toPascalCase(blockName)}`;
+    const propName = toSnakeCase(blockName);
+    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
+    return isList
+      ? `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`
+      : `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
+  });
+
+  const nestedTypes = blockEntries.flatMap(([blockName, blockType]) => {
+    const nestedName = `${name}${toPascalCase(blockName)}`;
+    return generateConfigWithNestedTypes(nestedName, blockType.block).types;
+  });
+
+  return {
+    types: [...nestedTypes, configInterfaceTemplate(name, [...attrLines, ...blockLines])],
+    props: [...attrProps, ...blockProps],
+  };
 };
 
 const toPascalCase = (s: string): string => {

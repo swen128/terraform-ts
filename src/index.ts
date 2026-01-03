@@ -79,7 +79,7 @@ export {
   generateIndex,
   generateProvider,
 } from "./codegen/generator.js";
-export { getProviderUrl, fetchProviderSchema, parseSchemaType } from "./codegen/schema.js";
+export { fetchProviderSchema, parseSchemaType } from "./codegen/schema.js";
 
 export type {
   ProviderSchema,

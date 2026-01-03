@@ -3,20 +3,13 @@ export const resourceTemplate = (
   terraformType: string,
   props: readonly string[],
 ): string => {
-  const propsAssignment = props.map((p) => `    this.${p} = config.${p};`).join("\n");
+  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
 
   return `export class ${className} extends TerraformResource {
-  ${props.map((p) => `readonly ${p}: ${className}Config["${p}"];`).join("\n  ")}
-
   constructor(scope: TerraformStack, id: string, config: ${className}Config) {
-    super(scope, id, "${terraformType}", config);
-${propsAssignment}
-  }
-
-  protected synthesizeAttributes(): Record<string, unknown> {
-    return {
-      ${props.map((p) => `${p}: this.${p},`).join("\n      ")}
-    };
+    super(scope, id, "${terraformType}", {
+${attrsObject}
+    }, config);
   }
 }`;
 };
@@ -26,20 +19,13 @@ export const providerTemplate = (
   source: string,
   props: readonly string[],
 ): string => {
-  const propsAssignment = props.map((p) => `    this.${p} = config.${p};`).join("\n");
+  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
 
   return `export class ${className}Provider extends TerraformProvider {
-  ${props.map((p) => `readonly ${p}: ${className}Config["${p}"];`).join("\n  ")}
-
   constructor(scope: TerraformStack, id: string, config: ${className}Config = {}) {
-    super(scope, id, "${source}", undefined, config);
-${propsAssignment}
-  }
-
-  protected synthesizeAttributes(): Record<string, unknown> {
-    return {
-      ${props.map((p) => `${p}: this.${p},`).join("\n      ")}
-    };
+    super(scope, id, "${source}", {
+${attrsObject}
+    }, config);
   }
 }`;
 };
@@ -49,20 +35,13 @@ export const dataSourceTemplate = (
   terraformType: string,
   props: readonly string[],
 ): string => {
-  const propsAssignment = props.map((p) => `    this.${p} = config.${p};`).join("\n");
+  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
 
   return `export class ${className} extends TerraformDataSource {
-  ${props.map((p) => `readonly ${p}: ${className}Config["${p}"];`).join("\n  ")}
-
   constructor(scope: TerraformStack, id: string, config: ${className}Config) {
-    super(scope, id, "${terraformType}", config);
-${propsAssignment}
-  }
-
-  protected synthesizeAttributes(): Record<string, unknown> {
-    return {
-      ${props.map((p) => `${p}: this.${p},`).join("\n      ")}
-    };
+    super(scope, id, "${terraformType}", {
+${attrsObject}
+    }, config);
   }
 }`;
 };

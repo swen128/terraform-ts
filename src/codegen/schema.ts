@@ -1,4 +1,7 @@
 import { ok, err, type Result } from "neverthrow";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export type ProviderSchema = {
   readonly format_version: string;
@@ -54,50 +57,62 @@ export type SchemaType =
   | readonly ["tuple", readonly SchemaType[]];
 
 export type SchemaError = {
-  readonly kind: "fetch" | "parse" | "not_found";
+  readonly kind: "init" | "schema" | "parse";
   readonly message: string;
 };
 
-export const getProviderUrl = (namespace: string, name: string, version: string): string => {
-  return `https://registry.terraform.io/v1/providers/${namespace}/${name}/${version}/download/linux/amd64`;
+const withTempDir = async <T>(
+  prefix: string,
+  fn: (dir: string) => Promise<T>,
+): Promise<T> => {
+  const dir = await mkdtemp(join(tmpdir(), `${prefix}-`));
+  try {
+    return await fn(dir);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 };
 
 export const fetchProviderSchema = async (
   source: string,
-  version: string,
+  version?: string,
 ): Promise<Result<ProviderSchema, SchemaError>> => {
   const parts = source.split("/");
-  if (parts.length < 2) {
-    return err({ kind: "parse", message: `Invalid provider source: ${source}` });
-  }
-
-  const namespace = parts[parts.length - 2] ?? "hashicorp";
   const name = parts[parts.length - 1] ?? source;
 
-  const schemaUrl = `https://registry.terraform.io/v1/providers/${namespace}/${name}/${version}`;
-
-  const response = await fetch(schemaUrl);
-  if (!response.ok) {
-    if (response.status === 404) {
-      return err({ kind: "not_found", message: `Provider not found: ${source}@${version}` });
-    }
-    return err({ kind: "fetch", message: `Failed to fetch schema: ${response.statusText}` });
-  }
-
-  // Consume response but we don't use it - actual schema requires terraform CLI
-  await response.json();
-
-  // The registry API returns metadata, not the schema directly
-  // For actual schema, we need to run terraform providers schema
-  return ok({
-    format_version: "1.0",
-    provider_schemas: {
-      [`registry.terraform.io/${namespace}/${name}`]: {
-        provider: {},
-        resource_schemas: {},
-        data_source_schemas: {},
+  return withTempDir("tfts-schema", async (dir) => {
+    const config = {
+      terraform: {
+        required_providers: {
+          [name]: {
+            source,
+            ...(version !== undefined ? { version } : {}),
+          },
+        },
       },
-    },
+    };
+
+    await Bun.write(join(dir, "main.tf.json"), JSON.stringify(config));
+
+    const initResult = await Bun.$`terraform -chdir=${dir} init`.quiet();
+    if (initResult.exitCode !== 0) {
+      return err({
+        kind: "init",
+        message: `terraform init failed: ${initResult.stderr.toString()}`,
+      });
+    }
+
+    const schemaResult =
+      await Bun.$`terraform -chdir=${dir} providers schema -json`.quiet();
+    if (schemaResult.exitCode !== 0) {
+      return err({
+        kind: "schema",
+        message: `terraform providers schema failed: ${schemaResult.stderr.toString()}`,
+      });
+    }
+
+    const parsed: unknown = JSON.parse(schemaResult.stdout.toString());
+    return ok(parsed as ProviderSchema);
   });
 };
 
