@@ -1,0 +1,13 @@
+{
+  "language": "typescript",
+  "app": "bun main.ts",
+  "output": "cdktf.out",
+  "codeMakerOutput": ".gen",
+  "terraformProviders": [
+    {
+      "name": "google",
+      "source": "hashicorp/google",
+      "version": "5.0.0"
+    }
+  ]
+}

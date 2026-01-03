@@ -1,0 +1,13 @@
+{
+  "name": "gcp-example",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "get": "bun ../../bin/tfts.ts get",
+    "synth": "bun main.ts"
+  },
+  "dependencies": {
+    "tfts": "file:../../"
+  }
+}
