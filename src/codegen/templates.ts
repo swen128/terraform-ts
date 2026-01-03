@@ -27,7 +27,7 @@ export const resourceTemplate = (
   const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformResource {
-  constructor(scope: TerraformStack, id: string, config: ${className}Props) {
+  constructor(scope: Construct, id: string, config: ${className}Props) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);
@@ -43,7 +43,7 @@ export const providerTemplate = (
   const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
 
   return `export class ${className}Provider extends TerraformProvider {
-  constructor(scope: TerraformStack, id: string, config: ${className}ProviderProps = {}) {
+  constructor(scope: Construct, id: string, config: ${className}ProviderProps = {}) {
     super(scope, id, "${source}", {
 ${attrsObject}
     }, config);
@@ -70,7 +70,7 @@ export const dataSourceTemplate = (
   const gettersSection = getterMethods.length > 0 ? `\n\n${getterMethods}` : "";
 
   return `export class ${className} extends TerraformDataSource {
-  constructor(scope: TerraformStack, id: string, config: ${className}Props) {
+  constructor(scope: Construct, id: string, config: ${className}Props) {
     super(scope, id, "${terraformType}", {
 ${attrsObject}
     }, config);

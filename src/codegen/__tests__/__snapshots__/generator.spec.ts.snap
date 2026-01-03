@@ -1,7 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`generateProvider generates provider with resources and data sources 1`] = `
-"import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+"import type { Construct, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
 export type SimpleProviderProps = {
@@ -10,7 +10,7 @@ export type SimpleProviderProps = {
 } & TerraformProviderConfig;
 
 export class SimpleProvider extends TerraformProvider {
-  constructor(scope: TerraformStack, id: string, config: SimpleProviderProps = {}) {
+  constructor(scope: Construct, id: string, config: SimpleProviderProps = {}) {
     super(scope, id, "registry.terraform.io/hashicorp/simple", {
       api_key: config.apiKey,
       region: config.region,
@@ -38,7 +38,7 @@ export type SimpleResourceProps = {
 } & TerraformResourceConfig;
 
 export class SimpleResource extends TerraformResource {
-  constructor(scope: TerraformStack, id: string, config: SimpleResourceProps) {
+  constructor(scope: Construct, id: string, config: SimpleResourceProps) {
     super(scope, id, "simple_resource", {
       id: config.id,
       name: config.name,
@@ -61,7 +61,7 @@ export type DataSimpleDataProps = {
 } & TerraformDataSourceConfig;
 
 export class DataSimpleData extends TerraformDataSource {
-  constructor(scope: TerraformStack, id: string, config: DataSimpleDataProps) {
+  constructor(scope: Construct, id: string, config: DataSimpleDataProps) {
     super(scope, id, "simple_data", {
       id: config.id,
       name: config.name,

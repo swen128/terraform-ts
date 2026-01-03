@@ -10,7 +10,7 @@ import {
   type PropMapping,
 } from "./templates.js";
 
-const IMPORTS = `import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+const IMPORTS = `import type { Construct, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";`;
 
 // Properties defined in base classes that cannot be overridden
