@@ -31,12 +31,7 @@ export type { OutputDef } from "./core/output.js";
 export type { BackendDef } from "./core/backend.js";
 export type { LocalDef } from "./core/local.js";
 
-export {
-  validateTree,
-  validateNode,
-  detectCircularDependencies,
-  validateResourceConfig,
-} from "./core/validate.js";
+export { validateTree, detectCircularDependencies } from "./core/validate.js";
 
 export type {
   TerraformJson,
