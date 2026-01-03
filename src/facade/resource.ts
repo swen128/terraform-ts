@@ -73,6 +73,8 @@ export abstract class TerraformResource extends Construct {
   }
 
   getStringAttribute(attribute: string): TokenString {
-    return new TokenString(raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`));
+    return new TokenString(
+      raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
+    );
   }
 }

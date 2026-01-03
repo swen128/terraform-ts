@@ -47,7 +47,11 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   const parts: string[] = [IMPORTS];
 
   // Provider class
-  const providerConfig = generateConfigWithNestedTypes(`${providerName}Config`, entry.provider, "TerraformProviderConfig");
+  const providerConfig = generateConfigWithNestedTypes(
+    `${providerName}Config`,
+    entry.provider,
+    "TerraformProviderConfig",
+  );
   const providerClass = providerTemplate(providerName, source, providerConfig.props);
   parts.push(...providerConfig.types);
   parts.push(providerClass);
@@ -55,7 +59,11 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   // Resources
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas)) {
     const className = resourceNameToClassName(resourceName);
-    const config = generateConfigWithNestedTypes(`${className}Config`, resourceSchema.block, "TerraformResourceConfig");
+    const config = generateConfigWithNestedTypes(
+      `${className}Config`,
+      resourceSchema.block,
+      "TerraformResourceConfig",
+    );
     const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
     parts.push(...config.types);
     parts.push(resourceClass);
@@ -64,8 +72,17 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   // Data sources
   for (const [dataSourceName, dataSourceSchema] of Object.entries(entry.data_source_schemas)) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
-    const config = generateConfigWithNestedTypes(`${className}Config`, dataSourceSchema.block, "TerraformDataSourceConfig");
-    const dataSourceClass = dataSourceTemplate(className, dataSourceName, config.props, config.getters);
+    const config = generateConfigWithNestedTypes(
+      `${className}Config`,
+      dataSourceSchema.block,
+      "TerraformDataSourceConfig",
+    );
+    const dataSourceClass = dataSourceTemplate(
+      className,
+      dataSourceName,
+      config.props,
+      config.getters,
+    );
     parts.push(...config.types);
     parts.push(dataSourceClass);
   }
@@ -163,7 +180,9 @@ const generateConfigWithNestedTypes = (
 
   // Collect getters for computed attributes (excluding reserved names)
   const getters: readonly AttributeGetter[] = attrEntries
-    .filter(([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toCamelCase(attrName)))
+    .filter(
+      ([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toCamelCase(attrName)),
+    )
     .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: toCamelCase(attrName) }));
 
   const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
