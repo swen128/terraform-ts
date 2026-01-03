@@ -23,7 +23,18 @@ export class S3Backend extends TerraformBackend {
   readonly acl?: string;
 
   constructor(scope: TerraformStack, config: S3BackendConfig) {
-    super(scope, "s3");
+    const attrs: Record<string, unknown> = {
+      bucket: config.bucket,
+      key: config.key,
+    };
+    if (config.region !== undefined) attrs["region"] = config.region;
+    if (config.encrypt !== undefined) attrs["encrypt"] = config.encrypt;
+    if (config.dynamodbTable !== undefined) attrs["dynamodb_table"] = config.dynamodbTable;
+    if (config.profile !== undefined) attrs["profile"] = config.profile;
+    if (config.roleArn !== undefined) attrs["role_arn"] = config.roleArn;
+    if (config.acl !== undefined) attrs["acl"] = config.acl;
+
+    super(scope, "s3", attrs);
 
     this.bucket = config.bucket;
     this.key = config.key;
@@ -33,19 +44,5 @@ export class S3Backend extends TerraformBackend {
     this.profile = config.profile;
     this.roleArn = config.roleArn;
     this.acl = config.acl;
-  }
-
-  protected synthesizeAttributes(): Record<string, unknown> {
-    const attrs: Record<string, unknown> = {
-      bucket: this.bucket,
-      key: this.key,
-    };
-    if (this.region !== undefined) attrs["region"] = this.region;
-    if (this.encrypt !== undefined) attrs["encrypt"] = this.encrypt;
-    if (this.dynamodbTable !== undefined) attrs["dynamodb_table"] = this.dynamodbTable;
-    if (this.profile !== undefined) attrs["profile"] = this.profile;
-    if (this.roleArn !== undefined) attrs["role_arn"] = this.roleArn;
-    if (this.acl !== undefined) attrs["acl"] = this.acl;
-    return attrs;
   }
 }

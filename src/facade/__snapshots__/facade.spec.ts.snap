@@ -1,0 +1,77 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Facade Integration empty stack 1`] = `{}`;
+
+exports[`Facade Integration stack with variable 1`] = `
+{
+  "variable": {
+    "region": {
+      "default": "us-east-1",
+      "description": "AWS region",
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Facade Integration stack with output referencing variable 1`] = `
+{
+  "output": {
+    "result": {
+      "description": "The output value",
+      "value": "\${var.input}",
+    },
+  },
+  "variable": {
+    "input": {
+      "type": "string",
+    },
+  },
+}
+`;
+
+exports[`Facade Integration stack with local 1`] = `
+{
+  "locals": {
+    "config": {
+      "debug": false,
+      "env": "production",
+    },
+  },
+}
+`;
+
+exports[`Facade Integration stack with S3 backend 1`] = `
+{
+  "terraform": {
+    "backend": {
+      "s3": {
+        "bucket": "my-tf-state",
+        "encrypt": true,
+        "key": "terraform.tfstate",
+        "region": "us-east-1",
+      },
+    },
+  },
+}
+`;
+
+exports[`Facade Integration multiple stacks are isolated 1`] = `
+{
+  "variable": {
+    "var1": {
+      "default": "value1",
+    },
+  },
+}
+`;
+
+exports[`Facade Integration multiple stacks are isolated 2`] = `
+{
+  "variable": {
+    "var2": {
+      "default": "value2",
+    },
+  },
+}
+`;

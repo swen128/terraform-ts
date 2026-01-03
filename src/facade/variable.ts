@@ -43,7 +43,7 @@ export class TerraformVariable extends Construct {
   }
 
   get value(): Token {
-    return raw(`var.${this.node.id}`);
+    return raw(`\${var.${this.node.id}}`);
   }
 
   get stringValue(): string {
@@ -51,14 +51,14 @@ export class TerraformVariable extends Construct {
   }
 
   get numberValue(): Token {
-    return raw(`var.${this.node.id}`);
+    return raw(`\${var.${this.node.id}}`);
   }
 
   get booleanValue(): Token {
-    return raw(`var.${this.node.id}`);
+    return raw(`\${var.${this.node.id}}`);
   }
 
   get listValue(): Token {
-    return raw(`var.${this.node.id}`);
+    return raw(`\${var.${this.node.id}}`);
   }
 }

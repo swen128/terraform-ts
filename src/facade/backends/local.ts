@@ -11,16 +11,13 @@ export class LocalBackend extends TerraformBackend {
   readonly workspaceDir?: string;
 
   constructor(scope: TerraformStack, config: LocalBackendConfig = {}) {
-    super(scope, "local");
+    const attrs: Record<string, unknown> = {};
+    if (config.path !== undefined) attrs["path"] = config.path;
+    if (config.workspaceDir !== undefined) attrs["workspace_dir"] = config.workspaceDir;
+
+    super(scope, "local", attrs);
 
     this.statePath = config.path;
     this.workspaceDir = config.workspaceDir;
-  }
-
-  protected synthesizeAttributes(): Record<string, unknown> {
-    const attrs: Record<string, unknown> = {};
-    if (this.statePath !== undefined) attrs["path"] = this.statePath;
-    if (this.workspaceDir !== undefined) attrs["workspace_dir"] = this.workspaceDir;
-    return attrs;
   }
 }

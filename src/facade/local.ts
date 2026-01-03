@@ -26,14 +26,14 @@ export class TerraformLocal extends Construct {
   }
 
   get asNumber(): Token {
-    return raw(`local.${this.node.id}`);
+    return raw(`\${local.${this.node.id}}`);
   }
 
   get asBoolean(): Token {
-    return raw(`local.${this.node.id}`);
+    return raw(`\${local.${this.node.id}}`);
   }
 
   get asList(): Token {
-    return raw(`local.${this.node.id}`);
+    return raw(`\${local.${this.node.id}}`);
   }
 }

@@ -7,26 +7,20 @@ import { TerraformLocal } from "./local.js";
 import { S3Backend } from "./backends/s3.js";
 
 describe("Facade Integration", () => {
-  test("App with stack synthesizes to valid JSON", () => {
-    const app = new App({ outdir: "test-out" });
-    new TerraformStack(app, "test-stack");
+  test("empty stack", () => {
+    const app = new App();
+    new TerraformStack(app, "test");
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      const stacks = result.value;
-      expect(stacks.size).toBe(1);
-      expect(stacks.has("test-stack")).toBe(true);
-
-      const stackJson = stacks.get("test-stack");
-      expect(stackJson).toBeDefined();
+      expect(result.value.get("test")).toMatchSnapshot();
     }
   });
 
-  test("Stack with variable synthesizes correctly", () => {
+  test("stack with variable", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
     new TerraformVariable(stack, "region", {
       type: "string",
@@ -36,58 +30,49 @@ describe("Facade Integration", () => {
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      const stackJson = result.value.get("my-stack");
-      expect(stackJson?.variable).toBeDefined();
-      expect(stackJson?.variable?.["region"]).toBeDefined();
-      expect(stackJson?.variable?.["region"]?.default).toBe("us-east-1");
+      expect(result.value.get("test")).toMatchSnapshot();
     }
   });
 
-  test("Stack with output synthesizes correctly", () => {
+  test("stack with output referencing variable", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
-    const variable = new TerraformVariable(stack, "input", {
+    const input = new TerraformVariable(stack, "input", {
       type: "string",
     });
 
     new TerraformOutput(stack, "result", {
-      value: variable.value,
+      value: input.value,
       description: "The output value",
     });
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      const stackJson = result.value.get("my-stack");
-      expect(stackJson?.output).toBeDefined();
-      expect(stackJson?.output?.["result"]).toBeDefined();
+      expect(result.value.get("test")).toMatchSnapshot();
     }
   });
 
-  test("Stack with local synthesizes correctly", () => {
+  test("stack with local", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
-    new TerraformLocal(stack, "computed", {
-      expression: "hello-world",
+    new TerraformLocal(stack, "config", {
+      expression: { env: "production", debug: false },
     });
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      const stackJson = result.value.get("my-stack");
-      expect(stackJson?.locals).toBeDefined();
+      expect(result.value.get("test")).toMatchSnapshot();
     }
   });
 
-  test("Stack with backend synthesizes correctly", () => {
+  test("stack with S3 backend", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
     new S3Backend(stack, {
       bucket: "my-tf-state",
@@ -98,15 +83,12 @@ describe("Facade Integration", () => {
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      const stackJson = result.value.get("my-stack");
-      expect(stackJson?.terraform?.backend).toBeDefined();
-      expect(stackJson?.terraform?.backend?.["s3"]).toBeDefined();
+      expect(result.value.get("test")).toMatchSnapshot();
     }
   });
 
-  test("Multiple stacks synthesize independently", () => {
+  test("multiple stacks are isolated", () => {
     const app = new App();
     const stack1 = new TerraformStack(app, "stack-1");
     const stack2 = new TerraformStack(app, "stack-2");
@@ -116,24 +98,15 @@ describe("Facade Integration", () => {
 
     const result = app.synth();
     expect(result.isOk()).toBe(true);
-
     if (result.isOk()) {
-      expect(result.value.size).toBe(2);
-
-      const stack1Json = result.value.get("stack-1");
-      const stack2Json = result.value.get("stack-2");
-
-      expect(stack1Json?.variable?.["var1"]).toBeDefined();
-      expect(stack1Json?.variable?.["var2"]).toBeUndefined();
-
-      expect(stack2Json?.variable?.["var2"]).toBeDefined();
-      expect(stack2Json?.variable?.["var1"]).toBeUndefined();
+      expect(result.value.get("stack-1")).toMatchSnapshot();
+      expect(result.value.get("stack-2")).toMatchSnapshot();
     }
   });
 
-  test("Variable provides correct token values", () => {
+  test("variable token values", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
     const variable = new TerraformVariable(stack, "my_var", {
       type: "string",
@@ -142,9 +115,9 @@ describe("Facade Integration", () => {
     expect(variable.stringValue).toBe("${var.my_var}");
   });
 
-  test("Local provides correct reference values", () => {
+  test("local reference values", () => {
     const app = new App();
-    const stack = new TerraformStack(app, "my-stack");
+    const stack = new TerraformStack(app, "test");
 
     const local = new TerraformLocal(stack, "my_local", {
       expression: "computed",
