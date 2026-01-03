@@ -1,5 +1,6 @@
 import type { ConstructNode, ConstructMetadata } from "./construct.js";
 import type { ValidationError, ValidationErrorCode } from "./errors.js";
+import type { LifecycleDef } from "./resource.js";
 import { RefToken, Token } from "./tokens.js";
 import type { ValidationDef } from "./variable.js";
 
@@ -142,7 +143,7 @@ const validateStackMetadata = (
 
 const validateLifecycle = (
   path: readonly string[],
-  lifecycle: NonNullable<import("./resource.js").LifecycleDef>,
+  lifecycle: NonNullable<LifecycleDef>,
 ): readonly ValidationError[] => {
   const errors: ValidationError[] = [];
 
