@@ -1,7 +1,7 @@
 import { test, expect, describe } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { generateProvider } from "../generator.js";
+import { generateProvider, generateProviderFiles } from "../generator.js";
 import { parseProviderSchema, type ProviderSchema } from "../schema.js";
 
 const loadFixture = (name: string): ProviderSchema => {
@@ -19,5 +19,21 @@ describe("generateProvider", () => {
     const schema = loadFixture("simple-provider");
     const result = generateProvider("simple", schema);
     expect(result).toMatchSnapshot();
+  });
+});
+
+describe("generateProviderFiles", () => {
+  test("generates camelCase namespace names for multi-word resources", () => {
+    const schema = loadFixture("multiword-provider");
+    const files = generateProviderFiles("google", schema);
+    const indexContent = files.get("index.ts");
+
+    // Namespace names should be camelCase: alloydbCluster, storageBucket
+    expect(indexContent).toContain("export * as alloydbCluster from");
+    expect(indexContent).toContain("export * as storageBucket from");
+
+    // Should NOT be all lowercase
+    expect(indexContent).not.toContain("export * as alloydbcluster from");
+    expect(indexContent).not.toContain("export * as storagebucket from");
   });
 });

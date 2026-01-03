@@ -1,0 +1,47 @@
+{
+  "format_version": "1.0",
+  "provider_schemas": {
+    "registry.terraform.io/hashicorp/google": {
+      "provider": {
+        "attributes": {
+          "project": {
+            "type": "string",
+            "optional": true
+          }
+        }
+      },
+      "resource_schemas": {
+        "google_alloydb_cluster": {
+          "version": 0,
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "cluster_id": {
+                "type": "string",
+                "required": true
+              }
+            }
+          }
+        },
+        "google_storage_bucket": {
+          "version": 0,
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "required": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

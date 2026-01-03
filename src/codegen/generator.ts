@@ -49,7 +49,7 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   }
 
   const [source, entry] = firstEntry;
-  const providerName = toPascalCase(name);
+  const providerName = snakeToPascalCase(name);
   const files = new Map<string, string>();
   const namespaceExports: string[] = [];
 
@@ -68,7 +68,7 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
     const className = terraformNameToClassName(resourceName);
     const dirName = terraformNameToFileName(resourceName);
-    const namespaceName = toCamelCase(className);
+    const namespaceName = pascalToCamelCase(className);
     const config = generateConfigWithNestedTypes(
       `${className}Config`,
       resourceSchema.block,
@@ -165,22 +165,22 @@ const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult
 
   const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
     tfName: toTfName(attrName),
-    tsName: toCamelCase(attrName),
+    tsName: snakeToCamelCase(attrName),
   }));
   const attrLines = attrEntries.map(([attrName, attr]) => {
     const tsType = parseSchemaType(attr.type);
     const optional = attr.optional === true || attr.computed === true;
-    const propName = toCamelCase(attrName);
+    const propName = snakeToCamelCase(attrName);
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
   const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
     tfName: toTfName(blockName),
-    tsName: toCamelCase(blockName),
+    tsName: snakeToCamelCase(blockName),
   }));
   const blockLines = blockEntries.map(([blockName, blockType]) => {
-    const nestedName = `${name}${toPascalCase(blockName)}`;
-    const propName = toCamelCase(blockName);
+    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
+    const propName = snakeToCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
     return isList
@@ -204,29 +204,30 @@ const generateConfigWithNestedTypes = (
 
   const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
     tfName: toTfName(attrName),
-    tsName: toCamelCase(attrName),
+    tsName: snakeToCamelCase(attrName),
   }));
   const attrLines = attrEntries.map(([attrName, attr]) => {
     const tsType = parseSchemaType(attr.type);
     const optional = attr.optional === true || attr.computed === true;
-    const propName = toCamelCase(attrName);
+    const propName = snakeToCamelCase(attrName);
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
   // Collect getters for computed attributes (excluding reserved names)
   const getters: readonly AttributeGetter[] = attrEntries
     .filter(
-      ([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toCamelCase(attrName)),
+      ([attrName, attr]) =>
+        attr.computed === true && !RESERVED_NAMES.has(snakeToCamelCase(attrName)),
     )
-    .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: toCamelCase(attrName) }));
+    .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: snakeToCamelCase(attrName) }));
 
   const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
     tfName: toTfName(blockName),
-    tsName: toCamelCase(blockName),
+    tsName: snakeToCamelCase(blockName),
   }));
   const blockLines = blockEntries.map(([blockName, blockType]) => {
-    const nestedName = `${name}${toPascalCase(blockName)}`;
-    const propName = toCamelCase(blockName);
+    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
+    const propName = snakeToCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
     return isList
@@ -235,7 +236,7 @@ const generateConfigWithNestedTypes = (
   });
 
   const nestedTypes = blockEntries.flatMap(([blockName, blockType]) => {
-    const nestedName = `${name}${toPascalCase(blockName)}`;
+    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
     return generateConfigWithNestedTypes(nestedName, blockType.block).types;
   });
 
@@ -246,16 +247,20 @@ const generateConfigWithNestedTypes = (
   };
 };
 
-const toPascalCase = (s: string): string => {
+const snakeToPascalCase = (s: string): string => {
   return s
     .split(/[-_]/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 };
 
-const toCamelCase = (s: string): string => {
-  const pascal = toPascalCase(s);
+const snakeToCamelCase = (s: string): string => {
+  const pascal = snakeToPascalCase(s);
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+};
+
+const pascalToCamelCase = (s: string): string => {
+  return s.charAt(0).toLowerCase() + s.slice(1);
 };
 
 const toTfName = (s: string): string => {
@@ -268,7 +273,7 @@ const terraformNameToClassName = (name: string): string => {
   const parts = name.split("_");
   // Remove first part (provider name)
   const withoutProvider = parts.slice(1).join("_");
-  return toPascalCase(withoutProvider || name);
+  return snakeToPascalCase(withoutProvider || name);
 };
 
 const terraformNameToFileName = (name: string): string => {
