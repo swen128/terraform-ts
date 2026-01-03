@@ -15,15 +15,16 @@ export class App extends Construct {
   readonly outdir: string;
 
   constructor(options: AppOptions = {}) {
-    super(undefined, "app", { kind: "app", outdir: options.outdir ?? "cdktf.out" });
-    this.outdir = options.outdir ?? "cdktf.out";
+    const outdir = options.outdir ?? process.env.CDKTF_OUTDIR ?? "cdktf.out";
+    super(undefined, "app", { kind: "app", outdir });
+    this.outdir = outdir;
   }
 
   registerStack(stack: TerraformStack): void {
     this.stacks.push(stack);
   }
 
-  synth(): Result<Map<string, TerraformJson>, readonly ValidationError[]> {
+  synth(): Result<ReadonlyMap<string, TerraformJson>, readonly ValidationError[]> {
     const errors = validateTree(this.node);
     if (errors.length > 0) {
       return err(errors);

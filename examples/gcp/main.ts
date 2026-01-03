@@ -40,7 +40,10 @@ new TerraformOutput(stack, "network_id", {
 
 const result = app.synth();
 if (result.isOk()) {
-  console.log(JSON.stringify(result.value.get("gcp-example"), null, 2));
+  for (const [stackName, json] of result.value) {
+    console.log(`Stack: ${stackName}`);
+    console.log(JSON.stringify(json, null, 2));
+  }
 } else {
   console.error("Synthesis failed:", result.error);
   process.exit(1);
