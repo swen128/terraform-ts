@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": ["bin/tfts.ts", "src/index.ts"],
+  "project": ["src/**/*.ts", "bin/**/*.ts"],
+  "ignore": ["**/*.spec.ts", "**/*.test.ts"],
+  "ignoreExportsUsedInFile": true,
+  "eslint": {
+    "config": ["eslint.config.js"]
+  },
+  "typescript": {
+    "config": ["tsconfig.json"]
+  }
+}

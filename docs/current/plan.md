@@ -11,6 +11,70 @@ This plan prioritizes types first, then identifies work that can be delegated to
 
 ---
 
+## Phase 0: Project Setup (Single Agent)
+
+Set up tooling and configuration before writing any code.
+
+**Agent Assignment:** 1 agent configures the project.
+
+### 0.1 Package Configuration (`package.json`)
+
+```
+[ ] name, version, type: "module"
+[ ] bin entry for CLI
+[ ] scripts: typecheck, lint, format, format:check, knip, check, test
+[ ] devDependencies: typescript, @biomejs/biome, eslint, knip, bun-types
+[ ] dependencies: (add as needed)
+```
+
+### 0.2 TypeScript Configuration (`tsconfig.json`)
+
+```
+[ ] ESNext target and module
+[ ] Strict mode enabled
+[ ] Bun types
+[ ] Output to dist/
+[ ] Declaration and source maps
+[ ] noUnusedLocals, noUnusedParameters enabled
+```
+
+### 0.3 Biome Configuration (`biome.json`)
+
+```
+[ ] Formatter enabled, linter disabled
+[ ] 100-char line width, 2-space indent, LF line endings
+[ ] Double quotes, trailing commas, semicolons
+```
+
+### 0.4 ESLint Configuration (`eslint.config.js`)
+
+```
+[ ] TypeScript parser with project reference
+[ ] No any types, no type assertions
+[ ] No throw statements (use Result types)
+[ ] Exhaustive switch checks
+[ ] No console (except CLI)
+[ ] Strict boolean expressions
+[ ] Explicit function return types
+```
+
+### 0.5 Knip Configuration (`knip.json`)
+
+```
+[ ] Entry point: bin/tfts.ts
+[ ] Project: src/**/*.ts
+[ ] Ignore test files
+```
+
+### 0.6 Other Files
+
+```
+[ ] .gitignore (node_modules, dist, .env, etc.)
+[ ] bunfig.toml (test root)
+```
+
+---
+
 ## Phase 1: Core Types (Single Agent)
 
 All type definitions must be completed first as they are dependencies for everything else.
@@ -346,6 +410,9 @@ Depends on: Phase 5 (both agents must complete first).
 ## Dependency Graph
 
 ```
+Phase 0: Project Setup (1 agent)
+    │
+    ▼
 Phase 1: Types (1 agent)
     │
     ▼
@@ -377,20 +444,33 @@ Phase 2: Core Functions (3 agents in parallel)
 
 ## Agent Summary
 
-| Phase | Agents | Parallel |
-|-------|--------|----------|
-| 1     | 1      | No       |
-| 2     | 3      | Yes      |
-| 3     | 1      | No       |
-| 4     | 4      | Yes      |
-| 5     | 2      | Yes      |
-| 6     | 1      | No       |
+| Phase | Description | Agents | Parallel |
+|-------|-------------|--------|----------|
+| 0     | Project Setup | 1 | No |
+| 1     | Core Types | 1 | No |
+| 2     | Core Functions | 3 | Yes |
+| 3     | Synthesis | 1 | No |
+| 4     | Facade | 4 | Yes |
+| 5     | CLI & Codegen | 2 | Yes |
+| 6     | Integration | 1 | No |
 
-**Total: 12 agent tasks, max 4 concurrent agents**
+**Total: 13 agent tasks, max 4 concurrent agents**
 
 ---
 
 ## Execution Order
+
+### Phase 0: Project Setup (1 agent)
+
+```
+Agent: package.json
+       tsconfig.json
+       biome.json
+       eslint.config.js
+       knip.json
+       .gitignore
+       bunfig.toml
+```
 
 ### Phase 1: Types (1 agent)
 
