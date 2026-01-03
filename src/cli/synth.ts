@@ -1,4 +1,6 @@
 import { ok, err, type Result } from "neverthrow";
+import * as fs from "node:fs/promises";
+import { spawn } from "node:child_process";
 import type { TerraformJson } from "../core/terraform-json.js";
 import { readConfig, type ConfigError } from "./config.js";
 
@@ -48,13 +50,14 @@ export const executeApp = async (
   command: string,
   outdir: string,
 ): Promise<Result<void, SynthError>> => {
-  const proc = Bun.spawn(["sh", "-c", command], {
-    env: { ...process.env, CDKTF_OUTDIR: outdir },
-    stdout: "inherit",
-    stderr: "inherit",
+  const exitCode = await new Promise<number>((resolve) => {
+    const proc = spawn("sh", ["-c", command], {
+      env: { ...process.env, CDKTF_OUTDIR: outdir },
+      stdio: "inherit",
+    });
+    proc.on("close", (code) => resolve(code ?? 1));
   });
 
-  const exitCode = await proc.exited;
   if (exitCode !== 0) {
     return err({ kind: "exec", message: `App command failed with exit code ${exitCode}` });
   }
@@ -68,10 +71,10 @@ export const writeOutput = async (
   outdir: string,
 ): Promise<Result<void, SynthError>> => {
   const stackDir = `${outdir}/stacks/${stackName}`;
-  await Bun.$`mkdir -p ${stackDir}`;
+  await fs.mkdir(stackDir, { recursive: true });
 
   const outputPath = `${stackDir}/cdk.tf.json`;
-  await Bun.write(outputPath, JSON.stringify(json, null, 2));
+  await fs.writeFile(outputPath, JSON.stringify(json, null, 2));
 
   return ok(undefined);
 };
@@ -94,7 +97,7 @@ export const writeManifest = async (
     ),
   };
 
-  await Bun.write(`${outdir}/manifest.json`, JSON.stringify(manifest, null, 2));
+  await fs.writeFile(`${outdir}/manifest.json`, JSON.stringify(manifest, null, 2));
 
   return ok(undefined);
 };

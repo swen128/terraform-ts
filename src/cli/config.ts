@@ -1,5 +1,7 @@
 import { ok, err, type Result } from "neverthrow";
 import { z } from "zod";
+import * as fs from "node:fs/promises";
+import { existsSync } from "node:fs";
 
 const ProviderConstraintSchema = z.object({
   name: z.string(),
@@ -34,13 +36,11 @@ export type ConfigError = {
 };
 
 export const readConfig = async (path: string): Promise<Result<CdktfConfig, ConfigError>> => {
-  const file = Bun.file(path);
-  const exists = await file.exists();
-  if (!exists) {
+  if (!existsSync(path)) {
     return err({ field: "path", message: `Config file not found: ${path}` });
   }
 
-  const text = await file.text();
+  const text = await fs.readFile(path, "utf-8");
   const parsed: unknown = JSON.parse(text);
 
   return parseConfig(parsed);

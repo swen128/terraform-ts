@@ -1,5 +1,8 @@
 import { ok, err, type Result } from "neverthrow";
 import { z } from "zod";
+import * as fs from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { readConfig, type ConfigError } from "./config.js";
 import { executeApp } from "./synth.js";
 
@@ -56,14 +59,12 @@ export const runDiff = async (options: DiffOptions): Promise<Result<void, DiffEr
 
   // Step 2: Read manifest to get stacks
   const manifestPath = `${outdir}/manifest.json`;
-  const manifestFile = Bun.file(manifestPath);
-  const manifestExists = await manifestFile.exists();
 
-  if (!manifestExists) {
+  if (!existsSync(manifestPath)) {
     return err({ kind: "io", message: `Manifest not found: ${manifestPath}` });
   }
 
-  const manifestText = await manifestFile.text();
+  const manifestText = await fs.readFile(manifestPath, "utf-8");
   const manifestJson: unknown = JSON.parse(manifestText);
   const manifestResult = ManifestSchema.safeParse(manifestJson);
 
@@ -112,13 +113,14 @@ export const runDiff = async (options: DiffOptions): Promise<Result<void, DiffEr
 };
 
 const runTerraformInit = async (workingDir: string): Promise<Result<void, DiffError>> => {
-  const proc = Bun.spawn(["terraform", "init", "-input=false"], {
-    cwd: workingDir,
-    stdout: "inherit",
-    stderr: "inherit",
+  const exitCode = await new Promise<number>((resolve) => {
+    const proc = spawn("terraform", ["init", "-input=false"], {
+      cwd: workingDir,
+      stdio: "inherit",
+    });
+    proc.on("close", (code) => resolve(code ?? 1));
   });
 
-  const exitCode = await proc.exited;
   if (exitCode !== 0) {
     return err({ kind: "terraform", message: `terraform init failed with exit code ${exitCode}` });
   }
@@ -130,18 +132,19 @@ const runTerraformPlan = async (
   workingDir: string,
   refreshOnly: boolean,
 ): Promise<Result<void, DiffError>> => {
-  const args = ["terraform", "plan", "-input=false"];
+  const args = ["plan", "-input=false"];
   if (refreshOnly) {
     args.push("-refresh-only");
   }
 
-  const proc = Bun.spawn(args, {
-    cwd: workingDir,
-    stdout: "inherit",
-    stderr: "inherit",
+  const exitCode = await new Promise<number>((resolve) => {
+    const proc = spawn("terraform", args, {
+      cwd: workingDir,
+      stdio: "inherit",
+    });
+    proc.on("close", (code) => resolve(code ?? 1));
   });
 
-  const exitCode = await proc.exited;
   if (exitCode !== 0) {
     return err({ kind: "terraform", message: `terraform plan failed with exit code ${exitCode}` });
   }

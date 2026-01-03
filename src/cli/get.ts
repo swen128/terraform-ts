@@ -1,4 +1,5 @@
 import { ok, err, type Result } from "neverthrow";
+import * as fs from "node:fs/promises";
 import { readConfig, type ConfigError } from "./config.js";
 import { generateProvider } from "../codegen/generator.js";
 import { fetchProviderSchema, type SchemaError } from "../codegen/schema.js";
@@ -37,8 +38,8 @@ export const runGet = async (options: GetOptions): Promise<Result<void, GetError
     const code = generateProvider(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
-    await Bun.$`mkdir -p ${providerDir}`;
-    await Bun.write(`${providerDir}/index.ts`, code);
+    await fs.mkdir(providerDir, { recursive: true });
+    await fs.writeFile(`${providerDir}/index.ts`, code);
   }
 
   return ok(undefined);
@@ -59,8 +60,8 @@ export const generateBindings = async (
     const code = generateProvider(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
-    await Bun.$`mkdir -p ${providerDir}`;
-    await Bun.write(`${providerDir}/index.ts`, code);
+    await fs.mkdir(providerDir, { recursive: true });
+    await fs.writeFile(`${providerDir}/index.ts`, code);
   }
 
   return ok(undefined);
