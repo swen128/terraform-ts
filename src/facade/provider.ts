@@ -1,5 +1,4 @@
 import { Construct } from "./construct.js";
-import type { TerraformStack } from "./stack.js";
 
 export type TerraformProviderConfig = {
   readonly alias?: string;
@@ -14,7 +13,7 @@ export abstract class TerraformProvider extends Construct {
   readonly fqn: string;
 
   protected constructor(
-    scope: TerraformStack,
+    scope: Construct,
     id: string,
     terraformProviderSource: string,
     providerConfig: Readonly<Record<string, unknown>>,

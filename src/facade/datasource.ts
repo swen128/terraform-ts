@@ -1,5 +1,4 @@
 import { Construct } from "./construct.js";
-import type { TerraformStack } from "./stack.js";
 import type { TerraformProvider } from "./provider.js";
 import type { Token } from "../core/tokens.js";
 import { raw, TokenString } from "../core/tokens.js";
@@ -19,7 +18,7 @@ export abstract class TerraformDataSource extends Construct {
   provider?: TerraformProvider;
 
   protected constructor(
-    scope: TerraformStack,
+    scope: Construct,
     id: string,
     terraformResourceType: string,
     dataSourceConfig: Readonly<Record<string, unknown>>,

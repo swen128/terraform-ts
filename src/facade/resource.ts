@@ -1,5 +1,4 @@
 import { Construct } from "./construct.js";
-import type { TerraformStack } from "./stack.js";
 import type { TerraformProvider } from "./provider.js";
 import type { LifecycleDef, ProvisionerDef } from "../core/resource.js";
 import type { Token } from "../core/tokens.js";
@@ -32,7 +31,7 @@ export abstract class TerraformResource extends Construct {
   private readonly overrides: Map<string, unknown> = new Map();
 
   protected constructor(
-    scope: TerraformStack,
+    scope: Construct,
     id: string,
     terraformResourceType: string,
     resourceConfig: Readonly<Record<string, unknown>>,
