@@ -1,8 +1,8 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`generateProvider generates provider with resources and data sources 1`] = `
-"import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "terraform-ts";
-import { TerraformProvider, TerraformResource, TerraformDataSource } from "terraform-ts";
+"import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
+import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
 export type SimpleConfig = {
   readonly apiKey: TfString;
