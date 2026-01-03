@@ -73,3 +73,28 @@ export type {
   BlockTypeSchema,
   SchemaType,
 } from "./codegen/schema.js";
+
+export { Construct } from "./facade/construct.js";
+export { App, type AppOptions } from "./facade/app.js";
+export { TerraformStack } from "./facade/stack.js";
+export {
+  TerraformResource,
+  type TerraformResourceConfig,
+  type TerraformResourceLifecycle,
+} from "./facade/resource.js";
+export { TerraformProvider, type TerraformProviderConfig } from "./facade/provider.js";
+export { TerraformDataSource, type TerraformDataSourceConfig } from "./facade/datasource.js";
+export { TerraformVariable, type TerraformVariableConfig } from "./facade/variable.js";
+export { TerraformOutput, type TerraformOutputConfig } from "./facade/output.js";
+export { TerraformLocal, type TerraformLocalConfig } from "./facade/local.js";
+export {
+  TerraformBackend,
+  LocalBackend,
+  type LocalBackendConfig,
+  S3Backend,
+  type S3BackendConfig,
+  GcsBackend,
+  type GcsBackendConfig,
+  RemoteBackend,
+  type RemoteBackendConfig,
+} from "./facade/backends/index.js";

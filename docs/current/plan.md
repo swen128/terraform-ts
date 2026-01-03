@@ -247,82 +247,82 @@ Spawn 4 agents simultaneously:
 ### Agent D: Base Constructs
 
 ```
-[ ] src/facade/construct.ts
-    [ ] Construct base class
-    [ ] node property
-    [ ] path getter
+[x] src/facade/construct.ts
+    [x] Construct base class
+    [x] node property
+    [x] path getter
 
-[ ] src/facade/app.ts
-    [ ] App class
-    [ ] AppOptions interface
-    [ ] synth() method
-    [ ] static of(construct) method
+[x] src/facade/app.ts
+    [x] App class
+    [x] AppOptions interface
+    [x] synth() method
+    [x] static of(construct) method
 
-[ ] src/facade/stack.ts
-    [ ] TerraformStack class
-    [ ] addDependency(stack)
-    [ ] toTerraform()
+[x] src/facade/stack.ts
+    [x] TerraformStack class
+    [x] addDependency(stack)
+    [x] toTerraform()
 ```
 
 ### Agent E: Resources & Providers
 
 ```
-[ ] src/facade/resource.ts
-    [ ] TerraformResource class
-    [ ] Meta-argument properties (dependsOn, count, forEach, provider, lifecycle)
-    [ ] addOverride(path, value)
-    [ ] interpolationForAttribute(attribute)
-    [ ] synthesizeAttributes() abstract
+[x] src/facade/resource.ts
+    [x] TerraformResource class
+    [x] Meta-argument properties (dependsOn, count, forEach, provider, lifecycle)
+    [x] addOverride(path, value)
+    [x] interpolationForAttribute(attribute)
+    [x] synthesizeAttributes() abstract
 
-[ ] src/facade/provider.ts
-    [ ] TerraformProvider class
-    [ ] terraformProviderSource property
-    [ ] alias property
+[x] src/facade/provider.ts
+    [x] TerraformProvider class
+    [x] terraformProviderSource property
+    [x] alias property
 
-[ ] src/facade/datasource.ts
-    [ ] TerraformDataSource class
-    [ ] interpolationForAttribute(attribute)
-    [ ] synthesizeAttributes() abstract
+[x] src/facade/datasource.ts
+    [x] TerraformDataSource class
+    [x] interpolationForAttribute(attribute)
+    [x] synthesizeAttributes() abstract
 ```
 
 ### Agent F: Variables, Outputs, Locals
 
 ```
-[ ] src/facade/variable.ts
-    [ ] TerraformVariable class
-    [ ] TerraformVariableConfig interface
-    [ ] value, stringValue, numberValue, booleanValue, listValue getters
+[x] src/facade/variable.ts
+    [x] TerraformVariable class
+    [x] TerraformVariableConfig interface
+    [x] value, stringValue, numberValue, booleanValue, listValue getters
 
-[ ] src/facade/output.ts
-    [ ] TerraformOutput class
-    [ ] TerraformOutputConfig interface
+[x] src/facade/output.ts
+    [x] TerraformOutput class
+    [x] TerraformOutputConfig interface
 
-[ ] src/facade/local.ts
-    [ ] TerraformLocal class
-    [ ] expression getter
+[x] src/facade/local.ts
+    [x] TerraformLocal class
+    [x] expression getter
 ```
 
 ### Agent G: Backends
 
 ```
-[ ] src/facade/backends/backend.ts
-    [ ] TerraformBackend abstract class
+[x] src/facade/backends/backend.ts
+    [x] TerraformBackend abstract class
 
-[ ] src/facade/backends/local.ts
-    [ ] LocalBackend class
-    [ ] LocalBackendConfig interface
+[x] src/facade/backends/local.ts
+    [x] LocalBackend class
+    [x] LocalBackendConfig interface
 
-[ ] src/facade/backends/s3.ts
-    [ ] S3Backend class
-    [ ] S3BackendConfig interface
+[x] src/facade/backends/s3.ts
+    [x] S3Backend class
+    [x] S3BackendConfig interface
 
-[ ] src/facade/backends/gcs.ts
-    [ ] GcsBackend class
-    [ ] GcsBackendConfig interface
+[x] src/facade/backends/gcs.ts
+    [x] GcsBackend class
+    [x] GcsBackendConfig interface
 
-[ ] src/facade/backends/remote.ts
-    [ ] RemoteBackend class
-    [ ] RemoteBackendConfig interface
+[x] src/facade/backends/remote.ts
+    [x] RemoteBackend class
+    [x] RemoteBackendConfig interface
 ```
 
 ---
