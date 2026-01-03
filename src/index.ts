@@ -1,6 +1,7 @@
 export { ok, err, Result } from "neverthrow";
 
 export type {
+  TerraformValue,
   Token,
   RefToken,
   FnToken,
@@ -8,11 +9,20 @@ export type {
   TokenResolver,
   TokenValue,
 } from "./core/tokens.js";
-export { TOKEN_SYMBOL } from "./core/tokens.js";
+export {
+  TOKEN_SYMBOL,
+  ref,
+  fn,
+  raw,
+  tokenToHcl,
+  containsTokens,
+  resolveTokens,
+} from "./core/tokens.js";
 
 export type { TftsError, ValidationError, ValidationErrorCode } from "./core/errors.js";
 
 export type { ConstructNode, ConstructMetadata } from "./core/construct.js";
+export { addChild, findNode, walkTree, getChildren } from "./core/tree.js";
 export type { ResourceDef, LifecycleDef, ConditionDef, ProvisionerDef } from "./core/resource.js";
 export type { DataSourceDef } from "./core/datasource.js";
 export type { ProviderDef } from "./core/provider.js";
@@ -20,6 +30,13 @@ export type { VariableDef, ValidationDef } from "./core/variable.js";
 export type { OutputDef } from "./core/output.js";
 export type { BackendDef } from "./core/backend.js";
 export type { LocalDef } from "./core/local.js";
+
+export {
+  validateTree,
+  validateNode,
+  detectCircularDependencies,
+  validateResourceConfig,
+} from "./core/validate.js";
 
 export type {
   TerraformJson,
