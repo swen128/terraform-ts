@@ -10,34 +10,25 @@ const createError = (
 ): ValidationError => ({ path, message, code });
 
 const collectDependsOnRefs = (metadata: ConstructMetadata): readonly string[] => {
-  const getDeps = (): readonly Token[] | undefined => {
+  const deps = ((): readonly Token[] => {
     switch (metadata.kind) {
       case "resource":
-        return metadata.resource.dependsOn;
+        return metadata.resource.dependsOn ?? [];
       case "datasource":
-        return metadata.datasource.dependsOn;
+        return metadata.datasource.dependsOn ?? [];
       case "output":
-        return metadata.output.dependsOn;
+        return metadata.output.dependsOn ?? [];
       case "app":
       case "stack":
       case "provider":
       case "variable":
       case "backend":
       case "local":
-        return undefined;
+        return [];
     }
-  };
+  })();
 
-  const deps = getDeps();
-  if (deps === undefined) return [];
-
-  const refs: string[] = [];
-  for (const d of deps) {
-    if (d instanceof RefToken) {
-      refs.push(d.fqn);
-    }
-  }
-  return refs;
+  return deps.flatMap((d) => (d instanceof RefToken ? [d.fqn] : []));
 };
 
 const buildDependencyGraph = (
