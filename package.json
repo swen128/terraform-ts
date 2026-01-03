@@ -1,13 +1,32 @@
 {
   "name": "terraform-ts",
   "version": "0.1.0",
+  "description": "TypeScript-first infrastructure as code for Terraform",
   "type": "module",
-  "private": true,
   "bin": {
-    "tfts": "bin/tfts.ts"
+    "tfts": "./dist/bin/tfts.js"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "terraform",
+    "infrastructure",
+    "iac",
+    "cdktf",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
   },
   "scripts": {
     "build": "tsc",
@@ -17,7 +36,8 @@
     "format:check": "biome format .",
     "knip": "knip",
     "test": "bun test",
-    "check": "bun format && bun typecheck && bun test && bun lint && bun knip"
+    "check": "bun format && bun typecheck && bun test && bun lint && bun knip",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
