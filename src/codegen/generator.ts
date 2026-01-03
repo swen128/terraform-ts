@@ -7,6 +7,7 @@ import {
   configInterfaceTemplate,
   indexTemplate,
   type AttributeGetter,
+  type PropMapping,
 } from "./templates.js";
 
 const IMPORTS = `import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
@@ -97,12 +98,12 @@ export const generateIndex = (
 
 type ConfigResult = {
   readonly code: string;
-  readonly props: readonly string[];
+  readonly props: readonly PropMapping[];
 };
 
 type ConfigWithNestedResult = {
   readonly types: readonly string[];
-  readonly props: readonly string[];
+  readonly props: readonly PropMapping[];
   readonly getters: readonly AttributeGetter[];
 };
 
@@ -110,18 +111,24 @@ const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult
   const attrEntries = Object.entries(block.attributes ?? {});
   const blockEntries = Object.entries(block.block_types ?? {});
 
-  const attrProps = attrEntries.map(([attrName]) => toSnakeCase(attrName));
+  const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
+    tfName: toTfName(attrName),
+    tsName: toCamelCase(attrName),
+  }));
   const attrLines = attrEntries.map(([attrName, attr]) => {
     const tsType = parseSchemaType(attr.type);
     const optional = attr.optional === true || attr.computed === true;
-    const propName = toSnakeCase(attrName);
+    const propName = toCamelCase(attrName);
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
-  const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
+  const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
+    tfName: toTfName(blockName),
+    tsName: toCamelCase(blockName),
+  }));
   const blockLines = blockEntries.map(([blockName, blockType]) => {
     const nestedName = `${name}${toPascalCase(blockName)}`;
-    const propName = toSnakeCase(blockName);
+    const propName = toCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
     return isList
@@ -143,23 +150,29 @@ const generateConfigWithNestedTypes = (
   const attrEntries = Object.entries(block.attributes ?? {});
   const blockEntries = Object.entries(block.block_types ?? {});
 
-  const attrProps = attrEntries.map(([attrName]) => toSnakeCase(attrName));
+  const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
+    tfName: toTfName(attrName),
+    tsName: toCamelCase(attrName),
+  }));
   const attrLines = attrEntries.map(([attrName, attr]) => {
     const tsType = parseSchemaType(attr.type);
     const optional = attr.optional === true || attr.computed === true;
-    const propName = toSnakeCase(attrName);
+    const propName = toCamelCase(attrName);
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
   // Collect getters for computed attributes (excluding reserved names)
   const getters: readonly AttributeGetter[] = attrEntries
-    .filter(([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toSnakeCase(attrName)))
-    .map(([attrName]) => ({ name: toSnakeCase(attrName) }));
+    .filter(([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toCamelCase(attrName)))
+    .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: toCamelCase(attrName) }));
 
-  const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
+  const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
+    tfName: toTfName(blockName),
+    tsName: toCamelCase(blockName),
+  }));
   const blockLines = blockEntries.map(([blockName, blockType]) => {
     const nestedName = `${name}${toPascalCase(blockName)}`;
-    const propName = toSnakeCase(blockName);
+    const propName = toCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
     return isList
@@ -186,7 +199,12 @@ const toPascalCase = (s: string): string => {
     .join("");
 };
 
-const toSnakeCase = (s: string): string => {
+const toCamelCase = (s: string): string => {
+  const pascal = toPascalCase(s);
+  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+};
+
+const toTfName = (s: string): string => {
   return s.replace(/-/g, "_");
 };
 

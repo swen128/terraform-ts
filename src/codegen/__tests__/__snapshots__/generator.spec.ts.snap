@@ -5,14 +5,14 @@ exports[`generateProvider generates provider with resources and data sources 1`]
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
 export type SimpleConfig = {
-  readonly api_key: TfString;
+  readonly apiKey: TfString;
   readonly region?: TfString;
 } & TerraformProviderConfig;
 
 export class SimpleProvider extends TerraformProvider {
   constructor(scope: TerraformStack, id: string, config: SimpleConfig = {}) {
     super(scope, id, "registry.terraform.io/hashicorp/simple", {
-      api_key: config.api_key,
+      api_key: config.apiKey,
       region: config.region,
     }, config);
   }

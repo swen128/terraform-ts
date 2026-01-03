@@ -1,19 +1,25 @@
+export type PropMapping = {
+  readonly tfName: string;
+  readonly tsName: string;
+};
+
 export type AttributeGetter = {
-  readonly name: string;
+  readonly tfName: string;
+  readonly tsName: string;
 };
 
 export const resourceTemplate = (
   className: string,
   terraformType: string,
-  props: readonly string[],
+  props: readonly PropMapping[],
   getters: readonly AttributeGetter[] = [],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
+  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
 
   const getterMethods = getters
     .map((g) => {
-      return `  get ${g.name}(): TokenString {
-    return this.getStringAttribute("${g.name}");
+      return `  get ${g.tsName}(): TokenString {
+    return this.getStringAttribute("${g.tfName}");
   }`;
     })
     .join("\n\n");
@@ -32,9 +38,9 @@ ${attrsObject}
 export const providerTemplate = (
   className: string,
   source: string,
-  props: readonly string[],
+  props: readonly PropMapping[],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
+  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
 
   return `export class ${className}Provider extends TerraformProvider {
   constructor(scope: TerraformStack, id: string, config: ${className}Config = {}) {
@@ -48,15 +54,15 @@ ${attrsObject}
 export const dataSourceTemplate = (
   className: string,
   terraformType: string,
-  props: readonly string[],
+  props: readonly PropMapping[],
   getters: readonly AttributeGetter[] = [],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p}: config.${p},`).join("\n");
+  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
 
   const getterMethods = getters
     .map((g) => {
-      return `  get ${g.name}(): TokenString {
-    return this.getStringAttribute("${g.name}");
+      return `  get ${g.tsName}(): TokenString {
+    return this.getStringAttribute("${g.tfName}");
   }`;
     })
     .join("\n\n");

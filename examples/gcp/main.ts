@@ -12,26 +12,26 @@ new GoogleProvider(stack, "google", {});
 
 const network = new GoogleComputeNetwork(stack, "main-network", {
   name: "main-vpc",
-  auto_create_subnetworks: false,
+  autoCreateSubnetworks: false,
 });
 
 new GoogleComputeInstance(stack, "web-server", {
   name: "web-server",
-  machine_type: "e2-micro",
+  machineType: "e2-micro",
   zone: "us-central1-a",
-  boot_disk: [
+  bootDisk: [
     {
-      initialize_params: [
+      initializeParams: [
         {
           image: "debian-cloud/debian-11",
         },
       ],
     },
   ],
-  network_interface: [
+  networkInterface: [
     {
-      network: network.self_link,
-      access_config: [{}],
+      network: network.selfLink,
+      accessConfig: [{}],
     },
   ],
   tags: ["http-server", "https-server"],
