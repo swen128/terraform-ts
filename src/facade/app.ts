@@ -1,13 +1,24 @@
-import { ok, err, type Result } from "neverthrow";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { Construct } from "./construct.js";
 import type { TerraformStack } from "./stack.js";
-import type { TerraformJson } from "../core/terraform-json.js";
 import type { ValidationError } from "../core/errors.js";
 import { synthesizeStack } from "../core/synthesize.js";
 import { validateTree } from "../core/validate.js";
 
 export type AppOptions = {
   readonly outdir?: string;
+};
+
+export type Manifest = {
+  readonly version: string;
+  readonly stacks: Record<string, ManifestStack>;
+};
+
+export type ManifestStack = {
+  readonly name: string;
+  readonly synthesizedStackPath: string;
+  readonly workingDirectory: string;
 };
 
 export class App extends Construct {
@@ -24,17 +35,41 @@ export class App extends Construct {
     this.stacks.push(stack);
   }
 
-  synth(): Result<ReadonlyMap<string, TerraformJson>, readonly ValidationError[]> {
+  synth(): void {
     const errors = validateTree(this.node);
     if (errors.length > 0) {
-      return err(errors);
+      const messages = errors.map((e: ValidationError) => `[${e.path}] ${e.message}`);
+      throw new Error(`Validation failed:\n${messages.join("\n")}`);
     }
 
-    const result = new Map<string, TerraformJson>();
-    for (const stack of this.stacks) {
-      result.set(stack.stackName, synthesizeStack(stack.node));
+    if (!existsSync(this.outdir)) {
+      mkdirSync(this.outdir, { recursive: true });
     }
-    return ok(result);
+
+    const manifestStacks: Record<string, ManifestStack> = {};
+
+    for (const stack of this.stacks) {
+      const stackDir = join(this.outdir, "stacks", stack.stackName);
+      if (!existsSync(stackDir)) {
+        mkdirSync(stackDir, { recursive: true });
+      }
+
+      const json = synthesizeStack(stack.node);
+      const outputPath = join(stackDir, "cdk.tf.json");
+      writeFileSync(outputPath, JSON.stringify(json, null, 2));
+
+      manifestStacks[stack.stackName] = {
+        name: stack.stackName,
+        synthesizedStackPath: `stacks/${stack.stackName}/cdk.tf.json`,
+        workingDirectory: `stacks/${stack.stackName}`,
+      };
+    }
+
+    const manifest: Manifest = {
+      version: "1.0.0",
+      stacks: manifestStacks,
+    };
+    writeFileSync(join(this.outdir, "manifest.json"), JSON.stringify(manifest, null, 2));
   }
 
   static of(construct: Construct): App | undefined {

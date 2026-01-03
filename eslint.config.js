@@ -92,6 +92,13 @@ export default [
     files: ["**/*.spec.ts", "**/*.test.ts"],
     rules: {
       "functional/no-throw-statements": "off",
+      "@typescript-eslint/consistent-type-assertions": "off",
+    },
+  },
+  {
+    files: ["src/facade/app.ts"],
+    rules: {
+      "functional/no-throw-statements": "off",
     },
   },
   {

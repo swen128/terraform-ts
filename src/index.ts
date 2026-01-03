@@ -92,7 +92,7 @@ export type {
 } from "./codegen/schema.js";
 
 export { Construct } from "./facade/construct.js";
-export { App, type AppOptions } from "./facade/app.js";
+export { App, type AppOptions, type Manifest, type ManifestStack } from "./facade/app.js";
 export { TerraformStack } from "./facade/stack.js";
 export {
   TerraformResource,

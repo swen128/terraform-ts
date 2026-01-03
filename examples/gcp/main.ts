@@ -1,5 +1,9 @@
 import { App, TerraformStack, TerraformOutput } from "tfts";
-import { GoogleProvider, GoogleComputeNetwork, GoogleComputeInstance } from "./.gen/providers/google/index.js";
+import {
+  GoogleProvider,
+  GoogleComputeNetwork,
+  GoogleComputeInstance,
+} from "./.gen/providers/google/index.js";
 
 const app = new App();
 const stack = new TerraformStack(app, "gcp-example");
@@ -38,13 +42,5 @@ new TerraformOutput(stack, "network_id", {
   description: "The network ID",
 });
 
-const result = app.synth();
-if (result.isOk()) {
-  for (const [stackName, json] of result.value) {
-    console.log(`Stack: ${stackName}`);
-    console.log(JSON.stringify(json, null, 2));
-  }
-} else {
-  console.error("Synthesis failed:", result.error);
-  process.exit(1);
-}
+app.synth();
+console.log(`Synthesized to ${app.outdir}`);
