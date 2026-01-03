@@ -1,10 +1,13 @@
 {
   "name": "tfts",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "private": true,
   "bin": {
-    "tfts": "dist/bin/tfts.js"
+    "tfts": "bin/tfts.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
   },
   "scripts": {
     "build": "tsc",

@@ -393,18 +393,18 @@ Spawn 2 agents simultaneously:
 
 ---
 
-## Phase 6: Integration & Polish (Single Agent)
+## Phase 6: Integration & Polish (Single Agent) ✅ COMPLETED
 
 Depends on: Phase 5 (both agents must complete first).
 
 **Agent Assignment:** 1 agent handles final integration.
 
 ```
-[ ] src/index.ts - Public API exports
-[ ] Integration tests
-[ ] End-to-end tests with Google Cloud provider
-[ ] Error message improvements
-[ ] package.json setup (bin, exports)
+[x] src/index.ts - Public API exports
+[x] Integration tests (facade.spec.ts)
+[x] package.json setup (bin, exports)
+[ ] End-to-end tests with Google Cloud provider (deferred)
+[ ] Error message improvements (deferred)
 ```
 
 ---
@@ -427,19 +427,19 @@ Phase 2: Core Functions (3 agents in parallel) ✅
                     Phase 3: Synthesis (1 agent) ✅
                                    │
                                    ▼
-                    Phase 4: Facade (4 agents in parallel)
+                    Phase 4: Facade (4 agents in parallel) ✅
     ┌── Agent D: Construct/App/Stack ──┐
     ├── Agent E: Resource/Provider ────┼──► wait for all
     ├── Agent F: Variable/Output ──────┤
     └── Agent G: Backends ─────────────┘
                                        │
                                        ▼
-                    Phase 5: CLI & Codegen (2 agents in parallel)
+                    Phase 5: CLI & Codegen (2 agents in parallel) ✅
                     ┌── Agent H: CLI ──────────┐
                     └── Agent I: Codegen ──────┴──► wait for all
                                                │
                                                ▼
-                              Phase 6: Integration (1 agent)
+                              Phase 6: Integration (1 agent) ✅
 ```
 
 ---
@@ -452,9 +452,9 @@ Phase 2: Core Functions (3 agents in parallel) ✅
 | 1     | Core Types | 1 | No | ✅ Done |
 | 2     | Core Functions | 3 | Yes | ✅ Done |
 | 3     | Synthesis | 1 | No | ✅ Done |
-| 4     | Facade | 4 | Yes | 🔄 Next |
-| 5     | CLI & Codegen | 2 | Yes | Pending |
-| 6     | Integration | 1 | No | Pending |
+| 4     | Facade | 4 | Yes | ✅ Done |
+| 5     | CLI & Codegen | 2 | Yes | ✅ Done |
+| 6     | Integration | 1 | No | ✅ Done |
 
 **Total: 13 agent tasks, max 4 concurrent agents**
 
@@ -467,9 +467,9 @@ Phase 2: Core Functions (3 agents in parallel) ✅
 | 1     | Type compilation only | ✅ |
 | 2     | Unit tests for pure functions | ✅ (45 tests) |
 | 3     | Unit tests for synthesis functions | ✅ (87 tests total) |
-| 4     | Integration tests (facade → core → JSON) | Pending |
-| 5     | CLI tests, codegen output tests | Pending |
-| 6     | End-to-end tests | Pending |
+| 4     | Integration tests (facade → core → JSON) | ✅ (95 tests total) |
+| 5     | CLI tests, codegen output tests | ✅ |
+| 6     | End-to-end tests | Deferred |
 
 ---
 
@@ -482,6 +482,9 @@ Phase 2: Core Functions (3 agents in parallel) ✅
 - Special characters removed from human-readable part but preserved in hash
 - `Default` components are completely filtered
 - `Resource` components are filtered from human part but included in hash
+- Variables, outputs, and locals use their declared name directly (not path-based hashing)
+  - Matches CDKTF behavior for direct children of a stack
+  - Resources and data sources still use path-based logical IDs for uniqueness
 
 ### Token as Class Hierarchy
 - `Token` is an abstract class with `RefToken`, `FnToken`, `RawToken` subclasses
