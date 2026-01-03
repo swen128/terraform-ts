@@ -9,8 +9,25 @@ import {
   type AttributeGetter,
 } from "./templates.js";
 
-const IMPORTS = `import type { TerraformStack, TokenString } from "tfts";
+const IMPORTS = `import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";`;
+
+// Properties defined in base classes that cannot be overridden
+const RESERVED_NAMES = new Set([
+  "node",
+  "path",
+  "terraformResourceType",
+  "friendlyUniqueId",
+  "terraformGeneratorMetadata",
+  "connection",
+  "count",
+  "dependsOn",
+  "forEach",
+  "lifecycle",
+  "provider",
+  "provisioners",
+  "fqn",
+]);
 
 export const generateProvider = (name: string, schema: ProviderSchema): string => {
   const entries = Object.entries(schema.provider_schemas);
@@ -29,7 +46,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   const parts: string[] = [IMPORTS];
 
   // Provider class
-  const providerConfig = generateConfigWithNestedTypes(`${providerName}Config`, entry.provider);
+  const providerConfig = generateConfigWithNestedTypes(`${providerName}Config`, entry.provider, "TerraformProviderConfig");
   const providerClass = providerTemplate(providerName, source, providerConfig.props);
   parts.push(...providerConfig.types);
   parts.push(providerClass);
@@ -37,7 +54,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   // Resources
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas)) {
     const className = resourceNameToClassName(resourceName);
-    const config = generateConfigWithNestedTypes(`${className}Config`, resourceSchema.block);
+    const config = generateConfigWithNestedTypes(`${className}Config`, resourceSchema.block, "TerraformResourceConfig");
     const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
     parts.push(...config.types);
     parts.push(resourceClass);
@@ -46,7 +63,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   // Data sources
   for (const [dataSourceName, dataSourceSchema] of Object.entries(entry.data_source_schemas)) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
-    const config = generateConfigWithNestedTypes(`${className}Config`, dataSourceSchema.block);
+    const config = generateConfigWithNestedTypes(`${className}Config`, dataSourceSchema.block, "TerraformDataSourceConfig");
     const dataSourceClass = dataSourceTemplate(className, dataSourceName, config.props, config.getters);
     parts.push(...config.types);
     parts.push(dataSourceClass);
@@ -121,6 +138,7 @@ const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult
 const generateConfigWithNestedTypes = (
   name: string,
   block: SchemaBlock,
+  baseType?: string,
 ): ConfigWithNestedResult => {
   const attrEntries = Object.entries(block.attributes ?? {});
   const blockEntries = Object.entries(block.block_types ?? {});
@@ -133,9 +151,9 @@ const generateConfigWithNestedTypes = (
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
-  // Collect getters for computed attributes
+  // Collect getters for computed attributes (excluding reserved names)
   const getters: readonly AttributeGetter[] = attrEntries
-    .filter(([, attr]) => attr.computed === true)
+    .filter(([attrName, attr]) => attr.computed === true && !RESERVED_NAMES.has(toSnakeCase(attrName)))
     .map(([attrName]) => ({ name: toSnakeCase(attrName) }));
 
   const blockProps = blockEntries.map(([blockName]) => toSnakeCase(blockName));
@@ -155,7 +173,7 @@ const generateConfigWithNestedTypes = (
   });
 
   return {
-    types: [...nestedTypes, configInterfaceTemplate(name, [...attrLines, ...blockLines])],
+    types: [...nestedTypes, configInterfaceTemplate(name, [...attrLines, ...blockLines], baseType)],
     props: [...attrProps, ...blockProps],
     getters,
   };

@@ -188,11 +188,11 @@ export const parseSchemaType = (type: SchemaType): string => {
   if (typeof type === "string") {
     switch (type) {
       case "string":
-        return "string";
+        return "TfString";
       case "number":
-        return "number";
+        return "TfNumber";
       case "bool":
-        return "boolean";
+        return "TfBoolean";
       case "dynamic":
         return "unknown";
     }
@@ -202,8 +202,11 @@ export const parseSchemaType = (type: SchemaType): string => {
   switch (kind) {
     case "list":
     case "set":
+      if (inner === "string") return "TfStringList";
+      if (inner === "number") return "TfNumberList";
       return `readonly ${parseSchemaType(inner)}[]`;
     case "map":
+      if (inner === "string") return "TfStringMap";
       return `Readonly<Record<string, ${parseSchemaType(inner)}>>`;
     case "object": {
       const props = Object.entries(inner)

@@ -72,13 +72,20 @@ ${attrsObject}
 }`;
 };
 
-export const configInterfaceTemplate = (name: string, lines: readonly string[]): string => {
+export const configInterfaceTemplate = (
+  name: string,
+  lines: readonly string[],
+  baseType?: string,
+): string => {
+  const extendsClause = baseType !== undefined ? ` & ${baseType}` : "";
   if (lines.length === 0) {
-    return `export type ${name} = Record<string, never>;`;
+    return baseType !== undefined
+      ? `export type ${name} = ${baseType};`
+      : `export type ${name} = Record<string, never>;`;
   }
   return `export type ${name} = {
 ${lines.join("\n")}
-};`;
+}${extendsClause};`;
 };
 
 export const indexTemplate = (

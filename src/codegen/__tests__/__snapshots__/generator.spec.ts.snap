@@ -1,13 +1,13 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`generateProvider generates provider with resources and data sources 1`] = `
-"import type { TerraformStack, TokenString } from "tfts";
+"import type { TerraformStack, TokenString, TerraformResourceConfig, TerraformDataSourceConfig, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
 import { TerraformProvider, TerraformResource, TerraformDataSource } from "tfts";
 
 export type SimpleConfig = {
-  readonly api_key: string;
-  readonly region?: string;
-};
+  readonly api_key: TfString;
+  readonly region?: TfString;
+} & TerraformProviderConfig;
 
 export class SimpleProvider extends TerraformProvider {
   constructor(scope: TerraformStack, id: string, config: SimpleConfig = {}) {
@@ -19,23 +19,23 @@ export class SimpleProvider extends TerraformProvider {
 }
 
 export type SimpleResourceConfigConfig = {
-  readonly key: string;
-  readonly value?: string;
+  readonly key: TfString;
+  readonly value?: TfString;
 };
 
 export type SimpleResourceConfigItems = {
-  readonly name: string;
+  readonly name: TfString;
 };
 
 export type SimpleResourceConfig = {
-  readonly id?: string;
-  readonly name: string;
-  readonly enabled?: boolean;
-  readonly count?: number;
-  readonly tags?: Readonly<Record<string, string>>;
+  readonly id?: TfString;
+  readonly name: TfString;
+  readonly enabled?: TfBoolean;
+  readonly count?: TfNumber;
+  readonly tags?: TfStringMap;
   readonly config?: SimpleResourceConfigConfig;
   readonly items: readonly SimpleResourceConfigItems[];
-};
+} & TerraformResourceConfig;
 
 export class SimpleResource extends TerraformResource {
   constructor(scope: TerraformStack, id: string, config: SimpleResourceConfig) {
@@ -56,9 +56,9 @@ export class SimpleResource extends TerraformResource {
 }
 
 export type DataSimpleDataConfig = {
-  readonly id: string;
-  readonly name?: string;
-};
+  readonly id: TfString;
+  readonly name?: TfString;
+} & TerraformDataSourceConfig;
 
 export class DataSimpleData extends TerraformDataSource {
   constructor(scope: TerraformStack, id: string, config: DataSimpleDataConfig) {

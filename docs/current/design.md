@@ -889,149 +889,100 @@ Options:
 
 ---
 
-## 7. Directory Structure
+## 7. TokenString Design
 
-```
-tfts/
-├── src/
-│   ├── core/                    # Pure functional core
-│   │   ├── types.ts             # Core data types
-│   │   ├── tree.ts              # Tree operations
-│   │   ├── synthesize.ts        # Synthesis functions
-│   │   ├── tokens.ts            # Token system
-│   │   └── validate.ts          # Validation functions
-│   ├── facade/                  # CDK-compatible API
-│   │   ├── construct.ts         # Base Construct class
-│   │   ├── app.ts               # App class
-│   │   ├── stack.ts             # TerraformStack
-│   │   ├── resource.ts          # TerraformResource
-│   │   ├── provider.ts          # TerraformProvider
-│   │   ├── datasource.ts        # TerraformDataSource
-│   │   ├── variable.ts          # TerraformVariable
-│   │   ├── output.ts            # TerraformOutput
-│   │   ├── local.ts             # TerraformLocal
-│   │   └── backends/            # Backend implementations
-│   │       ├── local.ts
-│   │       ├── s3.ts
-│   │       ├── gcs.ts
-│   │       └── remote.ts
-│   ├── codegen/                 # Provider code generation
-│   │   ├── schema.ts            # Schema fetching
-│   │   ├── generator.ts         # Code generation
-│   │   └── templates.ts         # Code templates
-│   ├── cli/                     # CLI implementation
-│   │   ├── index.ts             # Entry point
-│   │   ├── synth.ts             # Synth command
-│   │   ├── get.ts               # Get command
-│   │   └── config.ts            # Config parsing
-│   └── index.ts                 # Public API exports
-├── bin/
-│   └── tfts.ts                  # CLI binary entry
-├── docs/
-│   └── current/
-│       ├── spec.md
-│       └── design.md
-├── cdktf.json
-├── package.json
-└── tsconfig.json
-```
+### 7.1 Problem with CDKTF's Approach
 
----
-
-## 8. Error Handling Strategy
-
-### 8.1 Error Types
+CDKTF types computed attributes as primitive `string`:
 
 ```typescript
-type TftsError =
-  | { readonly kind: "config"; readonly message: string; readonly path?: string }
-  | { readonly kind: "validation"; readonly errors: readonly ValidationError[] }
-  | { readonly kind: "synthesis"; readonly message: string; readonly node?: string }
-  | { readonly kind: "codegen"; readonly message: string; readonly provider?: string }
-  | { readonly kind: "circular"; readonly cycle: readonly string[] };
+// CDKTF: ami.id has type string
+get id(): string { return Token.asString(...); }
+```
 
-class TftsConfigError extends Error {
-  constructor(message: string, path?: string);
+This allows invalid operations that compile but fail at runtime:
+
+```typescript
+ami.id.toUpperCase();  // Compiles ✓ but broken at runtime
+ami.id.substring(0, 5);  // Compiles ✓ but broken at runtime
+```
+
+### 7.2 tfts Solution: TokenString + Union Types
+
+tfts uses an opaque `TokenString` wrapper for computed attributes:
+
+```typescript
+// Opaque wrapper - no string methods exposed
+class TokenString {
+  private readonly _token: Token;
+
+  toString(): string { /* for template literals */ }
+  toToken(): Token { return this._token; }
 }
 
-class TftsValidationError extends Error {
-  constructor(errors: readonly ValidationError[]);
+// Union types for construct config arguments
+type TfString = string | TokenString;
+type TfNumber = number | TokenString;
+type TfBoolean = boolean | TokenString;
+type TfStringList = readonly string[] | TokenString;
+type TfNumberList = readonly number[] | TokenString;
+type TfStringMap = Readonly<Record<string, string>> | TokenString;
+```
+
+### 7.3 Generated Code
+
+```typescript
+// Config accepts both literals and token references
+interface InstanceConfig extends TerraformResourceConfig {
+  readonly ami: TfString;
+  readonly instanceType: TfString;
+  readonly port: TfNumber;
+  readonly tags?: TfStringMap;
 }
 
-class TftsSynthesisError extends Error {
-  constructor(message: string, node?: string);
-}
-
-class TftsCodegenError extends Error {
-  constructor(message: string, provider?: string);
+// Computed attributes return TokenString
+class Instance extends TerraformResource {
+  get id(): TokenString {
+    return this.getStringAttribute("id");
+  }
 }
 ```
 
-### 8.2 Error Messages
+### 7.4 Usage
 
-Errors include:
-- Clear description of what went wrong
-- Path to the affected construct (when applicable)
-- Suggestion for how to fix (when possible)
+```typescript
+// ✅ Literals work naturally
+new Instance(this, "i", {
+  ami: "ami-12345",
+  instanceType: "t2.micro",
+  port: 8080,
+});
 
----
+// ✅ Token references work
+new Instance(this, "i", {
+  ami: ami.id,              // TokenString
+  instanceType: "t2.micro",
+  port: config.port,        // TokenString
+});
 
-## 9. Testing Strategy
+// ✅ Template literals work (via toString)
+const name = `web-${ami.id}`;
 
-### 9.1 Core Layer Tests
+// ❌ Compile error - TokenString has no .substring()
+ami.id.substring(0, 5);
 
-- Pure function tests with known inputs/outputs
-- Property-based tests for tree operations
-- Snapshot tests for synthesis output
+// ❌ Compile error - TokenString has no arithmetic
+resource.port + 1;
+```
 
-### 9.2 Facade Layer Tests
+### 7.5 Comparison
 
-- Integration tests verifying facade produces correct core structures
-- API compatibility tests with CDKTF examples
+| Aspect                | CDKTF (string)                 | tfts (TfString)               |
+|-----------------------|--------------------------------|-------------------------------|
+| `ami.id.toUpperCase()`| Compiles ✓ (broken at runtime) | Compile error ✗               |
+| `{ ami: "literal" }`  | Works ✓                        | Works ✓                       |
+| `{ ami: ami.id }`     | Works ✓                        | Works ✓                       |
+| `` `prefix-${ami.id}` ``| Works ✓                      | Works ✓                       |
+| Pass to `fn(s: string)`| Works ✓                       | Compile error ✗ (intentional) |
 
-### 9.3 CLI Tests
-
-- Command execution tests
-- Config parsing tests
-- End-to-end synthesis tests
-
-### 9.4 Codegen Tests
-
-- Schema parsing tests
-- Generated code compilation tests
-- Generated code behavior tests
-
----
-
-## 10. Implementation Phases
-
-### Phase 1: Core Foundation
-- Core data types
-- Tree operations
-- Basic synthesis (resources, providers)
-- Token system basics
-
-### Phase 2: Full Synthesis
-- Variables, outputs, locals
-- Backends
-- Data sources
-- Complete token resolution
-
-### Phase 3: Facade Layer
-- All facade classes
-- API compatibility with CDKTF
-
-### Phase 4: CLI
-- Config parsing
-- Synth command
-- Output generation
-
-### Phase 5: Code Generation
-- Schema fetching
-- TypeScript generation
-- Google Cloud provider support
-
-### Phase 6: Polish
-- Error messages
-- Documentation
-- Performance optimization
+The key insight: CDKTF lies to TypeScript ("this is a string" when it's actually a deferred reference). tfts tells the truth ("this is either a literal OR a deferred reference").
