@@ -51,9 +51,9 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   const [source, entry] = firstEntry;
   const providerName = toPascalCase(name);
   const files = new Map<string, string>();
-  const exports: string[] = [];
+  const namespaceExports: string[] = [];
 
-  // Provider file
+  // Provider file (in provider/ subdirectory)
   const providerConfig = generateConfigWithNestedTypes(
     `${providerName}ProviderConfig`,
     entry.provider,
@@ -61,14 +61,14 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   );
   const providerClass = providerTemplate(providerName, source, providerConfig.props);
   const providerContent = [PROVIDER_IMPORTS, ...providerConfig.types, providerClass].join("\n\n");
-  files.set("provider.ts", providerContent);
-  exports.push(`export { ${providerName}Provider } from "./provider.js";`);
-  exports.push(`export type { ${providerName}ProviderConfig } from "./provider.js";`);
+  files.set("provider/index.ts", providerContent);
+  namespaceExports.push(`export * as provider from "./provider/index.js";`);
 
-  // Resource files
+  // Resource files (each in its own subdirectory)
   for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
     const className = terraformNameToClassName(resourceName);
-    const fileName = terraformNameToFileName(resourceName);
+    const dirName = terraformNameToFileName(resourceName);
+    const namespaceName = toCamelCase(className);
     const config = generateConfigWithNestedTypes(
       `${className}Config`,
       resourceSchema.block,
@@ -76,17 +76,18 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
     );
     const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
     const content = [RESOURCE_IMPORTS, ...config.types, resourceClass].join("\n\n");
-    files.set(`${fileName}.ts`, content);
-    exports.push(`export { ${className} } from "./${fileName}.js";`);
-    exports.push(`export type { ${className}Config } from "./${fileName}.js";`);
+    files.set(`${dirName}/index.ts`, content);
+    namespaceExports.push(`export * as ${namespaceName} from "./${dirName}/index.js";`);
   }
 
-  // Data source files
+  // Data source files (each in its own subdirectory)
   for (const [dataSourceName, dataSourceSchema] of Object.entries(
     entry.data_source_schemas ?? {},
   )) {
-    const className = `Data${terraformNameToClassName(dataSourceName)}`;
-    const fileName = `data-${terraformNameToFileName(dataSourceName)}`;
+    const baseClassName = terraformNameToClassName(dataSourceName);
+    const className = `Data${baseClassName}`;
+    const dirName = `data-${terraformNameToFileName(dataSourceName)}`;
+    const namespaceName = `data${baseClassName}`;
     const config = generateConfigWithNestedTypes(
       `${className}Config`,
       dataSourceSchema.block,
@@ -99,13 +100,12 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
       config.getters,
     );
     const content = [DATASOURCE_IMPORTS, ...config.types, dataSourceClass].join("\n\n");
-    files.set(`${fileName}.ts`, content);
-    exports.push(`export { ${className} } from "./${fileName}.js";`);
-    exports.push(`export type { ${className}Config } from "./${fileName}.js";`);
+    files.set(`${dirName}/index.ts`, content);
+    namespaceExports.push(`export * as ${namespaceName} from "./${dirName}/index.js";`);
   }
 
-  // Index file
-  files.set("index.ts", exports.join("\n") + "\n");
+  // Index file with namespace exports
+  files.set("index.ts", namespaceExports.join("\n") + "\n");
 
   return files;
 };

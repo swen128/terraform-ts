@@ -1,6 +1,6 @@
 import { ok, err, type Result } from "neverthrow";
 import * as fs from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { readConfig, type ConfigError } from "./config.js";
 import { generateProviderFiles } from "../codegen/generator.js";
 import { fetchProviderSchema, type SchemaError } from "../codegen/schema.js";
@@ -39,9 +39,10 @@ export const runGet = async (options: GetOptions): Promise<Result<void, GetError
     const files = generateProviderFiles(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
-    await fs.mkdir(providerDir, { recursive: true });
-    for (const [fileName, content] of files) {
-      await fs.writeFile(join(providerDir, fileName), content);
+    for (const [filePath, content] of files) {
+      const fullPath = join(providerDir, filePath);
+      await fs.mkdir(dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, content);
     }
   }
 
@@ -63,9 +64,10 @@ export const generateBindings = async (
     const files = generateProviderFiles(provider.name, schemaResult.value);
     const providerDir = `${outdir}/providers/${provider.name}`;
 
-    await fs.mkdir(providerDir, { recursive: true });
-    for (const [fileName, content] of files) {
-      await fs.writeFile(join(providerDir, fileName), content);
+    for (const [filePath, content] of files) {
+      const fullPath = join(providerDir, filePath);
+      await fs.mkdir(dirname(fullPath), { recursive: true });
+      await fs.writeFile(fullPath, content);
     }
   }
 
