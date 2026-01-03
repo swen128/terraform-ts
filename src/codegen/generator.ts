@@ -57,7 +57,7 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   parts.push(providerClass);
 
   // Resources
-  for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas)) {
+  for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
     const className = resourceNameToClassName(resourceName);
     const config = generateConfigWithNestedTypes(
       `${className}Config`,
@@ -70,7 +70,9 @@ export const generateProvider = (name: string, schema: ProviderSchema): string =
   }
 
   // Data sources
-  for (const [dataSourceName, dataSourceSchema] of Object.entries(entry.data_source_schemas)) {
+  for (const [dataSourceName, dataSourceSchema] of Object.entries(
+    entry.data_source_schemas ?? {},
+  )) {
     const className = `Data${resourceNameToClassName(dataSourceName)}`;
     const config = generateConfigWithNestedTypes(
       `${className}Config`,

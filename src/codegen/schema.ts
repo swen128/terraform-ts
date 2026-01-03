@@ -1,7 +1,8 @@
 import { ok, err, type Result } from "neverthrow";
-import { mkdtemp, rm } from "node:fs/promises";
+import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
 import { z } from "zod";
 
 export type SchemaType =
@@ -48,8 +49,8 @@ export type ResourceSchema = {
 
 export type ProviderSchemaEntry = {
   readonly provider: SchemaBlock;
-  readonly resource_schemas: Readonly<Record<string, ResourceSchema>>;
-  readonly data_source_schemas: Readonly<Record<string, ResourceSchema>>;
+  readonly resource_schemas?: Readonly<Record<string, ResourceSchema>>;
+  readonly data_source_schemas?: Readonly<Record<string, ResourceSchema>>;
 };
 
 export type ProviderSchema = {
@@ -108,8 +109,8 @@ const ResourceSchemaSchema: z.ZodType<ResourceSchema> = z.object({
 
 const ProviderSchemaEntrySchema: z.ZodType<ProviderSchemaEntry> = z.object({
   provider: SchemaBlockSchema,
-  resource_schemas: z.record(z.string(), ResourceSchemaSchema),
-  data_source_schemas: z.record(z.string(), ResourceSchemaSchema),
+  resource_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
+  data_source_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
 });
 
 const ProviderSchemaSchema: z.ZodType<ProviderSchema> = z.object({
@@ -134,12 +135,26 @@ export const parseProviderSchema = (data: unknown): Result<ProviderSchema, Schem
 };
 
 const withTempDir = async <T>(prefix: string, fn: (dir: string) => Promise<T>): Promise<T> => {
-  const dir = await mkdtemp(join(tmpdir(), `${prefix}-`));
+  const dir = await fs.mkdtemp(join(tmpdir(), `${prefix}-`));
   try {
     return await fn(dir);
   } finally {
-    await rm(dir, { recursive: true, force: true });
+    await fs.rm(dir, { recursive: true, force: true });
   }
+};
+
+const runCommand = (
+  command: string,
+  args: readonly string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> => {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    proc.stdout.on("data", (data: Buffer) => (stdout += data.toString()));
+    proc.stderr.on("data", (data: Buffer) => (stderr += data.toString()));
+    proc.on("close", (code) => resolve({ exitCode: code ?? 1, stdout, stderr }));
+  });
 };
 
 export const fetchProviderSchema = async (
@@ -161,25 +176,30 @@ export const fetchProviderSchema = async (
       },
     };
 
-    await Bun.write(join(dir, "main.tf.json"), JSON.stringify(config));
+    await fs.writeFile(join(dir, "main.tf.json"), JSON.stringify(config));
 
-    const initResult = await Bun.$`terraform -chdir=${dir} init`.quiet();
+    const initResult = await runCommand("terraform", ["-chdir=" + dir, "init"]);
     if (initResult.exitCode !== 0) {
       return err({
         kind: "init",
-        message: `terraform init failed: ${initResult.stderr.toString()}`,
+        message: `terraform init failed: ${initResult.stderr}`,
       });
     }
 
-    const schemaResult = await Bun.$`terraform -chdir=${dir} providers schema -json`.quiet();
+    const schemaResult = await runCommand("terraform", [
+      "-chdir=" + dir,
+      "providers",
+      "schema",
+      "-json",
+    ]);
     if (schemaResult.exitCode !== 0) {
       return err({
         kind: "schema",
-        message: `terraform providers schema failed: ${schemaResult.stderr.toString()}`,
+        message: `terraform providers schema failed: ${schemaResult.stderr}`,
       });
     }
 
-    const parsed: unknown = JSON.parse(schemaResult.stdout.toString());
+    const parsed: unknown = JSON.parse(schemaResult.stdout);
     return parseProviderSchema(parsed);
   });
 };
