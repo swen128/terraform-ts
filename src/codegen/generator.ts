@@ -116,7 +116,10 @@ const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult
   };
 };
 
-const generateConfigWithNestedTypes = (name: string, block: SchemaBlock): ConfigWithNestedResult => {
+const generateConfigWithNestedTypes = (
+  name: string,
+  block: SchemaBlock,
+): ConfigWithNestedResult => {
   const attrEntries = Object.entries(block.attributes ?? {});
   const blockEntries = Object.entries(block.block_types ?? {});
 

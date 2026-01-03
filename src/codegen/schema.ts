@@ -122,9 +122,7 @@ export type SchemaError = {
   readonly message: string;
 };
 
-export const parseProviderSchema = (
-  data: unknown,
-): Result<ProviderSchema, SchemaError> => {
+export const parseProviderSchema = (data: unknown): Result<ProviderSchema, SchemaError> => {
   const result = ProviderSchemaSchema.safeParse(data);
   if (!result.success) {
     return err({
@@ -135,10 +133,7 @@ export const parseProviderSchema = (
   return ok(result.data);
 };
 
-const withTempDir = async <T>(
-  prefix: string,
-  fn: (dir: string) => Promise<T>,
-): Promise<T> => {
+const withTempDir = async <T>(prefix: string, fn: (dir: string) => Promise<T>): Promise<T> => {
   const dir = await mkdtemp(join(tmpdir(), `${prefix}-`));
   try {
     return await fn(dir);
@@ -176,8 +171,7 @@ export const fetchProviderSchema = async (
       });
     }
 
-    const schemaResult =
-      await Bun.$`terraform -chdir=${dir} providers schema -json`.quiet();
+    const schemaResult = await Bun.$`terraform -chdir=${dir} providers schema -json`.quiet();
     if (schemaResult.exitCode !== 0) {
       return err({
         kind: "schema",
