@@ -96,6 +96,9 @@ const getBlockTypeName = (registry: TypeNameRegistry, baseName: string): string 
 const isPropertyOptional = (attr: AttributeSchema): boolean =>
   attr.required !== true || attr.optional === true || attr.computed === true;
 
+const isInputAttribute = (attr: AttributeSchema): boolean =>
+  attr.required === true || attr.optional === true;
+
 const isBlockOptional = (block: BlockTypeSchema): boolean =>
   block.min_items === undefined || block.min_items === 0;
 
@@ -190,9 +193,17 @@ ${properties.join("\n")}
   return result;
 };
 
-const generateImports = (baseClass: string, baseConfig: string, block: SchemaBlock): string => {
+const generateImports = (
+  baseClass: string,
+  baseConfig: string,
+  block: SchemaBlock,
+  includeProvider = false,
+): string => {
   const types = new Set<string>(["Construct", "TokenString", baseConfig]);
   types.add(baseClass);
+  if (includeProvider) {
+    types.add("TerraformProvider");
+  }
 
   if (block.attributes) {
     for (const attr of Object.values(block.attributes)) {
@@ -297,23 +308,28 @@ const generateConstructorBody = (block: SchemaBlock): string => {
   return lines.join("\n");
 };
 
-const generateGetters = (block: SchemaBlock): string => {
-  const getters: string[] = [];
-
-  if (block.attributes) {
-    for (const name of Object.keys(block.attributes)) {
+const generateGetters = (block: SchemaBlock): string =>
+  Object.keys(block.attributes ?? {})
+    .filter((name) => !RESERVED_NAMES.has(snakeToCamelCase(name)))
+    .map((name) => {
       const tsName = snakeToCamelCase(name);
-      if (RESERVED_NAMES.has(tsName)) {
-        continue;
-      }
-      getters.push(`  get ${tsName}(): TokenString {
+      return `  get ${tsName}(): TokenString {
     return this.getStringAttribute("${name}");
-  }`);
-    }
-  }
+  }`;
+    })
+    .join("\n\n");
 
-  return getters.join("\n\n");
-};
+const generateInputGetters = (block: SchemaBlock): string =>
+  Object.entries(block.attributes ?? {})
+    .filter(([, attr]) => isInputAttribute(attr))
+    .map(([name, attr]) => {
+      const tsName = snakeToCamelCase(name);
+      const tsType = mapSchemaTypeToTsConfig(attr.type);
+      return `  get ${tsName}Input(): ${tsType} | undefined {
+    return this._config.${tsName};
+  }`;
+    })
+    .join("\n\n");
 
 // --- Provider generation ---
 
@@ -366,7 +382,7 @@ const generateResourceClass = (
   registry.usedNames.add(`${className}Config`);
 
   const blockTypes = generateBlockTypes(block, className, registry);
-  const imports = generateImports("TerraformResource", "TerraformResourceConfig", block);
+  const imports = generateImports("TerraformResource", "TerraformResourceConfig", block, true);
   const configType = generateConfigTypeWithName(
     `${className}Config`,
     className,
@@ -376,21 +392,30 @@ const generateResourceClass = (
   );
   const constructorBody = generateConstructorBody(block);
   const getters = generateGetters(block);
+  const inputGetters = generateInputGetters(block);
 
   const blockTypeCode =
     blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
 
-  const getterSection = getters ? `\n\n${getters}` : "";
+  const allGetters = [getters, inputGetters].filter(Boolean).join("\n\n");
+  const getterSection = allGetters ? `\n\n${allGetters}` : "";
 
   return `${imports}
 
 ${blockTypeCode}${configType}
 
 export class ${className} extends TerraformResource {
+  private readonly _config: ${className}Config;
+
   constructor(scope: Construct, id: string, config: ${className}Config) {
     super(scope, id, "${resourceName}", {
 ${constructorBody}
     }, config);
+    this._config = config;
+  }
+
+  static importFrom(scope: Construct, id: string, resourceId: TfString, provider?: TerraformProvider): ${className} {
+    return new ${className}(scope, id, { lifecycle: { importId: resourceId }, provider } as ${className}Config);
   }${getterSection}
 }
 `;
@@ -413,21 +438,26 @@ const generateDataSourceClass = (
   const configType = generateConfigType(className, block, "TerraformDataSourceConfig", registry);
   const constructorBody = generateConstructorBody(block);
   const getters = generateGetters(block);
+  const inputGetters = generateInputGetters(block);
 
   const blockTypeCode =
     blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
 
-  const getterSection = getters ? `\n\n${getters}` : "";
+  const allGetters = [getters, inputGetters].filter(Boolean).join("\n\n");
+  const getterSection = allGetters ? `\n\n${allGetters}` : "";
 
   return `${imports}
 
 ${blockTypeCode}${configType}
 
 export class ${className} extends TerraformDataSource {
+  private readonly _config: ${className}Config;
+
   constructor(scope: Construct, id: string, config: ${className}Config) {
     super(scope, id, "${dataSourceName}", {
 ${constructorBody}
     }, config);
+    this._config = config;
   }${getterSection}
 }
 `;

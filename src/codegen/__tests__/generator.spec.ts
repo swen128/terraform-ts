@@ -230,3 +230,54 @@ describe("optionality", () => {
     expect(content).toContain("readonly items: readonly ResourceItems[];");
   });
 });
+
+describe("input getters", () => {
+  test("generates *Input getters for non-computed attributes", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    // Should have nameInput for required attribute
+    expect(content).toContain("get nameInput():");
+    // Should have enabledInput for optional attribute
+    expect(content).toContain("get enabledInput():");
+    // Should have countInput for optional number attribute
+    expect(content).toContain("get countInput():");
+    // Should have tagsInput for optional map attribute
+    expect(content).toContain("get tagsInput():");
+  });
+
+  test("does not generate *Input getters for computed-only attributes", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    // id is computed-only, should not have idInput
+    expect(content).not.toContain("get idInput():");
+  });
+
+  test("*Input getter returns the config value type", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("get nameInput(): TfString | undefined {");
+    expect(content).toContain("return this._config.name;");
+  });
+});
+
+describe("importFrom static method", () => {
+  test("generates importFrom static method on resources", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("static importFrom(");
+  });
+
+  test("importFrom has correct signature", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain(
+      "static importFrom(scope: Construct, id: string, resourceId: TfString, provider?: TerraformProvider):",
+    );
+  });
+
+  test("importFrom returns instance with import lifecycle", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("lifecycle: { importId: resourceId }");
+  });
+});
