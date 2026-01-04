@@ -10,8 +10,6 @@ export type {
   TfString,
   TfNumber,
   TfBoolean,
-  TfStringList,
-  TfNumberList,
   TfStringMap,
 } from "./core/tokens.js";
 export {

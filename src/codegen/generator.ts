@@ -38,18 +38,84 @@ const mapSchemaTypeToTsConfig = (type: SchemaType): string => {
     case "dynamic":
       return "unknown";
     case "list":
-      if (type.inner.kind === "string") return "TfStringList";
-      if (type.inner.kind === "number") return "TfNumberList";
       return `readonly ${mapSchemaTypeToTsConfig(type.inner)}[]`;
     case "set":
-      if (type.inner.kind === "string") return "TfStringList";
-      if (type.inner.kind === "number") return "TfNumberList";
       return `readonly ${mapSchemaTypeToTsConfig(type.inner)}[]`;
     case "map":
       if (type.inner.kind === "string") return "TfStringMap";
       return `Readonly<Record<string, ${mapSchemaTypeToTsConfig(type.inner)}>>`;
     case "object":
       return "unknown";
+    case "tuple":
+      return "unknown";
+  }
+};
+
+type OutputTypeInfo =
+  | { readonly kind: "primitive"; readonly returnType: string; readonly method: string }
+  | { readonly kind: "list"; readonly innerType: string };
+
+const mapSchemaTypeToOutput = (type: SchemaType): OutputTypeInfo => {
+  switch (type.kind) {
+    case "string":
+      return { kind: "primitive", returnType: "TokenValue<string>", method: "getStringAttribute" };
+    case "number":
+      return { kind: "primitive", returnType: "TokenValue<number>", method: "getNumberAttribute" };
+    case "bool":
+      return {
+        kind: "primitive",
+        returnType: "TokenValue<boolean>",
+        method: "getBooleanAttribute",
+      };
+    case "list":
+    case "set":
+      return { kind: "list", innerType: mapSchemaTypeToTokenValue(type.inner) };
+    case "map":
+      return {
+        kind: "primitive",
+        returnType: `TokenValue<Readonly<Record<string, ${mapSchemaTypeToTsOutput(type.inner)}>>>`,
+        method: "getMapAttribute",
+      };
+    case "dynamic":
+    case "object":
+    case "tuple":
+      return { kind: "primitive", returnType: "TokenValue<unknown>", method: "getStringAttribute" };
+  }
+};
+
+const mapSchemaTypeToTokenValue = (type: SchemaType): string => {
+  switch (type.kind) {
+    case "string":
+      return "TokenValue<string>";
+    case "number":
+      return "TokenValue<number>";
+    case "bool":
+      return "TokenValue<boolean>";
+    case "dynamic":
+    case "object":
+    case "tuple":
+    case "map":
+    case "set":
+    case "list":
+      return "TokenValue<unknown>";
+  }
+};
+
+const mapSchemaTypeToTsOutput = (type: SchemaType): string => {
+  switch (type.kind) {
+    case "string":
+      return "string";
+    case "number":
+      return "number";
+    case "bool":
+      return "boolean";
+    case "list":
+    case "set":
+      return `readonly ${mapSchemaTypeToTsOutput(type.inner)}[]`;
+    case "map":
+      return `Readonly<Record<string, ${mapSchemaTypeToTsOutput(type.inner)}>>`;
+    case "dynamic":
+    case "object":
     case "tuple":
       return "unknown";
   }
@@ -262,6 +328,16 @@ const hasComputedListObjectAttrs = (block: SchemaBlock): boolean =>
     (attr) => getComputedListObjectSchema(attr) !== undefined,
   );
 
+const hasComputedPrimitiveListAttrs = (block: SchemaBlock): boolean =>
+  Object.values(block.attributes ?? {}).some(
+    (attr) =>
+      attr.computed === true &&
+      (attr.type.kind === "list" || attr.type.kind === "set") &&
+      (attr.type.inner.kind === "string" ||
+        attr.type.inner.kind === "number" ||
+        attr.type.inner.kind === "bool"),
+  );
+
 const hasComputedBlockTypes = (block: SchemaBlock): boolean => {
   const checkBlock = (b: SchemaBlock): boolean =>
     Object.values(b.block_types ?? {}).some(
@@ -292,8 +368,13 @@ const generateImports = (
   const types = [...new Set([...baseTypes, ...providerTypes, ...tfTypes])].sort();
 
   const needsComputed = hasComputedBlockTypes(block) || hasComputedListObjectAttrs(block);
-  const computedValues = needsComputed ? ["ComputedList", "ComputedObject"] : [];
-  const values = [...new Set([baseClass, ...computedValues])].sort();
+  const needsPrimitiveList = hasComputedPrimitiveListAttrs(block);
+  const computedValues = needsComputed || needsPrimitiveList ? ["ComputedList"] : [];
+  const computedObjectValues = needsComputed ? ["ComputedObject"] : [];
+  const primitiveListValues = needsPrimitiveList ? ["TokenValue", "raw"] : [];
+  const values = [
+    ...new Set([baseClass, ...computedValues, ...computedObjectValues, ...primitiveListValues]),
+  ].sort();
 
   return `import type { ${types.join(", ")} } from "tfts";
 import { ${values.join(", ")} } from "tfts";`;
@@ -359,10 +440,16 @@ const generateGetters = (block: SchemaBlock): string =>
       ([name, attr]) =>
         !RESERVED_NAMES.has(snakeToCamelCase(name)) && !getComputedListObjectSchema(attr),
     )
-    .map(([name]) => {
+    .map(([name, attr]) => {
       const tsName = snakeToCamelCase(name);
-      return `  get ${tsName}(): TokenValue<string> {
-    return this.getStringAttribute("${name}");
+      const outputInfo = mapSchemaTypeToOutput(attr.type);
+      if (outputInfo.kind === "list") {
+        return `  get ${tsName}(): ComputedList<${outputInfo.innerType}> {
+    return new ComputedList(this.fqn, "${name}", (fqn, idx) => new TokenValue(raw(\`\\\${$\{fqn}.${name}[$\{idx}]}\`)));
+  }`;
+      }
+      return `  get ${tsName}(): ${outputInfo.returnType} {
+    return this.${outputInfo.method}("${name}");
   }`;
     })
     .join("\n\n");

@@ -76,4 +76,22 @@ export abstract class TerraformResource extends Construct {
       raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
     );
   }
+
+  getNumberAttribute(attribute: string): TokenValue<number> {
+    return new TokenValue(
+      raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
+    );
+  }
+
+  getBooleanAttribute(attribute: string): TokenValue<boolean> {
+    return new TokenValue(
+      raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
+    );
+  }
+
+  getMapAttribute<T>(attribute: string): TokenValue<Readonly<Record<string, T>>> {
+    return new TokenValue(
+      raw(`\${${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
+    );
+  }
 }

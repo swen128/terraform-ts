@@ -23,6 +23,10 @@ export const simpleProvider: RawProviderSchema = {
               enabled: { type: "bool", optional: true },
               count: { type: "number", optional: true },
               tags: { type: ["map", "string"], optional: true },
+              // Computed attributes of different types for getter tests
+              computed_bool: { type: "bool", computed: true },
+              computed_number: { type: "number", computed: true },
+              computed_list: { type: ["list", "string"], computed: true },
             },
             block_types: {
               config: {

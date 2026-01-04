@@ -181,10 +181,32 @@ describe("getters", () => {
     expect(content).toContain("get location(): TokenValue<string> {");
   });
 
-  test("getter format: return this.getStringAttribute(tf_name)", () => {
+  test("string getter: TokenValue<string> with getStringAttribute", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
     const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get secretId(): TokenValue<string> {");
     expect(content).toContain('return this.getStringAttribute("secret_id");');
+  });
+
+  test("bool getter: TokenValue<boolean> with getBooleanAttribute", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedBool(): TokenValue<boolean> {");
+    expect(content).toContain('return this.getBooleanAttribute("computed_bool");');
+  });
+
+  test("number getter: TokenValue<number> with getNumberAttribute", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedNumber(): TokenValue<number> {");
+    expect(content).toContain('return this.getNumberAttribute("computed_number");');
+  });
+
+  test("list getter: ComputedList<TokenValue<string>> with element access", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedList(): ComputedList<TokenValue<string>> {");
+    expect(content).toContain('return new ComputedList(this.fqn, "computed_list"');
   });
 });
 
@@ -303,8 +325,8 @@ describe("imports", () => {
   test("does not duplicate base class in type and value imports", () => {
     const files = generateProviderFiles("simple", simpleProvider);
     const content = getContent(files, "resource/index.ts");
-    // Should have value import only, not in type import
-    expect(content).toContain('import { TerraformResource } from "tfts"');
+    // Should have value import with TerraformResource, not in type import
+    expect(content).toMatch(/import \{[^}]*\bTerraformResource\b[^}]*\} from "tfts"/);
     expect(content).not.toMatch(/import type \{[^}]*\bTerraformResource\b[^}]*\}/);
   });
 
