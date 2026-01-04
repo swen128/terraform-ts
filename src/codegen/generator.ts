@@ -479,8 +479,9 @@ ${constructorBody}
     this._config = config;
   }
 
-  static importFrom(scope: Construct, id: string, resourceId: TfString, provider?: TerraformProvider): ${className} {
-    return new ${className}(scope, id, { lifecycle: { importId: resourceId }, provider } as ${className}Config);
+  importFrom(resourceId: TfString): this {
+    this.lifecycle = { ...this.lifecycle, importId: resourceId };
+    return this;
   }${getterSection}
 }
 `;

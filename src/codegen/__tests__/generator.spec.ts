@@ -279,25 +279,18 @@ describe("input getters", () => {
   });
 });
 
-describe("importFrom static method", () => {
-  test("generates importFrom static method on resources", () => {
+describe("importFrom instance method", () => {
+  test("generates importFrom instance method on resources", () => {
     const files = generateProviderFiles("simple", simpleProvider);
     const content = getContent(files, "resource/index.ts");
-    expect(content).toContain("static importFrom(");
+    expect(content).toContain("importFrom(resourceId: TfString): this {");
   });
 
-  test("importFrom has correct signature", () => {
+  test("importFrom sets lifecycle importId and returns this", () => {
     const files = generateProviderFiles("simple", simpleProvider);
     const content = getContent(files, "resource/index.ts");
-    expect(content).toContain(
-      "static importFrom(scope: Construct, id: string, resourceId: TfString, provider?: TerraformProvider):",
-    );
-  });
-
-  test("importFrom returns instance with import lifecycle", () => {
-    const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "resource/index.ts");
-    expect(content).toContain("lifecycle: { importId: resourceId }");
+    expect(content).toContain("this.lifecycle = { ...this.lifecycle, importId: resourceId };");
+    expect(content).toContain("return this;");
   });
 });
 
