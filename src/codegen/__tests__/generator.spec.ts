@@ -208,6 +208,49 @@ describe("getters", () => {
     expect(content).toContain("get computedList(): ComputedList<TokenValue<string>> {");
     expect(content).toContain('return new ComputedList(this.fqn, "computed_list"');
   });
+
+  test("number list getter: ComputedList<TokenValue<number>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedNumberList(): ComputedList<TokenValue<number>> {");
+  });
+
+  test("map getter: TokenValue<Readonly<Record<string, string>>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedMap(): TokenValue<Readonly<Record<string, string>>> {");
+    expect(content).toContain('return this.getMapAttribute("computed_map");');
+  });
+
+  test("list of maps getter: ComputedList<TokenValue<Readonly<Record<string, string>>>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain(
+      "get computedListOfMaps(): ComputedList<TokenValue<Readonly<Record<string, string>>>> {",
+    );
+  });
+
+  test("number map getter: TokenValue<Readonly<Record<string, number>>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain(
+      "get computedNumberMap(): TokenValue<Readonly<Record<string, number>>> {",
+    );
+  });
+
+  test("list of lists getter: ComputedList<TokenValue<readonly string[]>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain(
+      "get computedListOfLists(): ComputedList<TokenValue<readonly string[]>> {",
+    );
+  });
+
+  test("bool set getter: ComputedList<TokenValue<boolean>>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "resource/index.ts");
+    expect(content).toContain("get computedBoolSet(): ComputedList<TokenValue<boolean>> {");
+  });
 });
 
 describe("attribute type mappings", () => {

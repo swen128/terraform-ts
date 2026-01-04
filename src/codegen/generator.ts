@@ -91,12 +91,14 @@ const mapSchemaTypeToTokenValue = (type: SchemaType): string => {
       return "TokenValue<number>";
     case "bool":
       return "TokenValue<boolean>";
+    case "map":
+      return `TokenValue<Readonly<Record<string, ${mapSchemaTypeToTsOutput(type.inner)}>>>`;
+    case "list":
+    case "set":
+      return `TokenValue<readonly ${mapSchemaTypeToTsOutput(type.inner)}[]>`;
     case "dynamic":
     case "object":
     case "tuple":
-    case "map":
-    case "set":
-    case "list":
       return "TokenValue<unknown>";
   }
 };

@@ -27,6 +27,12 @@ export const simpleProvider: RawProviderSchema = {
               computed_bool: { type: "bool", computed: true },
               computed_number: { type: "number", computed: true },
               computed_list: { type: ["list", "string"], computed: true },
+              computed_number_list: { type: ["list", "number"], computed: true },
+              computed_map: { type: ["map", "string"], computed: true },
+              computed_list_of_maps: { type: ["list", ["map", "string"]], computed: true },
+              computed_number_map: { type: ["map", "number"], computed: true },
+              computed_list_of_lists: { type: ["list", ["list", "string"]], computed: true },
+              computed_bool_set: { type: ["set", "bool"], computed: true },
             },
             block_types: {
               config: {
