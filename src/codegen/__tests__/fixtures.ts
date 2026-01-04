@@ -137,3 +137,35 @@ export const nestingModesProvider: ProviderSchema = {
     },
   },
 };
+
+// Fixture for computed list/object attributes (like google_cloud_run_service.status)
+export const computedListProvider: ProviderSchema = {
+  format_version: "1.0",
+  provider_schemas: {
+    "registry.terraform.io/hashicorp/google": {
+      provider: { version: 0, block: { attributes: {} } },
+      resource_schemas: {
+        google_cloud_run_service: {
+          version: 0,
+          block: {
+            attributes: {
+              id: { type: "string", computed: true },
+              name: { type: "string", required: true },
+            },
+            block_types: {
+              status: {
+                nesting_mode: "list",
+                block: {
+                  attributes: {
+                    url: { type: "string", computed: true },
+                    latest_ready_revision_name: { type: "string", computed: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};

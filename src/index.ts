@@ -23,6 +23,8 @@ export {
   containsTokens,
   resolveTokens,
   TokenValue,
+  ComputedList,
+  ComputedObject,
 } from "./core/tokens.js";
 
 export { Fn } from "./generated/fn.js";

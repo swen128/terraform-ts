@@ -138,6 +138,91 @@ const RESERVED_NAMES = new Set([
   "provisioners",
 ]);
 
+const hasComputedAttributes = (block: SchemaBlock): boolean =>
+  Object.values(block.attributes ?? {}).some((attr) => attr.computed === true);
+
+type OutputClassInfo = {
+  readonly className: string;
+  readonly code: string;
+};
+
+// Generate output classes for computed block types
+const generateOutputClasses = (
+  block: SchemaBlock,
+  baseClassName: string,
+  registry: TypeNameRegistry,
+): readonly OutputClassInfo[] => {
+  const result: OutputClassInfo[] = [];
+
+  if (!block.block_types) {
+    return result;
+  }
+
+  for (const [name, blockType] of Object.entries(block.block_types)) {
+    if (!hasComputedAttributes(blockType.block)) {
+      continue;
+    }
+
+    const outputClassName = registerTypeName(
+      registry,
+      `${baseClassName}${snakeToPascalCase(name)}Output`,
+    );
+
+    // Generate getters for computed attributes
+    const getters: string[] = [];
+    if (blockType.block.attributes) {
+      for (const [attrName, attr] of Object.entries(blockType.block.attributes)) {
+        if (attr.computed !== true) continue;
+        const tsName = snakeToCamelCase(attrName);
+        getters.push(`  get ${tsName}(): TokenValue<string> {
+    return this._getStringAttribute("${attrName}");
+  }`);
+      }
+    }
+
+    const code = `class ${outputClassName} extends ComputedObject {
+${getters.join("\n\n")}
+}`;
+    result.push({ className: outputClassName, code });
+  }
+
+  return result;
+};
+
+// Generate getters for computed block types
+const generateBlockGetters = (block: SchemaBlock, baseClassName: string): string => {
+  if (!block.block_types) {
+    return "";
+  }
+
+  const getters: string[] = [];
+
+  for (const [name, blockType] of Object.entries(block.block_types)) {
+    if (!hasComputedAttributes(blockType.block)) {
+      continue;
+    }
+
+    const tsName = snakeToCamelCase(name);
+    if (RESERVED_NAMES.has(tsName)) {
+      continue;
+    }
+
+    const outputClassName = `${baseClassName}${snakeToPascalCase(name)}Output`;
+
+    if (blockType.nesting_mode === "list" || blockType.nesting_mode === "set") {
+      getters.push(`  get ${tsName}(): ComputedList<${outputClassName}> {
+    return new ComputedList(this.fqn, "${name}", (fqn, path) => new ${outputClassName}(fqn, path));
+  }`);
+    } else if (blockType.nesting_mode === "single") {
+      getters.push(`  get ${tsName}(): ${outputClassName} {
+    return new ${outputClassName}(this.fqn, "${name}");
+  }`);
+    }
+  }
+
+  return getters.join("\n\n");
+};
+
 type BlockTypeInfo = {
   readonly typeName: string;
   readonly code: string;
@@ -221,9 +306,13 @@ const generateImports = (
     }
   }
 
+  let hasComputedBlocks = false;
   const collectBlockTypes = (b: SchemaBlock): void => {
     if (b.block_types) {
       for (const blockType of Object.values(b.block_types)) {
+        if (hasComputedAttributes(blockType.block)) {
+          hasComputedBlocks = true;
+        }
         if (blockType.block.attributes) {
           for (const attr of Object.values(blockType.block.attributes)) {
             const tsType = mapSchemaTypeToTsConfig(attr.type);
@@ -238,9 +327,16 @@ const generateImports = (
   };
   collectBlockTypes(block);
 
+  const values = new Set<string>([baseClass]);
+  if (hasComputedBlocks) {
+    values.add("ComputedList");
+    values.add("ComputedObject");
+  }
+
   const sortedTypes = Array.from(types).sort();
+  const sortedValues = Array.from(values).sort();
   return `import type { ${sortedTypes.join(", ")} } from "tfts";
-import { ${baseClass} } from "tfts";`;
+import { ${sortedValues.join(", ")} } from "tfts";`;
 };
 
 const generateConfigTypeWithName = (
@@ -381,6 +477,7 @@ const generateResourceClass = (
   registry.usedNames.add(`${className}Config`);
 
   const blockTypes = generateBlockTypes(block, className, registry);
+  const outputClasses = generateOutputClasses(block, className, registry);
   const imports = generateImports("TerraformResource", "TerraformResourceConfig", block, true);
   const configType = generateConfigTypeWithName(
     `${className}Config`,
@@ -392,16 +489,20 @@ const generateResourceClass = (
   const constructorBody = generateConstructorBody(block);
   const getters = generateGetters(block);
   const inputGetters = generateInputGetters(block);
+  const blockGetters = generateBlockGetters(block, className);
 
   const blockTypeCode =
     blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
 
-  const allGetters = [getters, inputGetters].filter(Boolean).join("\n\n");
+  const outputClassCode =
+    outputClasses.length > 0 ? outputClasses.map((oc) => oc.code).join("\n\n") + "\n\n" : "";
+
+  const allGetters = [getters, inputGetters, blockGetters].filter(Boolean).join("\n\n");
   const getterSection = allGetters ? `\n\n${allGetters}` : "";
 
   return `${imports}
 
-${blockTypeCode}${configType}
+${blockTypeCode}${outputClassCode}${configType}
 
 export class ${className} extends TerraformResource {
   private readonly _config: ${className}Config;

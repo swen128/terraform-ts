@@ -129,3 +129,39 @@ export type TfNumberList = readonly number[] | TokenValue<readonly number[]>;
 export type TfStringMap =
   | Readonly<Record<string, string>>
   | TokenValue<Readonly<Record<string, string>>>;
+
+// ComputedList: accessor for computed list blocks with .get(index) method
+export class ComputedList<T> {
+  constructor(
+    private readonly _fqn: string,
+    private readonly _attribute: string,
+    private readonly _elementFactory: (fqn: string, attribute: string) => T,
+  ) {}
+
+  get(index: number): T {
+    return this._elementFactory(this._fqn, `${this._attribute}.${index}`);
+  }
+}
+
+// ComputedObject: accessor for computed nested object blocks
+export class ComputedObject {
+  constructor(
+    protected readonly _fqn: string,
+    protected readonly _basePath: string,
+  ) {}
+
+  protected _getStringAttribute(name: string): TokenValue<string> {
+    const path = this._basePath ? `${this._basePath}.${name}` : name;
+    return new TokenValue(new RefToken(this._fqn, path));
+  }
+
+  protected _getNumberAttribute(name: string): TokenValue<number> {
+    const path = this._basePath ? `${this._basePath}.${name}` : name;
+    return new TokenValue(new RefToken(this._fqn, path));
+  }
+
+  protected _getBooleanAttribute(name: string): TokenValue<boolean> {
+    const path = this._basePath ? `${this._basePath}.${name}` : name;
+    return new TokenValue(new RefToken(this._fqn, path));
+  }
+}

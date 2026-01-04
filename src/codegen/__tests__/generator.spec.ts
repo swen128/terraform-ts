@@ -1,6 +1,11 @@
 import { test, expect, describe } from "bun:test";
 import { generateProviderFiles } from "../generator.js";
-import { simpleProvider, multiwordProvider, nestingModesProvider } from "./fixtures.js";
+import {
+  simpleProvider,
+  multiwordProvider,
+  nestingModesProvider,
+  computedListProvider,
+} from "./fixtures.js";
 
 const getContent = (files: ReadonlyMap<string, string>, path: string): string => {
   const content = files.get(path);
@@ -311,5 +316,28 @@ describe("provider config", () => {
     const content = getContent(files, "provider/index.ts");
     expect(content).toContain("readonly apiKey: TfString");
     expect(content).toContain("readonly region?: TfString");
+  });
+});
+
+describe("computed list accessor", () => {
+  test("generates getter returning ComputedList for computed list blocks", () => {
+    const files = generateProviderFiles("google", computedListProvider);
+    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    // Should generate: get status(): ComputedList<CloudRunServiceStatusOutput>
+    expect(content).toContain("get status(): ComputedList<CloudRunServiceStatusOutput>");
+  });
+
+  test("generates output class with getters for computed attributes", () => {
+    const files = generateProviderFiles("google", computedListProvider);
+    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    expect(content).toContain("class CloudRunServiceStatusOutput extends ComputedObject");
+    expect(content).toContain("get url(): TokenValue<string>");
+    expect(content).toContain("get latestReadyRevisionName(): TokenValue<string>");
+  });
+
+  test("imports ComputedList and ComputedObject when needed", () => {
+    const files = generateProviderFiles("google", computedListProvider);
+    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    expect(content).toContain("import { ComputedList, ComputedObject, TerraformResource } from");
   });
 });
