@@ -109,6 +109,12 @@ export default [
     },
   },
   {
+    files: ["src/generated/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
     ignores: ["node_modules/", "dist/", "*.config.js"],
   },
 ];

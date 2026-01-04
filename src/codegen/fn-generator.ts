@@ -70,7 +70,7 @@ const mapReturnTypeToTs = (type: ParameterType): string => {
     if (t === "string") return "string";
     if (t === "number") return "number";
     if (t === "bool") return "boolean";
-    if (t === "dynamic") return "unknown";
+    if (t === "dynamic") return "any";
 
     const [container, inner] = t;
     if (container === "list" || container === "set") {

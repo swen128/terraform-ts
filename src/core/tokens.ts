@@ -125,7 +125,7 @@ export type TfString = string | TokenValue<string>;
 export type TfNumber = number | TokenValue<number>;
 export type TfBoolean = boolean | TokenValue<boolean>;
 export type TfStringMap =
-  | Readonly<Record<string, string>>
+  | Readonly<Record<string, TfString>>
   | TokenValue<Readonly<Record<string, string>>>;
 
 // ComputedList: accessor for computed list blocks with .get(index) method
