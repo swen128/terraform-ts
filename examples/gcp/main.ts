@@ -1,7 +1,7 @@
 import { App, TerraformStack, TerraformOutput } from "tfts";
 import { GoogleProvider } from "./.gen/providers/google/provider/index.js";
-import { ComputeNetwork } from "./.gen/providers/google/lib/compute-network/index.js";
-import { ComputeInstance } from "./.gen/providers/google/lib/compute-instance/index.js";
+import { ComputeNetwork } from "./.gen/providers/google/compute-network/index.js";
+import { ComputeInstance } from "./.gen/providers/google/compute-instance/index.js";
 
 const app = new App();
 const stack = new TerraformStack(app, "gcp-example");

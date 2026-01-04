@@ -604,11 +604,11 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
     for (const [resourceName, resourceSchema] of Object.entries(schemaEntry.resource_schemas)) {
       const strippedName = stripProviderPrefix(resourceName, name);
       const kebabName = snakeToKebabCase(strippedName);
-      const path = `lib/${kebabName}/index.ts`;
+      const path = `${kebabName}/index.ts`;
       files.set(path, generateResourceClass(resourceName, name, resourceSchema.block));
       namespaceExports.push({
         namespace: snakeToCamelCase(strippedName),
-        path: `lib/${kebabName}/index.js`,
+        path: `${kebabName}/index.js`,
       });
     }
   }
@@ -620,11 +620,11 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
     )) {
       const strippedName = stripProviderPrefix(dataSourceName, name);
       const kebabName = snakeToKebabCase(strippedName);
-      const path = `lib/data-${kebabName}/index.ts`;
+      const path = `data-${kebabName}/index.ts`;
       files.set(path, generateDataSourceClass(dataSourceName, name, dataSourceSchema.block));
       namespaceExports.push({
         namespace: `data${snakeToPascalCase(strippedName)}`,
-        path: `lib/data-${kebabName}/index.js`,
+        path: `data-${kebabName}/index.js`,
       });
     }
   }

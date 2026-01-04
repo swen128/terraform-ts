@@ -21,23 +21,23 @@ describe("file structure", () => {
     expect(files.has("provider/index.ts")).toBe(true);
   });
 
-  test("generates resources at lib/{name}/index.ts", () => {
+  test("generates resources at {name}/index.ts", () => {
     const files = generateProviderFiles("google", multiwordProvider);
-    expect(files.has("lib/alloydb-cluster/index.ts")).toBe(true);
-    expect(files.has("lib/storage-bucket/index.ts")).toBe(true);
+    expect(files.has("alloydb-cluster/index.ts")).toBe(true);
+    expect(files.has("storage-bucket/index.ts")).toBe(true);
   });
 
-  test("generates data sources at lib/data-{name}/index.ts", () => {
+  test("generates data sources at data-{name}/index.ts", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    expect(files.has("lib/data-data/index.ts")).toBe(true);
+    expect(files.has("data-data/index.ts")).toBe(true);
   });
 
   test("generates index.ts with namespace exports", () => {
     const files = generateProviderFiles("google", multiwordProvider);
     const index = getContent(files, "index.ts");
     expect(index).toContain('export * as provider from "./provider/index.js"');
-    expect(index).toContain('export * as alloydbCluster from "./lib/alloydb-cluster/index.js"');
-    expect(index).toContain('export * as storageBucket from "./lib/storage-bucket/index.js"');
+    expect(index).toContain('export * as alloydbCluster from "./alloydb-cluster/index.js"');
+    expect(index).toContain('export * as storageBucket from "./storage-bucket/index.js"');
   });
 });
 
@@ -50,13 +50,13 @@ describe("class naming", () => {
 
   test("resource class: strips provider prefix, PascalCase", () => {
     const files = generateProviderFiles("google", multiwordProvider);
-    const content = getContent(files, "lib/alloydb-cluster/index.ts");
+    const content = getContent(files, "alloydb-cluster/index.ts");
     expect(content).toContain("export class AlloydbCluster extends TerraformResource");
   });
 
   test("data source class: Data{Name}", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/data-data/index.ts");
+    const content = getContent(files, "data-data/index.ts");
     expect(content).toContain("export class DataData extends TerraformDataSource");
   });
 });
@@ -64,13 +64,13 @@ describe("class naming", () => {
 describe("type naming", () => {
   test("config type: {ClassName}Config", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("export type ResourceConfig = {");
   });
 
   test("nested block type: {ClassName}{BlockName} (not {ClassName}Config{BlockName})", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
 
     // Correct: ResourceSingleBlock
     expect(content).toContain("export type ResourceSingleBlock = {");
@@ -85,7 +85,7 @@ describe("type naming", () => {
 
   test("collision: append A when type name exists", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
 
     // ResourceConfig exists for the config type
     // Nested block "config" would also be ResourceConfig -> becomes ResourceConfigA
@@ -97,7 +97,7 @@ describe("type naming", () => {
 describe("property naming", () => {
   test("converts snake_case to camelCase", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly secretId?:");
     expect(content).toContain("readonly singleBlock?:");
     expect(content).toContain("readonly listBlock?:");
@@ -107,7 +107,7 @@ describe("property naming", () => {
 
   test("uses snake_case in terraform attribute mapping", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("secret_id: config.secretId");
     expect(content).toContain("single_block: config.singleBlock");
   });
@@ -116,26 +116,26 @@ describe("property naming", () => {
 describe("block nesting modes", () => {
   test("single: generates T", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly singleBlock?: ResourceSingleBlock;");
     expect(content).not.toContain("readonly singleBlock?: ResourceSingleBlock |");
   });
 
   test("list without max_items=1: generates readonly T[]", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly listBlock?: readonly ResourceListBlock[];");
   });
 
   test("set: generates readonly T[]", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly setBlock?: readonly ResourceSetBlock[];");
   });
 
   test("list with max_items=1: generates T | readonly T[]", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain(
       "readonly singleItemList?: ResourceSingleItemList | readonly ResourceSingleItemList[];",
     );
@@ -145,14 +145,14 @@ describe("block nesting modes", () => {
 describe("constructor body", () => {
   test("regular properties: tf_name: config.tsName", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("secret_id: config.secretId,");
     expect(content).toContain("single_block: config.singleBlock,");
   });
 
   test("max_items=1 blocks: array normalization", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain(
       "single_item_list: config.singleItemList !== undefined ? (Array.isArray(config.singleItemList) ? config.singleItemList : [config.singleItemList]) : undefined,",
     );
@@ -162,7 +162,7 @@ describe("constructor body", () => {
 describe("getters", () => {
   test("generates getters for all attributes", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("get id(): TokenValue<string> {");
     expect(content).toContain("get name(): TokenValue<string> {");
     expect(content).toContain("get secretId(): TokenValue<string> {");
@@ -171,7 +171,7 @@ describe("getters", () => {
 
   test("getter format: return this.getStringAttribute(tf_name)", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain('return this.getStringAttribute("secret_id");');
   });
 });
@@ -179,25 +179,25 @@ describe("getters", () => {
 describe("attribute type mappings", () => {
   test("string -> TfString in config", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly name: TfString;");
   });
 
   test("bool -> TfBoolean in config", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly enabled?: TfBoolean;");
   });
 
   test("number -> TfNumber in config", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly count?: TfNumber;");
   });
 
   test('["map", "string"] -> TfStringMap in config', () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly tags?: TfStringMap;");
   });
 });
@@ -205,32 +205,32 @@ describe("attribute type mappings", () => {
 describe("optionality", () => {
   test("required: true -> required property", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly name: TfString;"); // no ?
   });
 
   test("optional: true -> optional property", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly enabled?: TfBoolean;");
   });
 
   test("computed: true -> optional property", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly id?: TfString;");
   });
 
   test("block with min_items undefined or 0 -> optional", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("readonly singleBlock?:");
     expect(content).toContain("readonly listBlock?:");
   });
 
   test("block with min_items >= 1 -> required", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     // items has min_items: 1
     expect(content).toContain("readonly items: readonly ResourceItems[];");
   });
@@ -239,7 +239,7 @@ describe("optionality", () => {
 describe("input getters", () => {
   test("generates *Input getters for non-computed attributes", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     // Should have nameInput for required attribute
     expect(content).toContain("get nameInput():");
     // Should have enabledInput for optional attribute
@@ -252,14 +252,14 @@ describe("input getters", () => {
 
   test("does not generate *Input getters for computed-only attributes", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     // id is computed-only, should not have idInput
     expect(content).not.toContain("get idInput():");
   });
 
   test("*Input getter returns the config value type", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("get nameInput(): TfString | undefined {");
     expect(content).toContain("return this._config.name;");
   });
@@ -268,13 +268,13 @@ describe("input getters", () => {
 describe("importFrom static method", () => {
   test("generates importFrom static method on resources", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("static importFrom(");
   });
 
   test("importFrom has correct signature", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain(
       "static importFrom(scope: Construct, id: string, resourceId: TfString, provider?: TerraformProvider):",
     );
@@ -282,7 +282,7 @@ describe("importFrom static method", () => {
 
   test("importFrom returns instance with import lifecycle", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("lifecycle: { importId: resourceId }");
   });
 });
@@ -290,14 +290,14 @@ describe("importFrom static method", () => {
 describe("imports", () => {
   test("imports TokenValue instead of TokenString", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("TokenValue");
     expect(content).not.toContain("TokenString");
   });
 
   test("does not duplicate base class in type and value imports", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     // Should have value import only, not in type import
     expect(content).toContain('import { TerraformResource } from "tfts"');
     expect(content).not.toMatch(/import type \{[^}]*\bTerraformResource\b[^}]*\}/);
@@ -305,7 +305,7 @@ describe("imports", () => {
 
   test("getter returns TokenValue<string>", () => {
     const files = generateProviderFiles("simple", simpleProvider);
-    const content = getContent(files, "lib/resource/index.ts");
+    const content = getContent(files, "resource/index.ts");
     expect(content).toContain("get name(): TokenValue<string>");
   });
 });
@@ -322,14 +322,14 @@ describe("provider config", () => {
 describe("computed list accessor", () => {
   test("generates getter returning ComputedList for computed list blocks", () => {
     const files = generateProviderFiles("google", computedListProvider);
-    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    const content = getContent(files, "cloud-run-service/index.ts");
     // Should generate: get status(): ComputedList<CloudRunServiceStatusOutput>
     expect(content).toContain("get status(): ComputedList<CloudRunServiceStatusOutput>");
   });
 
   test("generates output class with getters for computed attributes", () => {
     const files = generateProviderFiles("google", computedListProvider);
-    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    const content = getContent(files, "cloud-run-service/index.ts");
     expect(content).toContain("class CloudRunServiceStatusOutput extends ComputedObject");
     expect(content).toContain("get url(): TokenValue<string>");
     expect(content).toContain("get latestReadyRevisionName(): TokenValue<string>");
@@ -337,7 +337,7 @@ describe("computed list accessor", () => {
 
   test("imports ComputedList and ComputedObject when needed", () => {
     const files = generateProviderFiles("google", computedListProvider);
-    const content = getContent(files, "lib/cloud-run-service/index.ts");
+    const content = getContent(files, "cloud-run-service/index.ts");
     expect(content).toContain("import { ComputedList, ComputedObject, TerraformResource } from");
   });
 });
