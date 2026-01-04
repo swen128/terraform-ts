@@ -1,16 +1,26 @@
 import { ok, err, type Result } from "neverthrow";
 import { z } from "zod";
 
+export type {
+  RawProviderSchema,
+  RawSchemaType,
+  RawAttributeSchema,
+  RawBlockTypeSchema,
+  RawSchemaBlock,
+  RawResourceSchema,
+  RawProviderSchemaEntry,
+} from "./raw-schema.js";
+
 export type SchemaType =
-  | "string"
-  | "number"
-  | "bool"
-  | "dynamic"
-  | readonly ["list", SchemaType]
-  | readonly ["set", SchemaType]
-  | readonly ["map", SchemaType]
-  | readonly ["object", Readonly<Record<string, SchemaType>>]
-  | readonly ["tuple", readonly SchemaType[]];
+  | { readonly kind: "string" }
+  | { readonly kind: "number" }
+  | { readonly kind: "bool" }
+  | { readonly kind: "dynamic" }
+  | { readonly kind: "list"; readonly inner: SchemaType }
+  | { readonly kind: "set"; readonly inner: SchemaType }
+  | { readonly kind: "map"; readonly inner: SchemaType }
+  | { readonly kind: "object"; readonly fields: Readonly<Record<string, SchemaType>> }
+  | { readonly kind: "tuple"; readonly elements: readonly SchemaType[] };
 
 export type AttributeSchema = {
   readonly type: SchemaType;
@@ -54,21 +64,32 @@ export type ProviderSchema = {
   readonly provider_schemas: Readonly<Record<string, ProviderSchemaEntry>>;
 };
 
+// Zod schemas for parsing raw JSON to internal types
 const SchemaTypeSchema: z.ZodType<SchemaType> = z.lazy(() =>
   z.union([
-    z.literal("string"),
-    z.literal("number"),
-    z.literal("bool"),
-    z.literal("dynamic"),
-    z.tuple([z.literal("list"), SchemaTypeSchema]),
-    z.tuple([z.literal("set"), SchemaTypeSchema]),
-    z.tuple([z.literal("map"), SchemaTypeSchema]),
-    z.tuple([z.literal("object"), z.record(z.string(), SchemaTypeSchema)]),
-    z.tuple([z.literal("tuple"), z.array(SchemaTypeSchema)]),
+    z.literal("string").transform(() => ({ kind: "string" }) as const),
+    z.literal("number").transform(() => ({ kind: "number" }) as const),
+    z.literal("bool").transform(() => ({ kind: "bool" }) as const),
+    z.literal("dynamic").transform(() => ({ kind: "dynamic" }) as const),
+    z
+      .tuple([z.literal("list"), SchemaTypeSchema])
+      .transform(([, inner]) => ({ kind: "list", inner }) as const),
+    z
+      .tuple([z.literal("set"), SchemaTypeSchema])
+      .transform(([, inner]) => ({ kind: "set", inner }) as const),
+    z
+      .tuple([z.literal("map"), SchemaTypeSchema])
+      .transform(([, inner]) => ({ kind: "map", inner }) as const),
+    z
+      .tuple([z.literal("object"), z.record(z.string(), SchemaTypeSchema)])
+      .transform(([, fields]) => ({ kind: "object", fields }) as const),
+    z
+      .tuple([z.literal("tuple"), z.array(SchemaTypeSchema)])
+      .transform(([, elements]) => ({ kind: "tuple", elements }) as const),
   ]),
 );
 
-const AttributeSchemaSchema: z.ZodType<AttributeSchema> = z.object({
+const AttributeSchemaSchema = z.object({
   type: SchemaTypeSchema,
   description: z.string().optional(),
   description_kind: z.enum(["plain", "markdown"]).optional(),
@@ -98,18 +119,18 @@ const SchemaBlockSchema: z.ZodType<SchemaBlock> = z.lazy(() =>
   }),
 );
 
-const ResourceSchemaSchema: z.ZodType<ResourceSchema> = z.object({
+const ResourceSchemaSchema = z.object({
   version: z.number(),
   block: SchemaBlockSchema,
 });
 
-const ProviderSchemaEntrySchema: z.ZodType<ProviderSchemaEntry> = z.object({
+const ProviderSchemaEntrySchema = z.object({
   provider: ResourceSchemaSchema,
   resource_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
   data_source_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
 });
 
-const ProviderSchemaSchema: z.ZodType<ProviderSchema> = z.object({
+const ProviderSchemaSchema = z.object({
   format_version: z.string(),
   provider_schemas: z.record(z.string(), ProviderSchemaEntrySchema),
 });

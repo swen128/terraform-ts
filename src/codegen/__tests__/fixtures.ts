@@ -1,6 +1,6 @@
-import type { ProviderSchema } from "../schema.js";
+import type { RawProviderSchema } from "../raw-schema.js";
 
-export const simpleProvider: ProviderSchema = {
+export const simpleProvider: RawProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/hashicorp/simple": {
@@ -62,7 +62,7 @@ export const simpleProvider: ProviderSchema = {
   },
 };
 
-export const multiwordProvider: ProviderSchema = {
+export const multiwordProvider: RawProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/hashicorp/google": {
@@ -89,7 +89,7 @@ export const multiwordProvider: ProviderSchema = {
   },
 };
 
-export const nestingModesProvider: ProviderSchema = {
+export const nestingModesProvider: RawProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/test/test": {
@@ -139,7 +139,7 @@ export const nestingModesProvider: ProviderSchema = {
 };
 
 // Fixture for computed list/object attributes (like google_cloud_run_service.status)
-export const computedListProvider: ProviderSchema = {
+export const computedListProvider: RawProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/hashicorp/google": {
@@ -161,6 +161,32 @@ export const computedListProvider: ProviderSchema = {
                     latest_ready_revision_name: { type: "string", computed: true },
                   },
                 },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+// Fixture for computed list/object ATTRIBUTES (type: ["list", ["object", {...}]])
+// This is different from block_types - it's an attribute with object type
+export const computedListAttrProvider: RawProviderSchema = {
+  format_version: "1.0",
+  provider_schemas: {
+    "registry.terraform.io/hashicorp/google": {
+      provider: { version: 0, block: { attributes: {} } },
+      resource_schemas: {
+        google_cloud_run_service: {
+          version: 0,
+          block: {
+            attributes: {
+              id: { type: "string", computed: true },
+              name: { type: "string", required: true },
+              status: {
+                type: ["list", ["object", { url: "string", latest_ready_revision_name: "string" }]],
+                computed: true,
               },
             },
           },

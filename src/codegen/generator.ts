@@ -28,39 +28,31 @@ const stripProviderPrefix = (name: string, providerName: string): string => {
 // --- Type mapping ---
 
 const mapSchemaTypeToTsConfig = (type: SchemaType): string => {
-  if (typeof type === "string") {
-    switch (type) {
-      case "string":
-        return "TfString";
-      case "number":
-        return "TfNumber";
-      case "bool":
-        return "TfBoolean";
-      case "dynamic":
-        return "unknown";
-    }
+  switch (type.kind) {
+    case "string":
+      return "TfString";
+    case "number":
+      return "TfNumber";
+    case "bool":
+      return "TfBoolean";
+    case "dynamic":
+      return "unknown";
+    case "list":
+      if (type.inner.kind === "string") return "TfStringList";
+      if (type.inner.kind === "number") return "TfNumberList";
+      return `readonly ${mapSchemaTypeToTsConfig(type.inner)}[]`;
+    case "set":
+      if (type.inner.kind === "string") return "TfStringList";
+      if (type.inner.kind === "number") return "TfNumberList";
+      return `readonly ${mapSchemaTypeToTsConfig(type.inner)}[]`;
+    case "map":
+      if (type.inner.kind === "string") return "TfStringMap";
+      return `Readonly<Record<string, ${mapSchemaTypeToTsConfig(type.inner)}>>`;
+    case "object":
+      return "unknown";
+    case "tuple":
+      return "unknown";
   }
-  if (Array.isArray(type)) {
-    const [container, inner] = type;
-    switch (container) {
-      case "list":
-        if (inner === "string") return "TfStringList";
-        if (inner === "number") return "TfNumberList";
-        return `readonly ${mapSchemaTypeToTsConfig(inner)}[]`;
-      case "set":
-        if (inner === "string") return "TfStringList";
-        if (inner === "number") return "TfNumberList";
-        return `readonly ${mapSchemaTypeToTsConfig(inner)}[]`;
-      case "map":
-        if (inner === "string") return "TfStringMap";
-        return `Readonly<Record<string, ${mapSchemaTypeToTsConfig(inner)}>>`;
-      case "object":
-        return "unknown";
-      case "tuple":
-        return "unknown";
-    }
-  }
-  return "unknown";
 };
 
 // --- Code generation helpers ---
@@ -138,6 +130,16 @@ const RESERVED_NAMES = new Set([
   "provisioners",
 ]);
 
+type ComputedObjectSchema = Readonly<Record<string, SchemaType>>;
+
+const getComputedListObjectSchema = (attr: AttributeSchema): ComputedObjectSchema | undefined => {
+  if (attr.computed !== true) return undefined;
+  const { type } = attr;
+  if (type.kind !== "list" && type.kind !== "set") return undefined;
+  if (type.inner.kind !== "object") return undefined;
+  return type.inner.fields;
+};
+
 const hasComputedAttributes = (block: SchemaBlock): boolean =>
   Object.values(block.attributes ?? {}).some((attr) => attr.computed === true);
 
@@ -146,81 +148,79 @@ type OutputClassInfo = {
   readonly code: string;
 };
 
-// Generate output classes for computed block types
+const makeOutputClass = (className: string, getters: readonly string[]): string =>
+  `class ${className} extends ComputedObject {\n${getters.join("\n\n")}\n}`;
+
+const makeGetter = (attrName: string): string => {
+  const tsName = snakeToCamelCase(attrName);
+  return `  get ${tsName}(): TokenValue<string> {\n    return this._getStringAttribute("${attrName}");\n  }`;
+};
+
+// Generate output classes for computed block types and computed list/object attributes
 const generateOutputClasses = (
   block: SchemaBlock,
   baseClassName: string,
   registry: TypeNameRegistry,
 ): readonly OutputClassInfo[] => {
-  const result: OutputClassInfo[] = [];
+  const fromAttrs = Object.entries(block.attributes ?? {})
+    .flatMap(([name, attr]) => {
+      const schema = getComputedListObjectSchema(attr);
+      if (schema === undefined) return [];
+      return [{ name, schema }];
+    })
+    .map(({ name, schema }) => {
+      const className = registerTypeName(
+        registry,
+        `${baseClassName}${snakeToPascalCase(name)}Output`,
+      );
+      const getters = Object.keys(schema).map(makeGetter);
+      return { className, code: makeOutputClass(className, getters) };
+    });
 
-  if (!block.block_types) {
-    return result;
-  }
+  const fromBlocks = Object.entries(block.block_types ?? {})
+    .filter(([, bt]) => hasComputedAttributes(bt.block))
+    .map(([name, blockType]) => {
+      const className = registerTypeName(
+        registry,
+        `${baseClassName}${snakeToPascalCase(name)}Output`,
+      );
+      const getters = Object.entries(blockType.block.attributes ?? {})
+        .filter(([, attr]) => attr.computed === true)
+        .map(([attrName]) => makeGetter(attrName));
+      return { className, code: makeOutputClass(className, getters) };
+    });
 
-  for (const [name, blockType] of Object.entries(block.block_types)) {
-    if (!hasComputedAttributes(blockType.block)) {
-      continue;
-    }
-
-    const outputClassName = registerTypeName(
-      registry,
-      `${baseClassName}${snakeToPascalCase(name)}Output`,
-    );
-
-    // Generate getters for computed attributes
-    const getters: string[] = [];
-    if (blockType.block.attributes) {
-      for (const [attrName, attr] of Object.entries(blockType.block.attributes)) {
-        if (attr.computed !== true) continue;
-        const tsName = snakeToCamelCase(attrName);
-        getters.push(`  get ${tsName}(): TokenValue<string> {
-    return this._getStringAttribute("${attrName}");
-  }`);
-      }
-    }
-
-    const code = `class ${outputClassName} extends ComputedObject {
-${getters.join("\n\n")}
-}`;
-    result.push({ className: outputClassName, code });
-  }
-
-  return result;
+  return [...fromAttrs, ...fromBlocks];
 };
 
-// Generate getters for computed block types
+// Generate getters for computed block types and computed list/object attributes
 const generateBlockGetters = (block: SchemaBlock, baseClassName: string): string => {
-  if (!block.block_types) {
-    return "";
-  }
+  const fromAttrs = Object.entries(block.attributes ?? {})
+    .filter(
+      ([name, attr]) =>
+        getComputedListObjectSchema(attr) !== undefined &&
+        !RESERVED_NAMES.has(snakeToCamelCase(name)),
+    )
+    .map(([name]) => {
+      const tsName = snakeToCamelCase(name);
+      const outputClassName = `${baseClassName}${snakeToPascalCase(name)}Output`;
+      return `  get ${tsName}(): ComputedList<${outputClassName}> {\n    return new ComputedList(this.fqn, "${name}", (fqn, path) => new ${outputClassName}(fqn, path));\n  }`;
+    });
 
-  const getters: string[] = [];
+  const fromBlocks = Object.entries(block.block_types ?? {})
+    .filter(
+      ([name, bt]) =>
+        hasComputedAttributes(bt.block) && !RESERVED_NAMES.has(snakeToCamelCase(name)),
+    )
+    .map(([name, blockType]) => {
+      const tsName = snakeToCamelCase(name);
+      const outputClassName = `${baseClassName}${snakeToPascalCase(name)}Output`;
+      return blockType.nesting_mode === "single"
+        ? `  get ${tsName}(): ${outputClassName} {\n    return new ${outputClassName}(this.fqn, "${name}");\n  }`
+        : `  get ${tsName}(): ComputedList<${outputClassName}> {\n    return new ComputedList(this.fqn, "${name}", (fqn, path) => new ${outputClassName}(fqn, path));\n  }`;
+    });
 
-  for (const [name, blockType] of Object.entries(block.block_types)) {
-    if (!hasComputedAttributes(blockType.block)) {
-      continue;
-    }
-
-    const tsName = snakeToCamelCase(name);
-    if (RESERVED_NAMES.has(tsName)) {
-      continue;
-    }
-
-    const outputClassName = `${baseClassName}${snakeToPascalCase(name)}Output`;
-
-    if (blockType.nesting_mode === "list" || blockType.nesting_mode === "set") {
-      getters.push(`  get ${tsName}(): ComputedList<${outputClassName}> {
-    return new ComputedList(this.fqn, "${name}", (fqn, path) => new ${outputClassName}(fqn, path));
-  }`);
-    } else if (blockType.nesting_mode === "single") {
-      getters.push(`  get ${tsName}(): ${outputClassName} {
-    return new ${outputClassName}(this.fqn, "${name}");
-  }`);
-    }
-  }
-
-  return getters.join("\n\n");
+  return [...fromAttrs, ...fromBlocks].join("\n\n");
 };
 
 type BlockTypeInfo = {
@@ -232,50 +232,63 @@ const generateBlockTypes = (
   block: SchemaBlock,
   className: string,
   registry: TypeNameRegistry,
-): readonly BlockTypeInfo[] => {
-  const result: BlockTypeInfo[] = [];
-
-  if (!block.block_types) {
-    return result;
-  }
-
-  for (const [name, blockType] of Object.entries(block.block_types)) {
+): readonly BlockTypeInfo[] =>
+  Object.entries(block.block_types ?? {}).flatMap(([name, blockType]) => {
     const baseName = `${className}${snakeToPascalCase(name)}`;
     const blockTypeName = registerBlockTypeName(registry, baseName);
 
     // Recursively generate nested block types
     const nestedTypes = generateBlockTypes(blockType.block, blockTypeName, registry);
-    result.push(...nestedTypes);
 
     // Generate the block type itself
-    const properties: string[] = [];
-
-    if (blockType.block.attributes) {
-      for (const [attrName, attr] of Object.entries(blockType.block.attributes)) {
+    const attrProperties = Object.entries(blockType.block.attributes ?? {}).map(
+      ([attrName, attr]) => {
         const tsName = snakeToCamelCase(attrName);
         const tsType = mapSchemaTypeToTsConfig(attr.type);
         const optional = isPropertyOptional(attr) ? "?" : "";
-        properties.push(`  readonly ${tsName}${optional}: ${tsType};`);
-      }
-    }
+        return `  readonly ${tsName}${optional}: ${tsType};`;
+      },
+    );
 
-    if (blockType.block.block_types) {
-      for (const [nestedName, nestedBlock] of Object.entries(blockType.block.block_types)) {
+    const blockProperties = Object.entries(blockType.block.block_types ?? {}).map(
+      ([nestedName, nestedBlock]) => {
         const tsName = snakeToCamelCase(nestedName);
         const nestedTypeName = `${blockTypeName}${snakeToPascalCase(nestedName)}`;
         const propType = getBlockPropertyType(nestedBlock, nestedTypeName);
         const optional = isBlockOptional(nestedBlock) ? "?" : "";
-        properties.push(`  readonly ${tsName}${optional}: ${propType};`);
-      }
-    }
+        return `  readonly ${tsName}${optional}: ${propType};`;
+      },
+    );
 
+    const properties = [...attrProperties, ...blockProperties];
     const code = `export type ${blockTypeName} = {
 ${properties.join("\n")}
 };`;
-    result.push({ typeName: blockTypeName, code });
-  }
 
-  return result;
+    return [...nestedTypes, { typeName: blockTypeName, code }];
+  });
+
+const hasComputedListObjectAttrs = (block: SchemaBlock): boolean =>
+  Object.values(block.attributes ?? {}).some(
+    (attr) => getComputedListObjectSchema(attr) !== undefined,
+  );
+
+const hasComputedBlockTypes = (block: SchemaBlock): boolean => {
+  const checkBlock = (b: SchemaBlock): boolean =>
+    Object.values(b.block_types ?? {}).some(
+      (bt) => hasComputedAttributes(bt.block) || checkBlock(bt.block),
+    );
+  return checkBlock(block);
+};
+
+const collectTfTypes = (block: SchemaBlock): readonly string[] => {
+  const fromAttrs = Object.values(block.attributes ?? {}).map((attr) =>
+    mapSchemaTypeToTsConfig(attr.type),
+  );
+  const fromBlocks = Object.values(block.block_types ?? {}).flatMap((bt) =>
+    collectTfTypes(bt.block),
+  );
+  return [...fromAttrs, ...fromBlocks].filter((t) => t.startsWith("Tf"));
 };
 
 const generateImports = (
@@ -284,59 +297,17 @@ const generateImports = (
   block: SchemaBlock,
   includeProvider = false,
 ): string => {
-  const types = new Set<string>(["Construct", "TokenValue", baseConfig]);
-  if (includeProvider) {
-    types.add("TerraformProvider");
-  }
+  const baseTypes = ["Construct", "TokenValue", baseConfig];
+  const providerTypes = includeProvider ? ["TerraformProvider"] : [];
+  const tfTypes = collectTfTypes(block);
+  const types = [...new Set([...baseTypes, ...providerTypes, ...tfTypes])].sort();
 
-  if (block.attributes) {
-    for (const attr of Object.values(block.attributes)) {
-      const tsType = mapSchemaTypeToTsConfig(attr.type);
-      if (
-        tsType.startsWith("Tf") ||
-        tsType === "TfString" ||
-        tsType === "TfNumber" ||
-        tsType === "TfBoolean" ||
-        tsType === "TfStringList" ||
-        tsType === "TfNumberList" ||
-        tsType === "TfStringMap"
-      ) {
-        types.add(tsType);
-      }
-    }
-  }
+  const needsComputed = hasComputedBlockTypes(block) || hasComputedListObjectAttrs(block);
+  const computedValues = needsComputed ? ["ComputedList", "ComputedObject"] : [];
+  const values = [...new Set([baseClass, ...computedValues])].sort();
 
-  let hasComputedBlocks = false;
-  const collectBlockTypes = (b: SchemaBlock): void => {
-    if (b.block_types) {
-      for (const blockType of Object.values(b.block_types)) {
-        if (hasComputedAttributes(blockType.block)) {
-          hasComputedBlocks = true;
-        }
-        if (blockType.block.attributes) {
-          for (const attr of Object.values(blockType.block.attributes)) {
-            const tsType = mapSchemaTypeToTsConfig(attr.type);
-            if (tsType.startsWith("Tf")) {
-              types.add(tsType);
-            }
-          }
-        }
-        collectBlockTypes(blockType.block);
-      }
-    }
-  };
-  collectBlockTypes(block);
-
-  const values = new Set<string>([baseClass]);
-  if (hasComputedBlocks) {
-    values.add("ComputedList");
-    values.add("ComputedObject");
-  }
-
-  const sortedTypes = Array.from(types).sort();
-  const sortedValues = Array.from(values).sort();
-  return `import type { ${sortedTypes.join(", ")} } from "tfts";
-import { ${sortedValues.join(", ")} } from "tfts";`;
+  return `import type { ${types.join(", ")} } from "tfts";
+import { ${values.join(", ")} } from "tfts";`;
 };
 
 const generateConfigTypeWithName = (
@@ -346,27 +317,25 @@ const generateConfigTypeWithName = (
   baseConfig: string,
   registry: TypeNameRegistry,
 ): string => {
-  const properties: string[] = [];
-
-  if (block.attributes) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
+  const attrProperties = Object.entries(block.attributes ?? {})
+    .filter(([, attr]) => getComputedListObjectSchema(attr) === undefined)
+    .map(([name, attr]) => {
       const tsName = snakeToCamelCase(name);
       const tsType = mapSchemaTypeToTsConfig(attr.type);
       const optional = isPropertyOptional(attr) ? "?" : "";
-      properties.push(`  readonly ${tsName}${optional}: ${tsType};`);
-    }
-  }
+      return `  readonly ${tsName}${optional}: ${tsType};`;
+    });
 
-  if (block.block_types) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const tsName = snakeToCamelCase(name);
-      const baseName = `${className}${snakeToPascalCase(name)}`;
-      const actualBlockTypeName = getBlockTypeName(registry, baseName);
-      const propType = getBlockPropertyType(blockType, actualBlockTypeName);
-      const optional = isBlockOptional(blockType) ? "?" : "";
-      properties.push(`  readonly ${tsName}${optional}: ${propType};`);
-    }
-  }
+  const blockProperties = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
+    const tsName = snakeToCamelCase(name);
+    const baseName = `${className}${snakeToPascalCase(name)}`;
+    const actualBlockTypeName = getBlockTypeName(registry, baseName);
+    const propType = getBlockPropertyType(blockType, actualBlockTypeName);
+    const optional = isBlockOptional(blockType) ? "?" : "";
+    return `  readonly ${tsName}${optional}: ${propType};`;
+  });
+
+  const properties = [...attrProperties, ...blockProperties];
 
   return `export type ${configTypeName} = {
 ${properties.join("\n")}
@@ -384,29 +353,25 @@ const generateConfigType = (
 };
 
 const generateConstructorBody = (block: SchemaBlock): string => {
-  const lines: string[] = [];
+  const attrLines = Object.entries(block.attributes ?? {})
+    .filter(([, attr]) => !getComputedListObjectSchema(attr))
+    .map(([name]) => `      ${name}: config.${snakeToCamelCase(name)},`);
 
-  if (block.attributes) {
-    for (const name of Object.keys(block.attributes)) {
-      const tsName = snakeToCamelCase(name);
-      lines.push(`      ${name}: config.${tsName},`);
-    }
-  }
+  const blockLines = Object.entries(block.block_types ?? {}).map(
+    ([name, blockType]) =>
+      `      ${getBlockConstructorValue(blockType, name, snakeToCamelCase(name))}`,
+  );
 
-  if (block.block_types) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const tsName = snakeToCamelCase(name);
-      lines.push(`      ${getBlockConstructorValue(blockType, name, tsName)}`);
-    }
-  }
-
-  return lines.join("\n");
+  return [...attrLines, ...blockLines].join("\n");
 };
 
 const generateGetters = (block: SchemaBlock): string =>
-  Object.keys(block.attributes ?? {})
-    .filter((name) => !RESERVED_NAMES.has(snakeToCamelCase(name)))
-    .map((name) => {
+  Object.entries(block.attributes ?? {})
+    .filter(
+      ([name, attr]) =>
+        !RESERVED_NAMES.has(snakeToCamelCase(name)) && !getComputedListObjectSchema(attr),
+    )
+    .map(([name]) => {
       const tsName = snakeToCamelCase(name);
       return `  get ${tsName}(): TokenValue<string> {
     return this.getStringAttribute("${name}");
@@ -580,57 +545,82 @@ const generateIndexFile = (exports: readonly NamespaceExport[]): string => {
 
 // --- Main generator ---
 
-export const generateProviderFiles = (name: string, schema: ProviderSchema): GeneratedFiles => {
-  const files = new Map<string, string>();
-  const namespaceExports: NamespaceExport[] = [];
+type FileEntry = readonly [string, string];
+type GeneratorResult = {
+  readonly files: readonly FileEntry[];
+  readonly exports: readonly NamespaceExport[];
+};
 
-  // Find the provider schema entry
+const generateResourceEntries = (
+  name: string,
+  schemas: Readonly<Record<string, { readonly block: SchemaBlock }>>,
+): GeneratorResult => {
+  const entries = Object.entries(schemas).map(([resourceName, resourceSchema]) => {
+    const strippedName = stripProviderPrefix(resourceName, name);
+    const kebabName = snakeToKebabCase(strippedName);
+    const path = `${kebabName}/index.ts`;
+    const file: FileEntry = [path, generateResourceClass(resourceName, name, resourceSchema.block)];
+    const exp: NamespaceExport = {
+      namespace: snakeToCamelCase(strippedName),
+      path: `${kebabName}/index.js`,
+    };
+    return { file, exp };
+  });
+  return { files: entries.map((e) => e.file), exports: entries.map((e) => e.exp) };
+};
+
+const generateDataSourceEntries = (
+  name: string,
+  schemas: Readonly<Record<string, { readonly block: SchemaBlock }>>,
+): GeneratorResult => {
+  const entries = Object.entries(schemas).map(([dataSourceName, dataSourceSchema]) => {
+    const strippedName = stripProviderPrefix(dataSourceName, name);
+    const kebabName = snakeToKebabCase(strippedName);
+    const path = `data-${kebabName}/index.ts`;
+    const file: FileEntry = [
+      path,
+      generateDataSourceClass(dataSourceName, name, dataSourceSchema.block),
+    ];
+    const exp: NamespaceExport = {
+      namespace: `data${snakeToPascalCase(strippedName)}`,
+      path: `data-${kebabName}/index.js`,
+    };
+    return { file, exp };
+  });
+  return { files: entries.map((e) => e.file), exports: entries.map((e) => e.exp) };
+};
+
+export const generateProviderFiles = (name: string, schema: ProviderSchema): GeneratedFiles => {
   const providerEntry = Object.entries(schema.provider_schemas).find(
     ([source]) => source.includes(`/${name}`) || source.endsWith(`/${name}`),
   );
 
-  if (!providerEntry) {
-    return files;
+  if (providerEntry === undefined) {
+    return new Map();
   }
 
   const [source, schemaEntry] = providerEntry;
 
-  // Generate provider
-  files.set("provider/index.ts", generateProviderClass(name, source, schemaEntry.provider.block));
-  namespaceExports.push({ namespace: "provider", path: "provider/index.js" });
+  const providerFile: FileEntry = [
+    "provider/index.ts",
+    generateProviderClass(name, source, schemaEntry.provider.block),
+  ];
+  const providerExport: NamespaceExport = { namespace: "provider", path: "provider/index.js" };
 
-  // Generate resources
-  if (schemaEntry.resource_schemas) {
-    for (const [resourceName, resourceSchema] of Object.entries(schemaEntry.resource_schemas)) {
-      const strippedName = stripProviderPrefix(resourceName, name);
-      const kebabName = snakeToKebabCase(strippedName);
-      const path = `${kebabName}/index.ts`;
-      files.set(path, generateResourceClass(resourceName, name, resourceSchema.block));
-      namespaceExports.push({
-        namespace: snakeToCamelCase(strippedName),
-        path: `${kebabName}/index.js`,
-      });
-    }
-  }
+  const resources =
+    schemaEntry.resource_schemas !== undefined
+      ? generateResourceEntries(name, schemaEntry.resource_schemas)
+      : { files: [], exports: [] };
 
-  // Generate data sources
-  if (schemaEntry.data_source_schemas) {
-    for (const [dataSourceName, dataSourceSchema] of Object.entries(
-      schemaEntry.data_source_schemas,
-    )) {
-      const strippedName = stripProviderPrefix(dataSourceName, name);
-      const kebabName = snakeToKebabCase(strippedName);
-      const path = `data-${kebabName}/index.ts`;
-      files.set(path, generateDataSourceClass(dataSourceName, name, dataSourceSchema.block));
-      namespaceExports.push({
-        namespace: `data${snakeToPascalCase(strippedName)}`,
-        path: `data-${kebabName}/index.js`,
-      });
-    }
-  }
+  const dataSources =
+    schemaEntry.data_source_schemas !== undefined
+      ? generateDataSourceEntries(name, schemaEntry.data_source_schemas)
+      : { files: [], exports: [] };
 
-  // Generate index file
-  files.set("index.ts", generateIndexFile(namespaceExports));
+  const allExports = [providerExport, ...resources.exports, ...dataSources.exports];
+  const indexFile: FileEntry = ["index.ts", generateIndexFile(allExports)];
 
-  return files;
+  const allFiles = [providerFile, ...resources.files, ...dataSources.files, indexFile];
+
+  return new Map(allFiles);
 };

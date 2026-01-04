@@ -1,11 +1,25 @@
 import { test, expect, describe } from "bun:test";
 import { generateProviderFiles } from "../generator.js";
+import { parseProviderSchema, type ProviderSchema } from "../schema.js";
 import {
-  simpleProvider,
-  multiwordProvider,
-  nestingModesProvider,
-  computedListProvider,
+  simpleProvider as rawSimple,
+  multiwordProvider as rawMultiword,
+  nestingModesProvider as rawNestingModes,
+  computedListProvider as rawComputedList,
+  computedListAttrProvider as rawComputedListAttr,
 } from "./fixtures.js";
+
+const parse = (raw: unknown): ProviderSchema => {
+  const result = parseProviderSchema(raw);
+  if (result.isErr()) throw new Error(result.error.message);
+  return result.value;
+};
+
+const simpleProvider = parse(rawSimple);
+const multiwordProvider = parse(rawMultiword);
+const nestingModesProvider = parse(rawNestingModes);
+const computedListProvider = parse(rawComputedList);
+const computedListAttrProvider = parse(rawComputedListAttr);
 
 const getContent = (files: ReadonlyMap<string, string>, path: string): string => {
   const content = files.get(path);
@@ -319,11 +333,10 @@ describe("provider config", () => {
   });
 });
 
-describe("computed list accessor", () => {
+describe("computed list block_types", () => {
   test("generates getter returning ComputedList for computed list blocks", () => {
     const files = generateProviderFiles("google", computedListProvider);
     const content = getContent(files, "cloud-run-service/index.ts");
-    // Should generate: get status(): ComputedList<CloudRunServiceStatusOutput>
     expect(content).toContain("get status(): ComputedList<CloudRunServiceStatusOutput>");
   });
 
@@ -339,5 +352,47 @@ describe("computed list accessor", () => {
     const files = generateProviderFiles("google", computedListProvider);
     const content = getContent(files, "cloud-run-service/index.ts");
     expect(content).toContain("import { ComputedList, ComputedObject, TerraformResource } from");
+  });
+});
+
+describe("computed list/object attributes", () => {
+  test("generates getter returning ComputedList for computed list attributes", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    expect(content).toContain("get status(): ComputedList<CloudRunServiceStatusOutput>");
+  });
+
+  test("generates output class for computed list attribute", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    expect(content).toContain("class CloudRunServiceStatusOutput extends ComputedObject");
+    expect(content).toContain("get url(): TokenValue<string>");
+    expect(content).toContain("get latestReadyRevisionName(): TokenValue<string>");
+  });
+
+  test("does not include computed list attribute in config type", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    expect(content).not.toContain("readonly status?:");
+    expect(content).not.toContain("readonly status:");
+  });
+
+  test("does not generate duplicate getter for computed list attribute", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    const matches = content.match(/get status\(\)/g);
+    expect(matches?.length).toBe(1);
+  });
+
+  test("does not include computed list attribute in constructor body", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    expect(content).not.toContain("status: config.status");
+  });
+
+  test("imports ComputedList and ComputedObject for computed list attributes", () => {
+    const files = generateProviderFiles("google", computedListAttrProvider);
+    const content = getContent(files, "cloud-run-service/index.ts");
+    expect(content).toContain("import { ComputedList, ComputedObject, TerraformResource }");
   });
 });
