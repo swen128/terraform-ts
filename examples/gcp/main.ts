@@ -1,21 +1,19 @@
-import { App, TerraformStack, TerraformOutput } from "terraform-ts";
-import {
-  GoogleProvider,
-  GoogleComputeNetwork,
-  GoogleComputeInstance,
-} from "./.gen/providers/google/index.js";
+import { App, TerraformStack, TerraformOutput } from "tfts";
+import { GoogleProvider } from "./.gen/providers/google/provider/index.js";
+import { ComputeNetwork } from "./.gen/providers/google/lib/compute-network/index.js";
+import { ComputeInstance } from "./.gen/providers/google/lib/compute-instance/index.js";
 
 const app = new App();
 const stack = new TerraformStack(app, "gcp-example");
 
 new GoogleProvider(stack, "google", {});
 
-const network = new GoogleComputeNetwork(stack, "main-network", {
+const network = new ComputeNetwork(stack, "main-network", {
   name: "main-vpc",
   autoCreateSubnetworks: false,
 });
 
-new GoogleComputeInstance(stack, "web-server", {
+new ComputeInstance(stack, "web-server", {
   name: "web-server",
   machineType: "e2-micro",
   zone: "us-central1-a",

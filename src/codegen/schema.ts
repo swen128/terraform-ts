@@ -44,7 +44,7 @@ export type ResourceSchema = {
 };
 
 export type ProviderSchemaEntry = {
-  readonly provider: SchemaBlock;
+  readonly provider: ResourceSchema;
   readonly resource_schemas?: Readonly<Record<string, ResourceSchema>>;
   readonly data_source_schemas?: Readonly<Record<string, ResourceSchema>>;
 };
@@ -104,7 +104,7 @@ const ResourceSchemaSchema: z.ZodType<ResourceSchema> = z.object({
 });
 
 const ProviderSchemaEntrySchema: z.ZodType<ProviderSchemaEntry> = z.object({
-  provider: SchemaBlockSchema,
+  provider: ResourceSchemaSchema,
   resource_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
   data_source_schemas: z.record(z.string(), ResourceSchemaSchema).optional(),
 });

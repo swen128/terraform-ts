@@ -199,8 +199,7 @@ const generateImports = (
   block: SchemaBlock,
   includeProvider = false,
 ): string => {
-  const types = new Set<string>(["Construct", "TokenString", baseConfig]);
-  types.add(baseClass);
+  const types = new Set<string>(["Construct", "TokenValue", baseConfig]);
   if (includeProvider) {
     types.add("TerraformProvider");
   }
@@ -313,7 +312,7 @@ const generateGetters = (block: SchemaBlock): string =>
     .filter((name) => !RESERVED_NAMES.has(snakeToCamelCase(name)))
     .map((name) => {
       const tsName = snakeToCamelCase(name);
-      return `  get ${tsName}(): TokenString {
+      return `  get ${tsName}(): TokenValue<string> {
     return this.getStringAttribute("${name}");
   }`;
     })
@@ -496,7 +495,7 @@ export const generateProviderFiles = (name: string, schema: ProviderSchema): Gen
   const [source, schemaEntry] = providerEntry;
 
   // Generate provider
-  files.set("provider/index.ts", generateProviderClass(name, source, schemaEntry.provider));
+  files.set("provider/index.ts", generateProviderClass(name, source, schemaEntry.provider.block));
   namespaceExports.push({ namespace: "provider", path: "provider/index.js" });
 
   // Generate resources

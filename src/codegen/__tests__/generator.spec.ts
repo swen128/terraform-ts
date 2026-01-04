@@ -158,10 +158,10 @@ describe("getters", () => {
   test("generates getters for all attributes", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
     const content = getContent(files, "lib/resource/index.ts");
-    expect(content).toContain("get id(): TokenString {");
-    expect(content).toContain("get name(): TokenString {");
-    expect(content).toContain("get secretId(): TokenString {");
-    expect(content).toContain("get location(): TokenString {");
+    expect(content).toContain("get id(): TokenValue<string> {");
+    expect(content).toContain("get name(): TokenValue<string> {");
+    expect(content).toContain("get secretId(): TokenValue<string> {");
+    expect(content).toContain("get location(): TokenValue<string> {");
   });
 
   test("getter format: return this.getStringAttribute(tf_name)", () => {
@@ -279,5 +279,37 @@ describe("importFrom static method", () => {
     const files = generateProviderFiles("simple", simpleProvider);
     const content = getContent(files, "lib/resource/index.ts");
     expect(content).toContain("lifecycle: { importId: resourceId }");
+  });
+});
+
+describe("imports", () => {
+  test("imports TokenValue instead of TokenString", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("TokenValue");
+    expect(content).not.toContain("TokenString");
+  });
+
+  test("does not duplicate base class in type and value imports", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    // Should have value import only, not in type import
+    expect(content).toContain('import { TerraformResource } from "tfts"');
+    expect(content).not.toMatch(/import type \{[^}]*\bTerraformResource\b[^}]*\}/);
+  });
+
+  test("getter returns TokenValue<string>", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("get name(): TokenValue<string>");
+  });
+});
+
+describe("provider config", () => {
+  test("includes provider-specific attributes in config type", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "provider/index.ts");
+    expect(content).toContain("readonly apiKey: TfString");
+    expect(content).toContain("readonly region?: TfString");
   });
 });

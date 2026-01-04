@@ -8,6 +8,6 @@
     "synth": "bun main.ts"
   },
   "dependencies": {
-    "terraform-ts": "file:../../"
+    "tfts": "file:../../"
   }
 }

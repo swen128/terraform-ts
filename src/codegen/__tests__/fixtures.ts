@@ -5,9 +5,12 @@ export const simpleProvider: ProviderSchema = {
   provider_schemas: {
     "registry.terraform.io/hashicorp/simple": {
       provider: {
-        attributes: {
-          api_key: { type: "string", required: true },
-          region: { type: "string", optional: true },
+        version: 0,
+        block: {
+          attributes: {
+            api_key: { type: "string", required: true },
+            region: { type: "string", optional: true },
+          },
         },
       },
       resource_schemas: {
@@ -63,7 +66,7 @@ export const multiwordProvider: ProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/hashicorp/google": {
-      provider: { attributes: {} },
+      provider: { version: 0, block: { attributes: {} } },
       resource_schemas: {
         google_alloydb_cluster: {
           version: 0,
@@ -90,7 +93,7 @@ export const nestingModesProvider: ProviderSchema = {
   format_version: "1.0",
   provider_schemas: {
     "registry.terraform.io/test/test": {
-      provider: { attributes: {} },
+      provider: { version: 0, block: { attributes: {} } },
       resource_schemas: {
         test_resource: {
           version: 0,

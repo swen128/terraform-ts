@@ -8,7 +8,7 @@ tfts lets you define Terraform infrastructure using TypeScript with full type sa
 
 Key differences from CDKTF:
 
-- **Type-safe attribute references** - Computed attributes return `TokenString` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time
+- **Type-safe attribute references** - Computed attributes return `TokenValue<string>` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time
 - **Lightweight** - No JSII, no complex runtime, just TypeScript
 
 ## Getting Started
@@ -94,13 +94,13 @@ terraform apply
 
 ### Type-Safe Attributes
 
-The main difference: computed attributes return `TokenString` instead of `string`.
+The main difference: computed attributes return `TokenValue<string>` instead of `string`.
 
 ```typescript
 // CDKTF - compiles but broken at runtime
 network.id.toUpperCase();
 
-// tfts - compile error (TokenString has no .toUpperCase())
+// tfts - compile error (TokenValue<string> has no .toUpperCase())
 network.id.toUpperCase(); // Error!
 
 // tfts - template literals work via toString()

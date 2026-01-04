@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 tfts is a TypeScript-first infrastructure-as-code framework that generates Terraform JSON. It's a lightweight, type-safe alternative to CDKTF with no JSII dependency.
 
-Key differentiator: Computed attributes return `TokenString` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time.
+Key differentiator: Computed attributes return `TokenValue<string>` instead of `string`, preventing invalid operations like `.toUpperCase()` at compile time.
 
 ## Commands
 
@@ -51,13 +51,13 @@ src/
 The type-safe interpolation system in `src/core/tokens.ts`:
 
 - `Token` (abstract) → `RefToken`, `FnToken`, `RawToken`
-- `TokenString` - Opaque wrapper that only allows `.toString()` and `.toToken()`
+- `TokenValue<T>` - Opaque wrapper that only allows `.toString()` and `.toToken()`
 - Union types for config properties:
-  - `TfString = string | TokenString`
-  - `TfNumber = number | TokenString`
-  - `TfBoolean = boolean | TokenString`
+  - `TfString = string | TokenValue<string>`
+  - `TfNumber = number | TokenValue<number>`
+  - `TfBoolean = boolean | TokenValue<boolean>`
 
-Resources expose computed attributes as `TokenString`, ensuring compile-time safety.
+Resources expose computed attributes as `TokenValue<string>`, ensuring compile-time safety.
 
 ### Construct Tree
 
