@@ -98,22 +98,17 @@ const getBlockPropertyType = (block: BlockTypeSchema, typeName: string): string 
   if (block.nesting_mode === "single") {
     return typeName;
   }
-  if ((block.nesting_mode === "list" || block.nesting_mode === "set") && block.max_items === 1) {
-    return `${typeName} | readonly ${typeName}[]`;
+  if (block.max_items === 1) {
+    return typeName;
   }
   return `readonly ${typeName}[]`;
 };
 
 const getBlockConstructorValue = (
-  block: BlockTypeSchema,
+  _block: BlockTypeSchema,
   tfName: string,
   tsName: string,
-): string => {
-  if ((block.nesting_mode === "list" || block.nesting_mode === "set") && block.max_items === 1) {
-    return `${tfName}: config.${tsName} !== undefined ? (Array.isArray(config.${tsName}) ? config.${tsName} : [config.${tsName}]) : undefined,`;
-  }
-  return `${tfName}: config.${tsName},`;
-};
+): string => `${tfName}: config.${tsName},`;
 
 // Reserved property names that should not have getters generated
 const RESERVED_NAMES = new Set([

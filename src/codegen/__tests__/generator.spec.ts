@@ -147,12 +147,11 @@ describe("block nesting modes", () => {
     expect(content).toContain("readonly setBlock?: readonly ResourceSetBlock[];");
   });
 
-  test("list with max_items=1: generates T | readonly T[]", () => {
+  test("list with max_items=1: generates T (single object)", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
     const content = getContent(files, "resource/index.ts");
-    expect(content).toContain(
-      "readonly singleItemList?: ResourceSingleItemList | readonly ResourceSingleItemList[];",
-    );
+    expect(content).toContain("readonly singleItemList?: ResourceSingleItemList;");
+    expect(content).not.toContain("ResourceSingleItemList[]");
   });
 });
 
@@ -164,12 +163,11 @@ describe("constructor body", () => {
     expect(content).toContain("single_block: config.singleBlock,");
   });
 
-  test("max_items=1 blocks: array normalization", () => {
+  test("max_items=1 blocks: simple assignment (no array normalization)", () => {
     const files = generateProviderFiles("test", nestingModesProvider);
     const content = getContent(files, "resource/index.ts");
-    expect(content).toContain(
-      "single_item_list: config.singleItemList !== undefined ? (Array.isArray(config.singleItemList) ? config.singleItemList : [config.singleItemList]) : undefined,",
-    );
+    expect(content).toContain("single_item_list: config.singleItemList,");
+    expect(content).not.toContain("Array.isArray(config.singleItemList)");
   });
 });
 
