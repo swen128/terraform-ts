@@ -7,7 +7,6 @@ export type {
   FnToken,
   RawToken,
   TokenResolver,
-  TokenValue,
   TfString,
   TfNumber,
   TfBoolean,
@@ -23,7 +22,7 @@ export {
   tokenToHcl,
   containsTokens,
   resolveTokens,
-  TokenString,
+  TokenValue,
 } from "./core/tokens.js";
 
 export type { TftsError, ValidationError, ValidationErrorCode } from "./core/errors.js";

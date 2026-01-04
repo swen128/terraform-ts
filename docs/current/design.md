@@ -907,27 +907,33 @@ ami.id.toUpperCase();  // Compiles ✓ but broken at runtime
 ami.id.substring(0, 5);  // Compiles ✓ but broken at runtime
 ```
 
-### 7.2 terraform-ts Solution: TokenString + Union Types
+### 7.2 terraform-ts Solution: Typed Tokens + Union Types
 
-terraform-ts uses an opaque `TokenString` wrapper for computed attributes:
+terraform-ts uses a generic opaque wrapper for computed attributes, preserving type information via phantom types:
 
 ```typescript
-// Opaque wrapper - no string methods exposed
-class TokenString {
-  private readonly _token: Token;
+// Generic opaque wrapper with phantom type for compile-time safety
+class TokenValue<T> {
+  protected readonly _token: Token;
+  protected readonly _phantom?: T;
 
-  toString(): string { /* for template literals */ }
   toToken(): Token { return this._token; }
+  toString(): string { return this._token.toHcl(); }
 }
 
-// Union types for construct config arguments
-type TfString = string | TokenString;
-type TfNumber = number | TokenString;
-type TfBoolean = boolean | TokenString;
-type TfStringList = readonly string[] | TokenString;
-type TfNumberList = readonly number[] | TokenString;
-type TfStringMap = Readonly<Record<string, string>> | TokenString;
+// Union types for construct config arguments (type-safe)
+type TfString = string | TokenValue<string>;
+type TfNumber = number | TokenValue<number>;
+type TfBoolean = boolean | TokenValue<boolean>;
+type TfStringList = readonly string[] | TokenValue<readonly string[]>;
+type TfNumberList = readonly number[] | TokenValue<readonly number[]>;
+type TfStringMap = Readonly<Record<string, string>> | TokenValue<Readonly<Record<string, string>>>;
 ```
+
+This ensures computed attributes carry their type information:
+- `resource.id` returns `TokenValue<string>` (can only be used where `TfString` is expected)
+- `resource.count` returns `TokenValue<number>` (can only be used where `TfNumber` is expected)
+- `resource.enabled` returns `TokenValue<boolean>` (can only be used where `TfBoolean` is expected)
 
 ### 7.3 Generated Code
 
@@ -940,10 +946,33 @@ interface InstanceConfig extends TerraformResourceConfig {
   readonly tags?: TfStringMap;
 }
 
-// Computed attributes return TokenString
+// Computed attributes return typed tokens
 class Instance extends TerraformResource {
-  get id(): TokenString {
+  get id(): TokenValue<string> {
     return this.getStringAttribute("id");
+  }
+
+  get count(): TokenValue<number> {
+    return this.getNumberAttribute("count");
+  }
+
+  get enabled(): TokenValue<boolean> {
+    return this.getBooleanAttribute("enabled");
+  }
+}
+
+// Base class provides typed attribute getters
+class TerraformResource {
+  protected getStringAttribute(name: string): TokenValue<string> {
+    return new TokenValue(ref(this.fqn, name));
+  }
+
+  protected getNumberAttribute(name: string): TokenValue<number> {
+    return new TokenValue(ref(this.fqn, name));
+  }
+
+  protected getBooleanAttribute(name: string): TokenValue<boolean> {
+    return new TokenValue(ref(this.fqn, name));
   }
 }
 ```
@@ -960,29 +989,35 @@ new Instance(this, "i", {
 
 // ✅ Token references work
 new Instance(this, "i", {
-  ami: ami.id,              // TokenString
+  ami: ami.id,              // TokenValue<string>
   instanceType: "t2.micro",
-  port: config.port,        // TokenString
+  port: resource.count,     // TokenValue<number>
 });
 
 // ✅ Template literals work (via toString)
 const name = `web-${ami.id}`;
 
-// ❌ Compile error - TokenString has no .substring()
+// ❌ Compile error - TokenValue has no .substring()
 ami.id.substring(0, 5);
 
-// ❌ Compile error - TokenString has no arithmetic
-resource.port + 1;
+// ❌ Compile error - TokenValue has no arithmetic
+resource.count + 1;
+
+// ❌ Compile error - type mismatch (TokenValue<number> not assignable to TfString)
+new Instance(this, "i", {
+  ami: resource.count,  // Error: count is TokenValue<number>, ami expects TfString
+});
 ```
 
 ### 7.5 Comparison
 
-| Aspect                | CDKTF (string)                 | terraform-ts (TfString)               |
-|-----------------------|--------------------------------|-------------------------------|
-| `ami.id.toUpperCase()`| Compiles ✓ (broken at runtime) | Compile error ✗               |
-| `{ ami: "literal" }`  | Works ✓                        | Works ✓                       |
-| `{ ami: ami.id }`     | Works ✓                        | Works ✓                       |
-| `` `prefix-${ami.id}` ``| Works ✓                      | Works ✓                       |
-| Pass to `fn(s: string)`| Works ✓                       | Compile error ✗ (intentional) |
+| Aspect                 | CDKTF (string)                 | terraform-ts (TokenValue)     |
+|------------------------|--------------------------------|-------------------------------|
+| `ami.id.toUpperCase()` | Compiles ✓ (broken at runtime) | Compile error ✗               |
+| `{ ami: "literal" }`   | Works ✓                        | Works ✓                       |
+| `{ ami: ami.id }`      | Works ✓                        | Works ✓                       |
+| `` `prefix-${ami.id}` ``| Works ✓                       | Works ✓                       |
+| Pass to `fn(s: string)`| Works ✓                        | Compile error ✗ (intentional) |
+| `{ ami: res.count }`   | Works ✓ (type confusion)       | Compile error ✗ (type-safe)   |
 
-The key insight: CDKTF lies to TypeScript ("this is a string" when it's actually a deferred reference). terraform-ts tells the truth ("this is either a literal OR a deferred reference").
+The key insight: CDKTF lies to TypeScript ("this is a string" when it's actually a deferred reference). terraform-ts tells the truth ("this is either a literal OR a typed deferred reference").

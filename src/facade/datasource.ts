@@ -1,7 +1,7 @@
 import { Construct } from "./construct.js";
 import type { TerraformProvider } from "./provider.js";
 import type { Token } from "../core/tokens.js";
-import { raw, TokenString } from "../core/tokens.js";
+import { raw, TokenValue } from "../core/tokens.js";
 import { generateLogicalId, generateFqn } from "../core/logical-id.js";
 
 export type TerraformDataSourceConfig = {
@@ -46,8 +46,8 @@ export abstract class TerraformDataSource extends Construct {
     return raw(`\${data.${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`);
   }
 
-  getStringAttribute(attribute: string): TokenString {
-    return new TokenString(
+  getStringAttribute(attribute: string): TokenValue<string> {
+    return new TokenValue(
       raw(`\${data.${this.terraformResourceType}.${this.friendlyUniqueId}.${attribute}}`),
     );
   }

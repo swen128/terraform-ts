@@ -58,13 +58,6 @@ export type TokenResolver = (token: Token) => TerraformValue;
 
 export const TOKEN_SYMBOL: unique symbol = Symbol.for("tfts/Token");
 
-export type TokenBox = {
-  readonly [TOKEN_SYMBOL]: true;
-  readonly token: Token;
-};
-
-export type TokenValue<T> = TokenBox & { readonly _phantom?: T };
-
 export const ref = (fqn: string, attribute: string): RefToken => new RefToken(fqn, attribute);
 
 export const fn = (name: string, ...args: readonly TerraformValue[]): FnToken =>
@@ -108,10 +101,11 @@ export const resolveTokens = (value: TerraformValue, resolver: TokenResolver): T
   return value;
 };
 
-// TokenString: opaque wrapper for deferred string values
-// No string methods exposed - prevents misuse like .toUpperCase()
-export class TokenString {
+// TokenValue<T>: opaque wrapper for deferred values with phantom type for type safety
+// No primitive methods exposed - prevents misuse like .toUpperCase() or arithmetic
+export class TokenValue<T> {
   private readonly _token: Token;
+  private declare readonly _phantom: T;
 
   constructor(token: Token) {
     this._token = token;
@@ -127,9 +121,11 @@ export class TokenString {
 }
 
 // Union types for construct config arguments
-export type TfString = string | TokenString;
-export type TfNumber = number | TokenString;
-export type TfBoolean = boolean | TokenString;
-export type TfStringList = readonly string[] | TokenString;
-export type TfNumberList = readonly number[] | TokenString;
-export type TfStringMap = Readonly<Record<string, string>> | TokenString;
+export type TfString = string | TokenValue<string>;
+export type TfNumber = number | TokenValue<number>;
+export type TfBoolean = boolean | TokenValue<boolean>;
+export type TfStringList = readonly string[] | TokenValue<readonly string[]>;
+export type TfNumberList = readonly number[] | TokenValue<readonly number[]>;
+export type TfStringMap =
+  | Readonly<Record<string, string>>
+  | TokenValue<Readonly<Record<string, string>>>;
