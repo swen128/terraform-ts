@@ -104,12 +104,6 @@ const getBlockPropertyType = (block: BlockTypeSchema, typeName: string): string 
   return `readonly ${typeName}[]`;
 };
 
-const getBlockConstructorValue = (
-  _block: BlockTypeSchema,
-  tfName: string,
-  tsName: string,
-): string => `${tfName}: config.${tsName},`;
-
 // Reserved property names that should not have getters generated
 const RESERVED_NAMES = new Set([
   "node",
@@ -353,8 +347,7 @@ const generateConstructorBody = (block: SchemaBlock): string => {
     .map(([name]) => `      ${name}: config.${snakeToCamelCase(name)},`);
 
   const blockLines = Object.entries(block.block_types ?? {}).map(
-    ([name, blockType]) =>
-      `      ${getBlockConstructorValue(blockType, name, snakeToCamelCase(name))}`,
+    ([name]) => `      ${name}: config.${snakeToCamelCase(name)},`,
   );
 
   return [...attrLines, ...blockLines].join("\n");
