@@ -7,10 +7,12 @@ export class TerraformStack extends Construct {
   readonly stackName: string;
   private readonly dependencies: TerraformStack[] = [];
 
-  constructor(scope: App, id: string) {
+  constructor(scope: Construct, id: string) {
     super(scope, id, { kind: "stack", stackName: id });
     this.stackName = id;
-    scope.registerStack(this);
+    if (scope instanceof App) {
+      scope.registerStack(this);
+    }
   }
 
   addDependency(...stacks: TerraformStack[]): void {
