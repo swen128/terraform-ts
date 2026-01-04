@@ -175,19 +175,17 @@ const generateMethod = (name: string, sig: FunctionSignature): string => {
       : []),
   ];
 
-  type ReduceAcc = {
-    readonly statements: readonly string[];
-    readonly args: readonly string[];
-    readonly counter: number;
+  const initial: { statements: readonly string[]; args: readonly string[]; counter: number } = {
+    statements: [],
+    args: [],
+    counter: 0,
   };
-
-  const initial: ReduceAcc = { statements: [], args: [], counter: 0 };
 
   const {
     statements,
     args,
     counter: finalCounter,
-  } = params.reduce((acc: ReduceAcc, p): ReduceAcc => {
+  } = params.reduce((acc, p) => {
     const paramName = safeParamName(p.name);
     const unwrappedName = `_${paramName}`;
     const { expr, nextCounter } = generateUnwrap(paramName, p.type, acc.counter);
@@ -198,22 +196,15 @@ const generateMethod = (name: string, sig: FunctionSignature): string => {
     };
   }, initial);
 
-  type StatementsAndArgs = {
-    readonly statements: readonly string[];
-    readonly args: readonly string[];
-  };
-
-  const { statements: allStatements, args: allArgs }: StatementsAndArgs = sig.variadic_parameter
-    ? ((): StatementsAndArgs => {
-        const paramName = safeParamName(sig.variadic_parameter.name);
-        const unwrappedName = `_${paramName}`;
-        const { expr } = generateUnwrap("v", sig.variadic_parameter.type, finalCounter);
-        return {
-          statements: [...statements, `const ${unwrappedName} = ${paramName}.map(v => ${expr});`],
-          args: [...args, `...${unwrappedName}`],
-        };
-      })()
-    : { statements, args };
+  const [allStatements, allArgs] = sig.variadic_parameter
+    ? [
+        [
+          ...statements,
+          `const _${safeParamName(sig.variadic_parameter.name)} = ${safeParamName(sig.variadic_parameter.name)}.map(v => ${generateUnwrap("v", sig.variadic_parameter.type, finalCounter).expr});`,
+        ],
+        [...args, `..._${safeParamName(sig.variadic_parameter.name)}`],
+      ]
+    : [statements, args];
 
   const fnCall = allArgs.length > 0 ? `fn("${name}", ${allArgs.join(", ")})` : `fn("${name}")`;
   const returnType = mapReturnTypeToTs(sig.return_type);
