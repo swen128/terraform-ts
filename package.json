@@ -30,7 +30,7 @@
     "url": "https://github.com/swen128/terraform-ts"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "bun run generate:fn && tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "biome format --write .",
@@ -38,6 +38,7 @@
     "knip": "knip",
     "test": "bun test",
     "check": "bun format && bun typecheck && bun test && bun lint && bun knip",
+    "generate:fn": "bun run scripts/generate-fn.ts",
     "prepublishOnly": "bun run build",
     "prepare": "husky"
   },

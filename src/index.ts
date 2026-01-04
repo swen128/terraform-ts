@@ -25,6 +25,8 @@ export {
   TokenValue,
 } from "./core/tokens.js";
 
+export { Fn } from "./generated/fn.js";
+
 export type { TftsError, ValidationError, ValidationErrorCode } from "./core/errors.js";
 
 export type { ConstructNode, ConstructMetadata } from "./core/construct.js";
