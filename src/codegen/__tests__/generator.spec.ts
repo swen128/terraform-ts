@@ -43,15 +43,9 @@ describe("nesting modes", () => {
     const schema = loadFixture("nesting-modes");
     const result = generateProvider("test", schema);
 
-    // Single nesting mode should be single object
+    // Single nesting mode should be single object only
     expect(result).toContain("readonly singleBlock?: ResourceConfigSingleBlock;");
-    expect(result).not.toContain("readonly singleBlock?: readonly ResourceConfigSingleBlock[];");
-
-    // List nesting mode should be array
-    expect(result).toContain("readonly listBlock?: readonly ResourceConfigListBlock[];");
-
-    // Set nesting mode should be array
-    expect(result).toContain("readonly setBlock?: readonly ResourceConfigSetBlock[];");
+    expect(result).not.toContain("readonly singleBlock?: ResourceConfigSingleBlock |");
   });
 });
 
@@ -82,5 +76,26 @@ describe("lib directory structure", () => {
     // Root index should export from lib/
     const indexContent = files.get("index.ts");
     expect(indexContent).toContain('from "./lib/alloydb-cluster');
+  });
+});
+
+describe("list block types", () => {
+  test("max_items=1 blocks accept single object or array (union type)", () => {
+    const schema = loadFixture("nesting-modes");
+    const result = generateProvider("test", schema);
+
+    // max_items=1: accept single object or array
+    expect(result).toContain(
+      "readonly singleItemList?: ResourceConfigSingleItemList | readonly ResourceConfigSingleItemList[];",
+    );
+
+    // Regular list block: array only
+    expect(result).toContain("readonly listBlock?: readonly ResourceConfigListBlock[];");
+
+    // Set block: array only
+    expect(result).toContain("readonly setBlock?: readonly ResourceConfigSetBlock[];");
+
+    // Single nesting mode: single object
+    expect(result).toContain("readonly singleBlock?: ResourceConfigSingleBlock;");
   });
 });

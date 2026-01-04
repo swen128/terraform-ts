@@ -174,18 +174,29 @@ const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult
     return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
   });
 
-  const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
-    tfName: toTfName(blockName),
-    tsName: snakeToCamelCase(blockName),
-  }));
+  const blockProps: PropMapping[] = blockEntries.map(([blockName, blockType]) => {
+    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isSingleItem = isList && blockType.max_items === 1;
+    return {
+      tfName: toTfName(blockName),
+      tsName: snakeToCamelCase(blockName),
+      isListBlock: isSingleItem,
+    };
+  });
   const blockLines = blockEntries.map(([blockName, blockType]) => {
     const nestedName = `${name}${snakeToPascalCase(blockName)}`;
     const propName = snakeToCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isSingleItem = isList && blockType.max_items === 1;
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
-    return isList
-      ? `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`
-      : `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
+    if (isSingleItem) {
+      // max_items=1: accept single object or array
+      return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName} | readonly ${nestedName}[];`;
+    }
+    if (isList) {
+      return `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`;
+    }
+    return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
   });
 
   return {
@@ -218,18 +229,29 @@ const generateConfigWithNestedTypes = (
     .filter(([attrName]) => !RESERVED_NAMES.has(snakeToCamelCase(attrName)))
     .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: snakeToCamelCase(attrName) }));
 
-  const blockProps: PropMapping[] = blockEntries.map(([blockName]) => ({
-    tfName: toTfName(blockName),
-    tsName: snakeToCamelCase(blockName),
-  }));
+  const blockProps: PropMapping[] = blockEntries.map(([blockName, blockType]) => {
+    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isSingleItem = isList && blockType.max_items === 1;
+    return {
+      tfName: toTfName(blockName),
+      tsName: snakeToCamelCase(blockName),
+      isListBlock: isSingleItem,
+    };
+  });
   const blockLines = blockEntries.map(([blockName, blockType]) => {
     const nestedName = `${name}${snakeToPascalCase(blockName)}`;
     const propName = snakeToCamelCase(blockName);
     const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+    const isSingleItem = isList && blockType.max_items === 1;
     const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
-    return isList
-      ? `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`
-      : `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
+    if (isSingleItem) {
+      // max_items=1: accept single object or array
+      return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName} | readonly ${nestedName}[];`;
+    }
+    if (isList) {
+      return `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`;
+    }
+    return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
   });
 
   const nestedTypes = blockEntries.flatMap(([blockName, blockType]) => {

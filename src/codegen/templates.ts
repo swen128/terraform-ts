@@ -1,6 +1,7 @@
 export type PropMapping = {
   readonly tfName: string;
   readonly tsName: string;
+  readonly isListBlock?: boolean;
 };
 
 export type AttributeGetter = {
@@ -14,7 +15,13 @@ export const resourceTemplate = (
   props: readonly PropMapping[],
   getters: readonly AttributeGetter[] = [],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
+  const attrsObject = props
+    .map((p) =>
+      p.isListBlock === true
+        ? `      ${p.tfName}: config.${p.tsName} !== undefined ? (Array.isArray(config.${p.tsName}) ? config.${p.tsName} : [config.${p.tsName}]) : undefined,`
+        : `      ${p.tfName}: config.${p.tsName},`,
+    )
+    .join("\n");
 
   const getterMethods = getters
     .map((g) => {
@@ -40,7 +47,13 @@ export const providerTemplate = (
   source: string,
   props: readonly PropMapping[],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
+  const attrsObject = props
+    .map((p) =>
+      p.isListBlock === true
+        ? `      ${p.tfName}: config.${p.tsName} !== undefined ? (Array.isArray(config.${p.tsName}) ? config.${p.tsName} : [config.${p.tsName}]) : undefined,`
+        : `      ${p.tfName}: config.${p.tsName},`,
+    )
+    .join("\n");
 
   return `export class ${className}Provider extends TerraformProvider {
   constructor(scope: Construct, id: string, config: ${className}ProviderConfig = {}) {
@@ -57,7 +70,13 @@ export const dataSourceTemplate = (
   props: readonly PropMapping[],
   getters: readonly AttributeGetter[] = [],
 ): string => {
-  const attrsObject = props.map((p) => `      ${p.tfName}: config.${p.tsName},`).join("\n");
+  const attrsObject = props
+    .map((p) =>
+      p.isListBlock === true
+        ? `      ${p.tfName}: config.${p.tsName} !== undefined ? (Array.isArray(config.${p.tsName}) ? config.${p.tsName} : [config.${p.tsName}]) : undefined,`
+        : `      ${p.tfName}: config.${p.tsName},`,
+    )
+    .join("\n");
 
   const getterMethods = getters
     .map((g) => {

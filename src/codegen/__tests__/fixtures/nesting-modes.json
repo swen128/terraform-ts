@@ -50,6 +50,18 @@
                   }
                 }
               },
+              "single_item_list": {
+                "nesting_mode": "list",
+                "max_items": 1,
+                "block": {
+                  "attributes": {
+                    "value": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                }
+              },
               "set_block": {
                 "nesting_mode": "set",
                 "block": {
