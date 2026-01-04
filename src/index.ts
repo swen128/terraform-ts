@@ -79,15 +79,8 @@ export {
 } from "./cli/config.js";
 export { writeOutput, writeManifest } from "./cli/synth.js";
 export { generateBindings } from "./cli/get.js";
-export {
-  generateResource,
-  generateDataSource,
-  generateConfig,
-  generateProvider,
-  generateProviderFiles,
-  type GeneratedFiles,
-} from "./codegen/generator.js";
-export { fetchProviderSchema, parseSchemaType } from "./codegen/schema.js";
+export { generateProviderFiles, type GeneratedFiles } from "./codegen/generator.js";
+export { parseProviderSchema } from "./codegen/schema.js";
 
 export type {
   ProviderSchema,

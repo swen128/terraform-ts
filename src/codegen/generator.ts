@@ -1,303 +1,506 @@
-import type { ProviderSchema, ResourceSchema, SchemaBlock } from "./schema.js";
-import { parseSchemaType } from "./schema.js";
-import {
-  resourceTemplate,
-  providerTemplate,
-  dataSourceTemplate,
-  configInterfaceTemplate,
-  type AttributeGetter,
-  type PropMapping,
-} from "./templates.js";
-
-const RESOURCE_IMPORTS = `import type { Construct, TokenString, TerraformResourceConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
-import { TerraformResource } from "tfts";`;
-
-const DATASOURCE_IMPORTS = `import type { Construct, TokenString, TerraformDataSourceConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
-import { TerraformDataSource } from "tfts";`;
-
-const PROVIDER_IMPORTS = `import type { Construct, TerraformProviderConfig, TfString, TfNumber, TfBoolean, TfStringList, TfNumberList, TfStringMap } from "tfts";
-import { TerraformProvider } from "tfts";`;
-
-// Properties defined in base classes that cannot be overridden
-const RESERVED_NAMES = new Set([
-  "node",
-  "path",
-  "terraformResourceType",
-  "friendlyUniqueId",
-  "terraformGeneratorMetadata",
-  "connection",
-  "count",
-  "dependsOn",
-  "forEach",
-  "lifecycle",
-  "provider",
-  "provisioners",
-  "fqn",
-]);
+import type {
+  ProviderSchema,
+  SchemaBlock,
+  AttributeSchema,
+  BlockTypeSchema,
+  SchemaType,
+} from "./schema.js";
 
 export type GeneratedFiles = ReadonlyMap<string, string>;
 
-export const generateProviderFiles = (name: string, schema: ProviderSchema): GeneratedFiles => {
-  const entries = Object.entries(schema.provider_schemas);
-  if (entries.length === 0) {
-    return new Map([["index.ts", `// No schema available for provider ${name}\nexport {};\n`]]);
-  }
+// --- Naming utilities ---
 
-  const firstEntry = entries[0];
-  if (firstEntry === undefined) {
-    return new Map([["index.ts", `// No schema available for provider ${name}\nexport {};\n`]]);
-  }
+const snakeToCamelCase = (str: string): string =>
+  str.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
-  const [source, entry] = firstEntry;
-  const providerName = snakeToPascalCase(name);
-  const files = new Map<string, string>();
-  const namespaceExports: string[] = [];
-
-  // Provider file (in provider/ subdirectory)
-  const providerConfig = generateConfigWithNestedTypes(
-    `${providerName}ProviderConfig`,
-    entry.provider,
-    "TerraformProviderConfig",
-  );
-  const providerClass = providerTemplate(providerName, source, providerConfig.props);
-  const providerContent = [PROVIDER_IMPORTS, ...providerConfig.types, providerClass].join("\n\n");
-  files.set("provider/index.ts", providerContent);
-  namespaceExports.push(`export * as provider from "./provider/index.js";`);
-
-  // Resource files (each in lib/ subdirectory for CDKTF compatibility)
-  for (const [resourceName, resourceSchema] of Object.entries(entry.resource_schemas ?? {})) {
-    const className = terraformNameToClassName(resourceName);
-    const dirName = terraformNameToFileName(resourceName);
-    const namespaceName = pascalToCamelCase(className);
-    const config = generateConfigWithNestedTypes(
-      `${className}Config`,
-      resourceSchema.block,
-      "TerraformResourceConfig",
-    );
-    const resourceClass = resourceTemplate(className, resourceName, config.props, config.getters);
-    const content = [RESOURCE_IMPORTS, ...config.types, resourceClass].join("\n\n");
-    files.set(`lib/${dirName}/index.ts`, content);
-    namespaceExports.push(`export * as ${namespaceName} from "./lib/${dirName}/index.js";`);
-  }
-
-  // Data source files (each in lib/ subdirectory for CDKTF compatibility)
-  for (const [dataSourceName, dataSourceSchema] of Object.entries(
-    entry.data_source_schemas ?? {},
-  )) {
-    const baseClassName = terraformNameToClassName(dataSourceName);
-    const className = `Data${baseClassName}`;
-    const dirName = `data-${terraformNameToFileName(dataSourceName)}`;
-    const namespaceName = `data${baseClassName}`;
-    const config = generateConfigWithNestedTypes(
-      `${className}Config`,
-      dataSourceSchema.block,
-      "TerraformDataSourceConfig",
-    );
-    const dataSourceClass = dataSourceTemplate(
-      className,
-      dataSourceName,
-      config.props,
-      config.getters,
-    );
-    const content = [DATASOURCE_IMPORTS, ...config.types, dataSourceClass].join("\n\n");
-    files.set(`lib/${dirName}/index.ts`, content);
-    namespaceExports.push(`export * as ${namespaceName} from "./lib/${dirName}/index.js";`);
-  }
-
-  // Index file with namespace exports
-  files.set("index.ts", namespaceExports.join("\n") + "\n");
-
-  return files;
+const snakeToPascalCase = (str: string): string => {
+  const camel = snakeToCamelCase(str);
+  return camel.charAt(0).toUpperCase() + camel.slice(1);
 };
 
-// Legacy single-file generator (kept for backward compatibility)
-export const generateProvider = (name: string, schema: ProviderSchema): string => {
-  const files = generateProviderFiles(name, schema);
-  // Combine all files except index.ts into one
-  const parts: string[] = [];
-  for (const [fileName, content] of files) {
-    if (fileName !== "index.ts") {
-      // Strip imports from non-first files to avoid duplicates
-      if (parts.length === 0) {
-        parts.push(content);
-      } else {
-        const lines = content.split("\n");
-        const nonImportLines = lines.filter(
-          (line) => !line.startsWith("import ") && line.trim() !== "",
-        );
-        parts.push(nonImportLines.join("\n"));
+const snakeToKebabCase = (str: string): string => str.replace(/_/g, "-");
+
+const stripProviderPrefix = (name: string, providerName: string): string => {
+  const prefix = `${providerName}_`;
+  return name.startsWith(prefix) ? name.slice(prefix.length) : name;
+};
+
+// --- Type mapping ---
+
+const mapSchemaTypeToTsConfig = (type: SchemaType): string => {
+  if (typeof type === "string") {
+    switch (type) {
+      case "string":
+        return "TfString";
+      case "number":
+        return "TfNumber";
+      case "bool":
+        return "TfBoolean";
+      case "dynamic":
+        return "unknown";
+    }
+  }
+  if (Array.isArray(type)) {
+    const [container, inner] = type;
+    switch (container) {
+      case "list":
+        if (inner === "string") return "TfStringList";
+        if (inner === "number") return "TfNumberList";
+        return `readonly ${mapSchemaTypeToTsConfig(inner)}[]`;
+      case "set":
+        if (inner === "string") return "TfStringList";
+        if (inner === "number") return "TfNumberList";
+        return `readonly ${mapSchemaTypeToTsConfig(inner)}[]`;
+      case "map":
+        if (inner === "string") return "TfStringMap";
+        return `Readonly<Record<string, ${mapSchemaTypeToTsConfig(inner)}>>`;
+      case "object":
+        return "unknown";
+      case "tuple":
+        return "unknown";
+    }
+  }
+  return "unknown";
+};
+
+// --- Code generation helpers ---
+
+type TypeNameRegistry = {
+  usedNames: Set<string>;
+  blockTypeNames: Map<string, string>; // baseName -> actualName
+};
+
+const createTypeNameRegistry = (): TypeNameRegistry => ({
+  usedNames: new Set(),
+  blockTypeNames: new Map(),
+});
+
+const registerTypeName = (registry: TypeNameRegistry, name: string): string => {
+  let finalName = name;
+  while (registry.usedNames.has(finalName)) {
+    finalName = `${finalName}A`;
+  }
+  registry.usedNames.add(finalName);
+  return finalName;
+};
+
+const registerBlockTypeName = (registry: TypeNameRegistry, baseName: string): string => {
+  const actualName = registerTypeName(registry, baseName);
+  registry.blockTypeNames.set(baseName, actualName);
+  return actualName;
+};
+
+const getBlockTypeName = (registry: TypeNameRegistry, baseName: string): string =>
+  registry.blockTypeNames.get(baseName) ?? baseName;
+
+const isPropertyOptional = (attr: AttributeSchema): boolean =>
+  attr.required !== true || attr.optional === true || attr.computed === true;
+
+const isBlockOptional = (block: BlockTypeSchema): boolean =>
+  block.min_items === undefined || block.min_items === 0;
+
+const getBlockPropertyType = (block: BlockTypeSchema, typeName: string): string => {
+  if (block.nesting_mode === "single") {
+    return typeName;
+  }
+  if ((block.nesting_mode === "list" || block.nesting_mode === "set") && block.max_items === 1) {
+    return `${typeName} | readonly ${typeName}[]`;
+  }
+  return `readonly ${typeName}[]`;
+};
+
+const getBlockConstructorValue = (
+  block: BlockTypeSchema,
+  tfName: string,
+  tsName: string,
+): string => {
+  if ((block.nesting_mode === "list" || block.nesting_mode === "set") && block.max_items === 1) {
+    return `${tfName}: config.${tsName} !== undefined ? (Array.isArray(config.${tsName}) ? config.${tsName} : [config.${tsName}]) : undefined,`;
+  }
+  return `${tfName}: config.${tsName},`;
+};
+
+// Reserved property names that should not have getters generated
+const RESERVED_NAMES = new Set([
+  "node",
+  "provider",
+  "dependsOn",
+  "count",
+  "forEach",
+  "lifecycle",
+  "fqn",
+  "terraformResourceType",
+  "terraformGeneratorMetadata",
+  "connection",
+  "provisioners",
+]);
+
+type BlockTypeInfo = {
+  readonly typeName: string;
+  readonly code: string;
+};
+
+const generateBlockTypes = (
+  block: SchemaBlock,
+  className: string,
+  registry: TypeNameRegistry,
+): readonly BlockTypeInfo[] => {
+  const result: BlockTypeInfo[] = [];
+
+  if (!block.block_types) {
+    return result;
+  }
+
+  for (const [name, blockType] of Object.entries(block.block_types)) {
+    const baseName = `${className}${snakeToPascalCase(name)}`;
+    const blockTypeName = registerBlockTypeName(registry, baseName);
+
+    // Recursively generate nested block types
+    const nestedTypes = generateBlockTypes(blockType.block, blockTypeName, registry);
+    result.push(...nestedTypes);
+
+    // Generate the block type itself
+    const properties: string[] = [];
+
+    if (blockType.block.attributes) {
+      for (const [attrName, attr] of Object.entries(blockType.block.attributes)) {
+        const tsName = snakeToCamelCase(attrName);
+        const tsType = mapSchemaTypeToTsConfig(attr.type);
+        const optional = isPropertyOptional(attr) ? "?" : "";
+        properties.push(`  readonly ${tsName}${optional}: ${tsType};`);
+      }
+    }
+
+    if (blockType.block.block_types) {
+      for (const [nestedName, nestedBlock] of Object.entries(blockType.block.block_types)) {
+        const tsName = snakeToCamelCase(nestedName);
+        const nestedTypeName = `${blockTypeName}${snakeToPascalCase(nestedName)}`;
+        const propType = getBlockPropertyType(nestedBlock, nestedTypeName);
+        const optional = isBlockOptional(nestedBlock) ? "?" : "";
+        properties.push(`  readonly ${tsName}${optional}: ${propType};`);
+      }
+    }
+
+    const code = `export type ${blockTypeName} = {
+${properties.join("\n")}
+};`;
+    result.push({ typeName: blockTypeName, code });
+  }
+
+  return result;
+};
+
+const generateImports = (baseClass: string, baseConfig: string, block: SchemaBlock): string => {
+  const types = new Set<string>(["Construct", "TokenString", baseConfig]);
+  types.add(baseClass);
+
+  if (block.attributes) {
+    for (const attr of Object.values(block.attributes)) {
+      const tsType = mapSchemaTypeToTsConfig(attr.type);
+      if (
+        tsType.startsWith("Tf") ||
+        tsType === "TfString" ||
+        tsType === "TfNumber" ||
+        tsType === "TfBoolean" ||
+        tsType === "TfStringList" ||
+        tsType === "TfNumberList" ||
+        tsType === "TfStringMap"
+      ) {
+        types.add(tsType);
       }
     }
   }
-  return parts.join("\n\n");
-};
 
-export const generateResource = (name: string, schema: ResourceSchema): string => {
-  const className = terraformNameToClassName(name);
-  const config = generateConfigInterface(`${className}Config`, schema.block);
-  return `${config.code}\n\n${resourceTemplate(className, name, config.props)}`;
-};
-
-export const generateDataSource = (name: string, schema: ResourceSchema): string => {
-  const className = `Data${terraformNameToClassName(name)}`;
-  const config = generateConfigInterface(`${className}Config`, schema.block);
-  return `${config.code}\n\n${dataSourceTemplate(className, name, config.props)}`;
-};
-
-export const generateConfig = (name: string, schema: SchemaBlock): string => {
-  return generateConfigInterface(name, schema).code;
-};
-
-type ConfigResult = {
-  readonly code: string;
-  readonly props: readonly PropMapping[];
-};
-
-type ConfigWithNestedResult = {
-  readonly types: readonly string[];
-  readonly props: readonly PropMapping[];
-  readonly getters: readonly AttributeGetter[];
-};
-
-const generateConfigInterface = (name: string, block: SchemaBlock): ConfigResult => {
-  const attrEntries = Object.entries(block.attributes ?? {});
-  const blockEntries = Object.entries(block.block_types ?? {});
-
-  const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
-    tfName: toTfName(attrName),
-    tsName: snakeToCamelCase(attrName),
-  }));
-  const attrLines = attrEntries.map(([attrName, attr]) => {
-    const tsType = parseSchemaType(attr.type);
-    const optional = attr.optional === true || attr.computed === true;
-    const propName = snakeToCamelCase(attrName);
-    return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
-  });
-
-  const blockProps: PropMapping[] = blockEntries.map(([blockName, blockType]) => {
-    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-    const isSingleItem = isList && blockType.max_items === 1;
-    return {
-      tfName: toTfName(blockName),
-      tsName: snakeToCamelCase(blockName),
-      isListBlock: isSingleItem,
-    };
-  });
-  const blockLines = blockEntries.map(([blockName, blockType]) => {
-    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
-    const propName = snakeToCamelCase(blockName);
-    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-    const isSingleItem = isList && blockType.max_items === 1;
-    const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
-    if (isSingleItem) {
-      // max_items=1: accept single object or array
-      return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName} | readonly ${nestedName}[];`;
+  const collectBlockTypes = (b: SchemaBlock): void => {
+    if (b.block_types) {
+      for (const blockType of Object.values(b.block_types)) {
+        if (blockType.block.attributes) {
+          for (const attr of Object.values(blockType.block.attributes)) {
+            const tsType = mapSchemaTypeToTsConfig(attr.type);
+            if (tsType.startsWith("Tf")) {
+              types.add(tsType);
+            }
+          }
+        }
+        collectBlockTypes(blockType.block);
+      }
     }
-    if (isList) {
-      return `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`;
-    }
-    return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
-  });
-
-  return {
-    code: configInterfaceTemplate(name, [...attrLines, ...blockLines]),
-    props: [...attrProps, ...blockProps],
   };
+  collectBlockTypes(block);
+
+  const sortedTypes = Array.from(types).sort();
+  return `import type { ${sortedTypes.join(", ")} } from "tfts";
+import { ${baseClass} } from "tfts";`;
 };
 
-const generateConfigWithNestedTypes = (
-  name: string,
+const generateConfigTypeWithName = (
+  configTypeName: string,
+  className: string,
   block: SchemaBlock,
-  baseType?: string,
-): ConfigWithNestedResult => {
-  const attrEntries = Object.entries(block.attributes ?? {});
-  const blockEntries = Object.entries(block.block_types ?? {});
+  baseConfig: string,
+  registry: TypeNameRegistry,
+): string => {
+  const properties: string[] = [];
 
-  const attrProps: PropMapping[] = attrEntries.map(([attrName]) => ({
-    tfName: toTfName(attrName),
-    tsName: snakeToCamelCase(attrName),
-  }));
-  const attrLines = attrEntries.map(([attrName, attr]) => {
-    const tsType = parseSchemaType(attr.type);
-    const optional = attr.optional === true || attr.computed === true;
-    const propName = snakeToCamelCase(attrName);
-    return `  readonly ${propName}${optional ? "?" : ""}: ${tsType};`;
-  });
-
-  // Collect getters for all attributes (excluding reserved names)
-  const getters: readonly AttributeGetter[] = attrEntries
-    .filter(([attrName]) => !RESERVED_NAMES.has(snakeToCamelCase(attrName)))
-    .map(([attrName]) => ({ tfName: toTfName(attrName), tsName: snakeToCamelCase(attrName) }));
-
-  const blockProps: PropMapping[] = blockEntries.map(([blockName, blockType]) => {
-    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-    const isSingleItem = isList && blockType.max_items === 1;
-    return {
-      tfName: toTfName(blockName),
-      tsName: snakeToCamelCase(blockName),
-      isListBlock: isSingleItem,
-    };
-  });
-  const blockLines = blockEntries.map(([blockName, blockType]) => {
-    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
-    const propName = snakeToCamelCase(blockName);
-    const isList = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-    const isSingleItem = isList && blockType.max_items === 1;
-    const isOptional = blockType.min_items === undefined || blockType.min_items === 0;
-    if (isSingleItem) {
-      // max_items=1: accept single object or array
-      return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName} | readonly ${nestedName}[];`;
+  if (block.attributes) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      const tsName = snakeToCamelCase(name);
+      const tsType = mapSchemaTypeToTsConfig(attr.type);
+      const optional = isPropertyOptional(attr) ? "?" : "";
+      properties.push(`  readonly ${tsName}${optional}: ${tsType};`);
     }
-    if (isList) {
-      return `  readonly ${propName}${isOptional ? "?" : ""}: readonly ${nestedName}[];`;
+  }
+
+  if (block.block_types) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      const tsName = snakeToCamelCase(name);
+      const baseName = `${className}${snakeToPascalCase(name)}`;
+      const actualBlockTypeName = getBlockTypeName(registry, baseName);
+      const propType = getBlockPropertyType(blockType, actualBlockTypeName);
+      const optional = isBlockOptional(blockType) ? "?" : "";
+      properties.push(`  readonly ${tsName}${optional}: ${propType};`);
     }
-    return `  readonly ${propName}${isOptional ? "?" : ""}: ${nestedName};`;
-  });
+  }
 
-  const nestedTypes = blockEntries.flatMap(([blockName, blockType]) => {
-    const nestedName = `${name}${snakeToPascalCase(blockName)}`;
-    return generateConfigWithNestedTypes(nestedName, blockType.block).types;
-  });
-
-  return {
-    types: [...nestedTypes, configInterfaceTemplate(name, [...attrLines, ...blockLines], baseType)],
-    props: [...attrProps, ...blockProps],
-    getters,
-  };
+  return `export type ${configTypeName} = {
+${properties.join("\n")}
+} & ${baseConfig};`;
 };
 
-const snakeToPascalCase = (s: string): string => {
-  return s
-    .split(/[-_]/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join("");
+const generateConfigType = (
+  className: string,
+  block: SchemaBlock,
+  baseConfig: string,
+  registry: TypeNameRegistry,
+): string => {
+  const configTypeName = registerTypeName(registry, `${className}Config`);
+  return generateConfigTypeWithName(configTypeName, className, block, baseConfig, registry);
 };
 
-const snakeToCamelCase = (s: string): string => {
-  const pascal = snakeToPascalCase(s);
-  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
+const generateConstructorBody = (block: SchemaBlock): string => {
+  const lines: string[] = [];
+
+  if (block.attributes) {
+    for (const name of Object.keys(block.attributes)) {
+      const tsName = snakeToCamelCase(name);
+      lines.push(`      ${name}: config.${tsName},`);
+    }
+  }
+
+  if (block.block_types) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      const tsName = snakeToCamelCase(name);
+      lines.push(`      ${getBlockConstructorValue(blockType, name, tsName)}`);
+    }
+  }
+
+  return lines.join("\n");
 };
 
-const pascalToCamelCase = (s: string): string => {
-  return s.charAt(0).toLowerCase() + s.slice(1);
+const generateGetters = (block: SchemaBlock): string => {
+  const getters: string[] = [];
+
+  if (block.attributes) {
+    for (const name of Object.keys(block.attributes)) {
+      const tsName = snakeToCamelCase(name);
+      if (RESERVED_NAMES.has(tsName)) {
+        continue;
+      }
+      getters.push(`  get ${tsName}(): TokenString {
+    return this.getStringAttribute("${name}");
+  }`);
+    }
+  }
+
+  return getters.join("\n\n");
 };
 
-const toTfName = (s: string): string => {
-  return s.replace(/-/g, "_");
+// --- Provider generation ---
+
+const generateProviderClass = (
+  providerName: string,
+  source: string,
+  block: SchemaBlock,
+): string => {
+  const className = `${snakeToPascalCase(providerName)}Provider`;
+  const registry = createTypeNameRegistry();
+  registry.usedNames.add(className);
+
+  const blockTypes = generateBlockTypes(block, className, registry);
+  const imports = generateImports("TerraformProvider", "TerraformProviderConfig", block);
+  const configType = generateConfigType(className, block, "TerraformProviderConfig", registry);
+  const constructorBody = generateConstructorBody(block);
+  const getters = generateGetters(block);
+
+  const blockTypeCode =
+    blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
+
+  const getterSection = getters ? `\n\n${getters}` : "";
+
+  return `${imports}
+
+${blockTypeCode}${configType}
+
+export class ${className} extends TerraformProvider {
+  constructor(scope: Construct, id: string, config: ${className}Config = {}) {
+    super(scope, id, "${source}", {
+${constructorBody}
+    }, config);
+  }${getterSection}
+}
+`;
 };
 
-const terraformNameToClassName = (name: string): string => {
-  // google_storage_bucket -> StorageBucket (strip provider prefix)
-  // random_password -> Password
-  const parts = name.split("_");
-  // Remove first part (provider name)
-  const withoutProvider = parts.slice(1).join("_");
-  return snakeToPascalCase(withoutProvider || name);
+// --- Resource generation ---
+
+const generateResourceClass = (
+  resourceName: string,
+  providerName: string,
+  block: SchemaBlock,
+): string => {
+  const strippedName = stripProviderPrefix(resourceName, providerName);
+  const className = snakeToPascalCase(strippedName);
+  const registry = createTypeNameRegistry();
+  registry.usedNames.add(className);
+  // Reserve the config type name first so nested blocks get the A suffix if collision
+  registry.usedNames.add(`${className}Config`);
+
+  const blockTypes = generateBlockTypes(block, className, registry);
+  const imports = generateImports("TerraformResource", "TerraformResourceConfig", block);
+  const configType = generateConfigTypeWithName(
+    `${className}Config`,
+    className,
+    block,
+    "TerraformResourceConfig",
+    registry,
+  );
+  const constructorBody = generateConstructorBody(block);
+  const getters = generateGetters(block);
+
+  const blockTypeCode =
+    blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
+
+  const getterSection = getters ? `\n\n${getters}` : "";
+
+  return `${imports}
+
+${blockTypeCode}${configType}
+
+export class ${className} extends TerraformResource {
+  constructor(scope: Construct, id: string, config: ${className}Config) {
+    super(scope, id, "${resourceName}", {
+${constructorBody}
+    }, config);
+  }${getterSection}
+}
+`;
 };
 
-const terraformNameToFileName = (name: string): string => {
-  // google_storage_bucket -> storage-bucket
-  const parts = name.split("_");
-  const withoutProvider = parts.slice(1).join("-");
-  return withoutProvider || name.replace(/_/g, "-");
+// --- Data source generation ---
+
+const generateDataSourceClass = (
+  dataSourceName: string,
+  providerName: string,
+  block: SchemaBlock,
+): string => {
+  const strippedName = stripProviderPrefix(dataSourceName, providerName);
+  const className = `Data${snakeToPascalCase(strippedName)}`;
+  const registry = createTypeNameRegistry();
+  registry.usedNames.add(className);
+
+  const blockTypes = generateBlockTypes(block, className, registry);
+  const imports = generateImports("TerraformDataSource", "TerraformDataSourceConfig", block);
+  const configType = generateConfigType(className, block, "TerraformDataSourceConfig", registry);
+  const constructorBody = generateConstructorBody(block);
+  const getters = generateGetters(block);
+
+  const blockTypeCode =
+    blockTypes.length > 0 ? blockTypes.map((bt) => bt.code).join("\n\n") + "\n\n" : "";
+
+  const getterSection = getters ? `\n\n${getters}` : "";
+
+  return `${imports}
+
+${blockTypeCode}${configType}
+
+export class ${className} extends TerraformDataSource {
+  constructor(scope: Construct, id: string, config: ${className}Config) {
+    super(scope, id, "${dataSourceName}", {
+${constructorBody}
+    }, config);
+  }${getterSection}
+}
+`;
+};
+
+// --- Index file generation ---
+
+type NamespaceExport = {
+  readonly namespace: string;
+  readonly path: string;
+};
+
+const generateIndexFile = (exports: readonly NamespaceExport[]): string => {
+  const lines = exports
+    .slice()
+    .sort((a, b) => a.namespace.localeCompare(b.namespace))
+    .map((e) => `export * as ${e.namespace} from "./${e.path}";`);
+  return lines.join("\n") + "\n";
+};
+
+// --- Main generator ---
+
+export const generateProviderFiles = (name: string, schema: ProviderSchema): GeneratedFiles => {
+  const files = new Map<string, string>();
+  const namespaceExports: NamespaceExport[] = [];
+
+  // Find the provider schema entry
+  const providerEntry = Object.entries(schema.provider_schemas).find(
+    ([source]) => source.includes(`/${name}`) || source.endsWith(`/${name}`),
+  );
+
+  if (!providerEntry) {
+    return files;
+  }
+
+  const [source, schemaEntry] = providerEntry;
+
+  // Generate provider
+  files.set("provider/index.ts", generateProviderClass(name, source, schemaEntry.provider));
+  namespaceExports.push({ namespace: "provider", path: "provider/index.js" });
+
+  // Generate resources
+  if (schemaEntry.resource_schemas) {
+    for (const [resourceName, resourceSchema] of Object.entries(schemaEntry.resource_schemas)) {
+      const strippedName = stripProviderPrefix(resourceName, name);
+      const kebabName = snakeToKebabCase(strippedName);
+      const path = `lib/${kebabName}/index.ts`;
+      files.set(path, generateResourceClass(resourceName, name, resourceSchema.block));
+      namespaceExports.push({
+        namespace: snakeToCamelCase(strippedName),
+        path: `lib/${kebabName}/index.js`,
+      });
+    }
+  }
+
+  // Generate data sources
+  if (schemaEntry.data_source_schemas) {
+    for (const [dataSourceName, dataSourceSchema] of Object.entries(
+      schemaEntry.data_source_schemas,
+    )) {
+      const strippedName = stripProviderPrefix(dataSourceName, name);
+      const kebabName = snakeToKebabCase(strippedName);
+      const path = `lib/data-${kebabName}/index.ts`;
+      files.set(path, generateDataSourceClass(dataSourceName, name, dataSourceSchema.block));
+      namespaceExports.push({
+        namespace: `data${snakeToPascalCase(strippedName)}`,
+        path: `lib/data-${kebabName}/index.js`,
+      });
+    }
+  }
+
+  // Generate index file
+  files.set("index.ts", generateIndexFile(namespaceExports));
+
+  return files;
 };

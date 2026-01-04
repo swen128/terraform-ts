@@ -1,101 +1,232 @@
 import { test, expect, describe } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { generateProvider, generateProviderFiles } from "../generator.js";
-import { parseProviderSchema, type ProviderSchema } from "../schema.js";
+import { generateProviderFiles } from "../generator.js";
+import { simpleProvider, multiwordProvider, nestingModesProvider } from "./fixtures.js";
 
-const loadFixture = (name: string): ProviderSchema => {
-  const path = join(import.meta.dir, "fixtures", `${name}.json`);
-  const json: unknown = JSON.parse(readFileSync(path, "utf-8"));
-  const result = parseProviderSchema(json);
-  if (result.isErr()) {
-    throw new Error(`Failed to parse fixture ${name}: ${result.error.message}`);
+const getContent = (files: ReadonlyMap<string, string>, path: string): string => {
+  const content = files.get(path);
+  if (content === undefined) {
+    throw new Error(`File not found: ${path}`);
   }
-  return result.value;
+  return content;
 };
 
-describe("generateProvider", () => {
-  test("generates provider with resources and data sources", () => {
-    const schema = loadFixture("simple-provider");
-    const result = generateProvider("simple", schema);
-    expect(result).toMatchSnapshot();
+describe("file structure", () => {
+  test("generates provider at provider/index.ts", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    expect(files.has("provider/index.ts")).toBe(true);
   });
-});
 
-describe("generateProviderFiles", () => {
-  test("generates camelCase namespace names for multi-word resources", () => {
-    const schema = loadFixture("multiword-provider");
-    const files = generateProviderFiles("google", schema);
-    const indexContent = files.get("index.ts");
-
-    // Namespace names should be camelCase: alloydbCluster, storageBucket
-    expect(indexContent).toContain("export * as alloydbCluster from");
-    expect(indexContent).toContain("export * as storageBucket from");
-
-    // Should NOT be all lowercase
-    expect(indexContent).not.toContain("export * as alloydbcluster from");
-    expect(indexContent).not.toContain("export * as storagebucket from");
-  });
-});
-
-describe("nesting modes", () => {
-  test("single nesting mode generates single object type, not array", () => {
-    const schema = loadFixture("nesting-modes");
-    const result = generateProvider("test", schema);
-
-    // Single nesting mode should be single object only
-    expect(result).toContain("readonly singleBlock?: ResourceConfigSingleBlock;");
-    expect(result).not.toContain("readonly singleBlock?: ResourceConfigSingleBlock |");
-  });
-});
-
-describe("attribute getters", () => {
-  test("generates getters for ALL attributes, not just computed", () => {
-    const schema = loadFixture("nesting-modes");
-    const result = generateProvider("test", schema);
-
-    // Should have getters for computed attributes
-    expect(result).toContain("get id(): TokenString {");
-    expect(result).toContain("get secretId(): TokenString {");
-    expect(result).toContain("get location(): TokenString {");
-
-    // Should ALSO have getter for required (non-computed) attribute
-    expect(result).toContain("get name(): TokenString {");
-  });
-});
-
-describe("lib directory structure", () => {
-  test("generates lib/ directory for CDKTF compatibility", () => {
-    const schema = loadFixture("multiword-provider");
-    const files = generateProviderFiles("google", schema);
-
-    // Should have lib/ prefix
+  test("generates resources at lib/{name}/index.ts", () => {
+    const files = generateProviderFiles("google", multiwordProvider);
     expect(files.has("lib/alloydb-cluster/index.ts")).toBe(true);
     expect(files.has("lib/storage-bucket/index.ts")).toBe(true);
+  });
 
-    // Root index should export from lib/
-    const indexContent = files.get("index.ts");
-    expect(indexContent).toContain('from "./lib/alloydb-cluster');
+  test("generates data sources at lib/data-{name}/index.ts", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    expect(files.has("lib/data-data/index.ts")).toBe(true);
+  });
+
+  test("generates index.ts with namespace exports", () => {
+    const files = generateProviderFiles("google", multiwordProvider);
+    const index = getContent(files, "index.ts");
+    expect(index).toContain('export * as provider from "./provider/index.js"');
+    expect(index).toContain('export * as alloydbCluster from "./lib/alloydb-cluster/index.js"');
+    expect(index).toContain('export * as storageBucket from "./lib/storage-bucket/index.js"');
   });
 });
 
-describe("list block types", () => {
-  test("max_items=1 blocks accept single object or array (union type)", () => {
-    const schema = loadFixture("nesting-modes");
-    const result = generateProvider("test", schema);
+describe("class naming", () => {
+  test("provider class: {Provider}Provider", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "provider/index.ts");
+    expect(content).toContain("export class SimpleProvider extends TerraformProvider");
+  });
 
-    // max_items=1: accept single object or array
-    expect(result).toContain(
-      "readonly singleItemList?: ResourceConfigSingleItemList | readonly ResourceConfigSingleItemList[];",
+  test("resource class: strips provider prefix, PascalCase", () => {
+    const files = generateProviderFiles("google", multiwordProvider);
+    const content = getContent(files, "lib/alloydb-cluster/index.ts");
+    expect(content).toContain("export class AlloydbCluster extends TerraformResource");
+  });
+
+  test("data source class: Data{Name}", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/data-data/index.ts");
+    expect(content).toContain("export class DataData extends TerraformDataSource");
+  });
+});
+
+describe("type naming", () => {
+  test("config type: {ClassName}Config", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("export type ResourceConfig = {");
+  });
+
+  test("nested block type: {ClassName}{BlockName} (not {ClassName}Config{BlockName})", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+
+    // Correct: ResourceSingleBlock
+    expect(content).toContain("export type ResourceSingleBlock = {");
+    expect(content).toContain("export type ResourceListBlock = {");
+    expect(content).toContain("export type ResourceSingleItemList = {");
+    expect(content).toContain("export type ResourceSetBlock = {");
+
+    // Wrong: ResourceConfigSingleBlock
+    expect(content).not.toContain("ResourceConfigSingleBlock");
+    expect(content).not.toContain("ResourceConfigListBlock");
+  });
+
+  test("collision: append A when type name exists", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+
+    // ResourceConfig exists for the config type
+    // Nested block "config" would also be ResourceConfig -> becomes ResourceConfigA
+    expect(content).toContain("export type ResourceConfigA = {");
+    expect(content).toContain("readonly config?: ResourceConfigA;");
+  });
+});
+
+describe("property naming", () => {
+  test("converts snake_case to camelCase", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly secretId?:");
+    expect(content).toContain("readonly singleBlock?:");
+    expect(content).toContain("readonly listBlock?:");
+    expect(content).toContain("readonly singleItemList?:");
+    expect(content).toContain("readonly setBlock?:");
+  });
+
+  test("uses snake_case in terraform attribute mapping", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("secret_id: config.secretId");
+    expect(content).toContain("single_block: config.singleBlock");
+  });
+});
+
+describe("block nesting modes", () => {
+  test("single: generates T", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly singleBlock?: ResourceSingleBlock;");
+    expect(content).not.toContain("readonly singleBlock?: ResourceSingleBlock |");
+  });
+
+  test("list without max_items=1: generates readonly T[]", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly listBlock?: readonly ResourceListBlock[];");
+  });
+
+  test("set: generates readonly T[]", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly setBlock?: readonly ResourceSetBlock[];");
+  });
+
+  test("list with max_items=1: generates T | readonly T[]", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain(
+      "readonly singleItemList?: ResourceSingleItemList | readonly ResourceSingleItemList[];",
     );
+  });
+});
 
-    // Regular list block: array only
-    expect(result).toContain("readonly listBlock?: readonly ResourceConfigListBlock[];");
+describe("constructor body", () => {
+  test("regular properties: tf_name: config.tsName", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("secret_id: config.secretId,");
+    expect(content).toContain("single_block: config.singleBlock,");
+  });
 
-    // Set block: array only
-    expect(result).toContain("readonly setBlock?: readonly ResourceConfigSetBlock[];");
+  test("max_items=1 blocks: array normalization", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain(
+      "single_item_list: config.singleItemList !== undefined ? (Array.isArray(config.singleItemList) ? config.singleItemList : [config.singleItemList]) : undefined,",
+    );
+  });
+});
 
-    // Single nesting mode: single object
-    expect(result).toContain("readonly singleBlock?: ResourceConfigSingleBlock;");
+describe("getters", () => {
+  test("generates getters for all attributes", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("get id(): TokenString {");
+    expect(content).toContain("get name(): TokenString {");
+    expect(content).toContain("get secretId(): TokenString {");
+    expect(content).toContain("get location(): TokenString {");
+  });
+
+  test("getter format: return this.getStringAttribute(tf_name)", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain('return this.getStringAttribute("secret_id");');
+  });
+});
+
+describe("attribute type mappings", () => {
+  test("string -> TfString in config", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly name: TfString;");
+  });
+
+  test("bool -> TfBoolean in config", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly enabled?: TfBoolean;");
+  });
+
+  test("number -> TfNumber in config", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly count?: TfNumber;");
+  });
+
+  test('["map", "string"] -> TfStringMap in config', () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly tags?: TfStringMap;");
+  });
+});
+
+describe("optionality", () => {
+  test("required: true -> required property", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly name: TfString;"); // no ?
+  });
+
+  test("optional: true -> optional property", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly enabled?: TfBoolean;");
+  });
+
+  test("computed: true -> optional property", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly id?: TfString;");
+  });
+
+  test("block with min_items undefined or 0 -> optional", () => {
+    const files = generateProviderFiles("test", nestingModesProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    expect(content).toContain("readonly singleBlock?:");
+    expect(content).toContain("readonly listBlock?:");
+  });
+
+  test("block with min_items >= 1 -> required", () => {
+    const files = generateProviderFiles("simple", simpleProvider);
+    const content = getContent(files, "lib/resource/index.ts");
+    // items has min_items: 1
+    expect(content).toContain("readonly items: readonly ResourceItems[];");
   });
 });

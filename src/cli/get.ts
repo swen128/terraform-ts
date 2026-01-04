@@ -1,9 +1,49 @@
 import { ok, err, type Result } from "neverthrow";
 import * as fs from "node:fs/promises";
 import { join, dirname } from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { tmpdir } from "node:os";
 import { readConfig, type ConfigError } from "./config.js";
 import { generateProviderFiles } from "../codegen/generator.js";
-import { fetchProviderSchema, type SchemaError } from "../codegen/schema.js";
+import { parseProviderSchema, type SchemaError, type ProviderSchema } from "../codegen/schema.js";
+
+const execFileAsync = promisify(execFile);
+
+const fetchProviderSchema = async (
+  source: string,
+  version: string,
+): Promise<Result<ProviderSchema, SchemaError>> => {
+  const tempDir = await fs.mkdtemp(join(tmpdir(), "tfts-"));
+
+  try {
+    const tfConfig = `
+terraform {
+  required_providers {
+    provider = {
+      source  = "${source}"
+      version = "${version === "latest" ? ">= 0" : version}"
+    }
+  }
+}
+`;
+    await fs.writeFile(join(tempDir, "main.tf"), tfConfig);
+
+    await execFileAsync("terraform", ["init"], { cwd: tempDir });
+
+    const { stdout } = await execFileAsync("terraform", ["providers", "schema", "-json"], {
+      cwd: tempDir,
+    });
+
+    const data: unknown = JSON.parse(stdout);
+    return parseProviderSchema(data);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return err({ kind: "schema", message });
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+};
 
 export type GetOptions = {
   readonly configPath?: string;
