@@ -1,14 +1,23 @@
 import { ok, err, type Result } from "neverthrow";
 import * as fs from "node:fs/promises";
 import { join, dirname } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { readConfig, type ConfigError } from "./config.js";
 import { generateProviderFiles } from "../codegen/generator.js";
 import { parseProviderSchema, type SchemaError, type ProviderSchema } from "../codegen/schema.js";
 
-const execFileAsync = promisify(execFile);
+const exec = (command: string, args: string[], cwd: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd });
+    const chunks: string[] = [];
+    const errChunks: string[] = [];
+    child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk.toString()));
+    child.stderr.on("data", (chunk: Buffer) => errChunks.push(chunk.toString()));
+    child.on("close", (code) =>
+      code === 0 ? resolve(chunks.join("")) : reject(new Error(errChunks.join(""))),
+    );
+  });
 
 const fetchProviderSchema = async (
   source: string,
@@ -29,11 +38,8 @@ terraform {
 `;
     await fs.writeFile(join(tempDir, "main.tf"), tfConfig);
 
-    await execFileAsync("terraform", ["init"], { cwd: tempDir });
-
-    const { stdout } = await execFileAsync("terraform", ["providers", "schema", "-json"], {
-      cwd: tempDir,
-    });
+    await exec("terraform", ["init"], tempDir);
+    const stdout = await exec("terraform", ["providers", "schema", "-json"], tempDir);
 
     const data: unknown = JSON.parse(stdout);
     return parseProviderSchema(data);
