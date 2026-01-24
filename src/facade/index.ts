@@ -1,6 +1,7 @@
 export * from "./app.js";
 export * from "./backends/index.js";
 export * from "./construct.js";
+export * from "./terraform-asset.js";
 export * from "./terraform-backend.js";
 export * from "./terraform-data-source.js";
 export * from "./terraform-element.js";
