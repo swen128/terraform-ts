@@ -1,18 +1,18 @@
 import { get } from "./get.js";
 import { synth } from "./synth.js";
 
-const args = process.argv.slice(2);
-const command = args[0];
+const cliArgs = process.argv.slice(2);
+const command = cliArgs[0];
 
-function parseFlags(args: string[]): Record<string, string | boolean | string[]> {
-  const flags: Record<string, string | boolean | string[]> = {};
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (!arg) continue;
+function parseFlags(flagArgs: readonly string[]): Record<string, string | boolean> {
+  const flags: Record<string, string | boolean> = {};
+  for (let i = 0; i < flagArgs.length; i++) {
+    const arg = flagArgs[i];
+    if (arg === undefined) continue;
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
-      const next = args[i + 1];
-      if (next && !next.startsWith("--")) {
+      const next = flagArgs[i + 1];
+      if (next !== undefined && !next.startsWith("--")) {
         flags[key] = next;
         i++;
       } else {
@@ -23,25 +23,33 @@ function parseFlags(args: string[]): Record<string, string | boolean | string[]>
   return flags;
 }
 
+function getStringFlag(flags: Record<string, string | boolean>, key: string): string | undefined {
+  const value = flags[key];
+  return typeof value === "string" ? value : undefined;
+}
+
 async function main(): Promise<void> {
-  const flags = parseFlags(args.slice(1));
+  const flags = parseFlags(cliArgs.slice(1));
 
   switch (command) {
     case "synth":
     case "synthesize":
       await synth({
-        app: flags.app as string | undefined,
-        output: flags.output as string | undefined,
+        app: getStringFlag(flags, "app"),
+        output: getStringFlag(flags, "output"),
       });
       break;
 
-    case "get":
+    case "get": {
+      const providersStr = getStringFlag(flags, "providers");
+      const modulesStr = getStringFlag(flags, "modules");
       await get({
-        output: flags.output as string | undefined,
-        providers: flags.providers ? (flags.providers as string).split(",") : undefined,
-        modules: flags.modules ? (flags.modules as string).split(",") : undefined,
+        output: getStringFlag(flags, "output"),
+        providers: providersStr !== undefined ? providersStr.split(",") : undefined,
+        modules: modulesStr !== undefined ? modulesStr.split(",") : undefined,
       });
       break;
+    }
 
     case "help":
     case "--help":
@@ -51,7 +59,7 @@ async function main(): Promise<void> {
       break;
 
     default:
-      console.error(`Unknown command: ${command}`);
+      console.error(`Unknown command: ${String(command)}`);
       printHelp();
       process.exit(1);
   }
