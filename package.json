@@ -30,6 +30,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "neverthrow": "^8.2.0"
+    "neverthrow": "^8.2.0",
+    "zod": "^4.3.6"
   }
 }
