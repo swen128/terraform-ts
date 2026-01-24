@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "bin": {
-    "tfts": "dist/bin/tfts.js"
+    "tfts": "./src/cli/main.ts"
   },
   "scripts": {
     "build": "tsc",
