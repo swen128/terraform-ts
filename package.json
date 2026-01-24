@@ -14,7 +14,8 @@
     "format:check": "biome format .",
     "knip": "knip",
     "test": "bun test",
-    "check": "bun format && bun typecheck && bun test && bun lint && bun knip"
+    "check": "bun format && bun typecheck && bun test && bun lint && bun knip",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
@@ -26,6 +27,7 @@
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-functional": "^9.0.2",
     "eslint-plugin-unicorn": "^60.0.0",
+    "husky": "^9.1.7",
     "knip": "^5.62.0",
     "typescript": "^5.9.2"
   },
