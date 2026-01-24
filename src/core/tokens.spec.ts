@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
+  asToken,
   containsTokens,
   createToken,
   fn,
-  isToken,
   lazy,
   raw,
   ref,
@@ -72,19 +72,19 @@ describe("tokens", () => {
     });
   });
 
-  describe("isToken", () => {
-    test("returns true for tokens", () => {
-      expect(isToken(ref("a", "b"))).toBe(true);
-      expect(isToken(fn("f"))).toBe(true);
-      expect(isToken(raw("x"))).toBe(true);
-      expect(isToken(lazy(() => null))).toBe(true);
+  describe("asToken", () => {
+    test("returns token for valid tokens", () => {
+      expect(asToken(ref("a", "b"))).not.toBeNull();
+      expect(asToken(fn("f"))).not.toBeNull();
+      expect(asToken(raw("x"))).not.toBeNull();
+      expect(asToken(lazy(() => null))).not.toBeNull();
     });
 
-    test("returns false for non-tokens", () => {
-      expect(isToken(null)).toBe(false);
-      expect(isToken("string")).toBe(false);
-      expect(isToken(123)).toBe(false);
-      expect(isToken({ kind: "other" })).toBe(false);
+    test("returns null for non-tokens", () => {
+      expect(asToken(null)).toBeNull();
+      expect(asToken("string")).toBeNull();
+      expect(asToken(123)).toBeNull();
+      expect(asToken({ kind: "other" })).toBeNull();
     });
   });
 

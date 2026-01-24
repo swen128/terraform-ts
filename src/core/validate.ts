@@ -44,6 +44,11 @@ export function validateNode(node: ConstructNode): readonly ValidationError[] {
     case "stack":
       errors.push(...validateStack(node));
       break;
+    case "app":
+    case "datasource":
+    case "backend":
+    case "local":
+      break;
   }
 
   return errors;

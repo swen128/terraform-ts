@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type Token = RefToken | FnToken | RawToken | LazyToken;
 
 export type RefToken = {
@@ -22,6 +24,35 @@ export type LazyToken = {
   readonly producer: () => unknown;
 };
 
+const RefTokenSchema = z.object({
+  kind: z.literal("ref"),
+  fqn: z.string(),
+  attribute: z.string(),
+});
+
+const FnTokenSchema = z.object({
+  kind: z.literal("fn"),
+  name: z.string(),
+  args: z.array(z.unknown()).readonly(),
+});
+
+const RawTokenSchema = z.object({
+  kind: z.literal("raw"),
+  expression: z.string(),
+});
+
+const LazyTokenSchema = z.object({
+  kind: z.literal("lazy"),
+  producer: z.function(),
+});
+
+const TokenSchema: z.ZodType<Token> = z.union([
+  RefTokenSchema,
+  FnTokenSchema,
+  RawTokenSchema,
+  LazyTokenSchema,
+]);
+
 export type TokenResolver = (token: Token) => unknown;
 
 export type TokenContext = {
@@ -33,7 +64,7 @@ export type IResolvable = {
   readonly creationStack: readonly string[];
   resolve(context: IResolveContext): unknown;
   toString(): string;
-}
+};
 
 export type IResolveContext = {
   readonly scope: unknown;
@@ -41,27 +72,27 @@ export type IResolveContext = {
   readonly originStack: readonly string[];
   registerPostProcessor(postProcessor: IPostProcessor): void;
   resolve(value: unknown): unknown;
-}
+};
 
 export type IPostProcessor = {
   postProcess(input: unknown, context: IResolveContext): unknown;
-}
+};
 
 export type IStringProducer = {
   produce(context: IResolveContext): string | undefined;
-}
+};
 
 export type INumberProducer = {
   produce(context: IResolveContext): number | undefined;
-}
+};
 
 export type IListProducer = {
   produce(context: IResolveContext): string[] | undefined;
-}
+};
 
 export type IAnyProducer = {
   produce(context: IResolveContext): unknown;
-}
+};
 
 const TOKEN_MARKER = "${TfToken[";
 const TOKEN_MARKER_END = "]}";
@@ -129,23 +160,22 @@ function argToString(arg: unknown): string {
     return `[${arg.map(argToString).join(", ")}]`;
   }
   if (arg !== null && typeof arg === "object") {
-    if (isToken(arg)) {
-      return tokenToString(arg as Token);
+    const token = asToken(arg);
+    if (token !== null) {
+      return tokenToString(token);
     }
-    const entries = Object.entries(arg as Record<string, unknown>);
+    const entries = Object.entries(arg);
     return `{${entries.map(([k, v]) => `${k} = ${argToString(v)}`).join(", ")}}`;
   }
   return String(arg);
 }
 
-export function isToken(value: unknown): value is Token {
-  if (value === null || typeof value !== "object") {
-    return false;
+export function asToken(value: unknown): Token | null {
+  const result = TokenSchema.safeParse(value);
+  if (result.success) {
+    return result.data;
   }
-  const obj = value as Record<string, unknown>;
-  return (
-    obj["kind"] === "ref" || obj["kind"] === "fn" || obj["kind"] === "raw" || obj["kind"] === "lazy"
-  );
+  return null;
 }
 
 export function containsTokens(value: unknown): boolean {
@@ -165,7 +195,7 @@ export function containsTokens(value: unknown): boolean {
     return (high & NUMBER_TOKEN_MASK) === NUMBER_TOKEN_MARKER;
   }
 
-  if (isToken(value)) {
+  if (asToken(value) !== null) {
     return true;
   }
 
@@ -174,7 +204,10 @@ export function containsTokens(value: unknown): boolean {
   }
 
   if (typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).some(containsTokens);
+    const obj = z.record(z.string(), z.unknown()).safeParse(value);
+    if (obj.success) {
+      return Object.values(obj.data).some(containsTokens);
+    }
   }
 
   return false;
@@ -183,8 +216,9 @@ export function containsTokens(value: unknown): boolean {
 export function resolveToken(token: Token): Token {
   if (token.kind === "lazy") {
     const result = token.producer();
-    if (isToken(result)) {
-      return resolveToken(result);
+    const resultToken = asToken(result);
+    if (resultToken !== null) {
+      return resolveToken(resultToken);
     }
     return { kind: "raw", expression: String(result) };
   }
@@ -204,8 +238,9 @@ export function resolveTokens(value: unknown, resolver: TokenResolver): unknown 
     return resolveNumberToken(value, resolver);
   }
 
-  if (isToken(value)) {
-    return resolver(value);
+  const token = asToken(value);
+  if (token !== null) {
+    return resolver(token);
   }
 
   if (Array.isArray(value)) {
@@ -213,11 +248,14 @@ export function resolveTokens(value: unknown, resolver: TokenResolver): unknown 
   }
 
   if (typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-      result[key] = resolveTokens(val, resolver);
+    const obj = z.record(z.string(), z.unknown()).safeParse(value);
+    if (obj.success) {
+      const result: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(obj.data)) {
+        result[key] = resolveTokens(val, resolver);
+      }
+      return result;
     }
-    return result;
   }
 
   return value;

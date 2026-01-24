@@ -20,10 +20,7 @@ export function fetchProviderSchema(
   mkdirSync(workDir, { recursive: true });
   writeFileSync(`${workDir}/main.tf.json`, JSON.stringify(tfConfig, null, 2));
 
-  console.log(`    Running terraform init...`);
   execSync("terraform init -no-color", { cwd: workDir, stdio: "pipe" });
-
-  console.log(`    Fetching provider schema...`);
   const schemaOutput = execSync("terraform providers schema -json", {
     cwd: workDir,
     stdio: "pipe",
