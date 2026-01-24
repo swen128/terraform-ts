@@ -7,6 +7,7 @@ export * from "./terraform-asset.js";
 export * from "./terraform-backend.js";
 export * from "./terraform-data-source.js";
 export * from "./terraform-element.js";
+export * from "./terraform-functions.js";
 export * from "./terraform-iterator.js";
 export * from "./terraform-local.js";
 export * from "./terraform-module.js";
