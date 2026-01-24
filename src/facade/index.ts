@@ -1,4 +1,5 @@
 export * from "./app.js";
+export * from "./backends/index.js";
 export * from "./construct.js";
 export * from "./terraform-backend.js";
 export * from "./terraform-data-source.js";
@@ -10,3 +11,4 @@ export * from "./terraform-remote-state.js";
 export * from "./terraform-resource.js";
 export * from "./terraform-stack.js";
 export * from "./terraform-variable.js";
+export * from "./util.js";
