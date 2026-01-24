@@ -1,9 +1,9 @@
 import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
+import eslintComments from "eslint-plugin-eslint-comments";
 import functional from "eslint-plugin-functional";
 import unicorn from "eslint-plugin-unicorn";
-import eslintComments from "eslint-plugin-eslint-comments";
 
 export default [
   js.configs.recommended,
@@ -96,6 +96,12 @@ export default [
     files: ["bin/**/*.ts", "src/cli/**/*.ts"],
     rules: {
       "no-console": "off",
+      "functional/no-throw-statements": "off",
+    },
+  },
+  {
+    files: ["src/facade/**/*.ts"],
+    rules: {
       "functional/no-throw-statements": "off",
     },
   },

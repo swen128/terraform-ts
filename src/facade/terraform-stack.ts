@@ -11,7 +11,7 @@ export type TerraformStackMetadata = {
   readonly stackName: string;
   readonly version: string;
   readonly backend: string;
-}
+};
 
 export class TerraformStack extends Construct {
   public dependencies: TerraformStack[] = [];
@@ -50,10 +50,13 @@ export class TerraformStack extends Construct {
 
   synthesize(): void {
     const app = App.of(this);
+    if (app === null) {
+      throw new Error(`No App found in scope of ${this.node.path}`);
+    }
     const stackDir = `${app.outdir}/stacks/${this.stackName}`;
 
-    const fs = require("fs");
-    const path = require("path");
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
 
     if (!fs.existsSync(stackDir)) {
       fs.mkdirSync(stackDir, { recursive: true });
@@ -74,7 +77,13 @@ export class TerraformStack extends Construct {
   }
 
   toTerraform(): TerraformJson {
-    const elements = this.node.findAll().filter((c) => c !== this && isTerraformElement(c));
+    const elements = this.node
+      .findAll()
+      .filter((c) => c !== this)
+      .flatMap((c) => {
+        const el = asTerraformElement(c);
+        return el !== null ? [el] : [];
+      });
 
     let result: TerraformJson = {
       "//": {
@@ -115,10 +124,11 @@ export class TerraformStack extends Construct {
   }
 
   ensureBackendExists(): TerraformBackend {
-    const backends = this.node
-      .findAll()
-      .filter((c): c is TerraformBackend => TerraformBackend.isBackend(c));
-    if (backends.length > 0 && backends[0]) {
+    const backends = this.node.findAll().flatMap((c) => {
+      const backend = TerraformBackend.asBackend(c);
+      return backend !== null ? [backend] : [];
+    });
+    if (backends.length > 0 && backends[0] !== undefined) {
       return backends[0];
     }
     return new LocalBackend(this, {});
@@ -172,6 +182,6 @@ import { TerraformOutput } from "./terraform-output.js";
 import { TerraformProvider } from "./terraform-provider.js";
 import { TerraformRemoteState } from "./terraform-remote-state.js";
 
-function isTerraformElement(x: unknown): x is TerraformElement {
-  return TerraformElement.isTerraformElement(x);
+function asTerraformElement(x: unknown): TerraformElement | null {
+  return TerraformElement.asTerraformElement(x);
 }

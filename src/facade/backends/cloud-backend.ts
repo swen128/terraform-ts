@@ -5,7 +5,7 @@ import { keysToSnakeCase } from "../util.js";
 import { DataTerraformRemoteStateRemote } from "./remote-backend.js";
 
 export function getHostNameType(hostname?: string): "tfc" | "tfe" {
-  if (!hostname) return "tfc";
+  if (hostname === undefined || hostname === "") return "tfc";
   return hostname.startsWith("app.terraform.io") ? "tfc" : "tfe";
 }
 
@@ -68,7 +68,7 @@ export type CloudBackendConfig = {
   readonly workspaces: NamedCloudWorkspace | TaggedCloudWorkspaces;
   readonly hostname?: string;
   readonly token?: string;
-}
+};
 
 export abstract class CloudWorkspace {
   abstract toTerraform(): Record<string, unknown>;
@@ -85,7 +85,7 @@ export class NamedCloudWorkspace extends CloudWorkspace {
   toTerraform(): Record<string, unknown> {
     return {
       name: this.name,
-      ...(this.project ? { project: this.project } : {}),
+      ...(this.project !== undefined && this.project !== "" ? { project: this.project } : {}),
     };
   }
 }
@@ -101,7 +101,7 @@ export class TaggedCloudWorkspaces extends CloudWorkspace {
   toTerraform(): Record<string, unknown> {
     return {
       tags: this.tags,
-      ...(this.project ? { project: this.project } : {}),
+      ...(this.project !== undefined && this.project !== "" ? { project: this.project } : {}),
     };
   }
 }

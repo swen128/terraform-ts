@@ -10,8 +10,12 @@ export abstract class TerraformBackend extends TerraformElement {
     Object.defineProperty(this, BACKEND_SYMBOL, { value: true });
   }
 
-  static isBackend(x: unknown): x is TerraformBackend {
-    return x !== null && typeof x === "object" && BACKEND_SYMBOL in x;
+  static asBackend(x: unknown): TerraformBackend | null {
+    if (x === null || typeof x !== "object") return null;
+    if (Object.prototype.hasOwnProperty.call(x, BACKEND_SYMBOL)) {
+      return x as TerraformBackend;
+    }
+    return null;
   }
 
   abstract getRemoteStateDataSource(
@@ -28,7 +32,7 @@ export abstract class TerraformBackend extends TerraformElement {
 export type LocalBackendConfig = {
   readonly path?: string;
   readonly workspaceDir?: string;
-}
+};
 
 export class LocalBackend extends TerraformBackend {
   private readonly statePath?: string;
@@ -56,8 +60,12 @@ export class LocalBackend extends TerraformBackend {
       terraform: {
         backend: {
           local: {
-            ...(this.statePath ? { path: this.statePath } : {}),
-            ...(this.workspaceDir ? { workspace_dir: this.workspaceDir } : {}),
+            ...(this.statePath !== undefined && this.statePath !== ""
+              ? { path: this.statePath }
+              : {}),
+            ...(this.workspaceDir !== undefined && this.workspaceDir !== ""
+              ? { workspace_dir: this.workspaceDir }
+              : {}),
           },
         },
       },
@@ -66,8 +74,10 @@ export class LocalBackend extends TerraformBackend {
 
   protected override synthesizeAttributes(): Record<string, unknown> {
     return {
-      ...(this.statePath ? { path: this.statePath } : {}),
-      ...(this.workspaceDir ? { workspace_dir: this.workspaceDir } : {}),
+      ...(this.statePath !== undefined && this.statePath !== "" ? { path: this.statePath } : {}),
+      ...(this.workspaceDir !== undefined && this.workspaceDir !== ""
+        ? { workspace_dir: this.workspaceDir }
+        : {}),
     };
   }
 }
