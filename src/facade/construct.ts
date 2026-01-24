@@ -1,8 +1,6 @@
-const CONSTRUCT_SYMBOL = Symbol.for("tfts/Construct");
-
 export type IConstruct = {
   readonly node: Node;
-}
+};
 
 export class Node {
   private readonly _construct: Construct;
@@ -30,7 +28,7 @@ export class Node {
   get scopes(): Construct[] {
     const result: Construct[] = [];
     let current: Construct | undefined = this._construct;
-    while (current) {
+    while (current !== undefined) {
       result.unshift(current);
       current = current._scope;
     }
@@ -58,7 +56,7 @@ export class Node {
 
   findChild(id: string): Construct {
     const child = this.tryFindChild(id);
-    if (!child) {
+    if (child === undefined) {
       throw new Error(`No construct with id '${id}' found in ${this.path}`);
     }
     return child;
@@ -66,7 +64,7 @@ export class Node {
 
   findAll(order: ConstructOrder = ConstructOrder.PREORDER): IConstruct[] {
     const result: IConstruct[] = [];
-    const visit = (construct: Construct) => {
+    const visit = (construct: Construct): void => {
       if (order === ConstructOrder.PREORDER) {
         result.push(construct);
       }
@@ -86,7 +84,7 @@ export class Node {
   }
 
   tryGetContext(key: string): unknown {
-    if (key in this._context) {
+    if (Object.prototype.hasOwnProperty.call(this._context, key)) {
       return this._context[key];
     }
     return this.scope?.node.tryGetContext(key);
@@ -119,7 +117,7 @@ export class Node {
 
 export type IValidation = {
   validate(): string[];
-}
+};
 
 export enum ConstructOrder {
   PREORDER = "preorder",
@@ -136,19 +134,14 @@ export class Construct implements IConstruct {
     this._id = id;
     this._scope = scope;
 
-    if (scope) {
+    if (scope !== undefined) {
       this._path = [...scope._path, id];
       scope.node.addChild(this);
     } else {
-      this._path = id ? [id] : [];
+      this._path = id !== "" ? [id] : [];
     }
 
     this.node = new Node(this);
-    Object.defineProperty(this, CONSTRUCT_SYMBOL, { value: true });
-  }
-
-  static isConstruct(x: unknown): x is Construct {
-    return x !== null && typeof x === "object" && CONSTRUCT_SYMBOL in x;
   }
 
   toString(): string {
@@ -156,12 +149,8 @@ export class Construct implements IConstruct {
   }
 }
 
-export function dependable(construct: IConstruct | string): string {
-  if (typeof construct === "string") {
-    return construct;
-  }
-  if ("fqn" in construct && typeof construct.fqn === "string") {
-    return construct.fqn;
-  }
-  return construct.node.path;
+import type { ITerraformDependable } from "./terraform-addressable.js";
+
+export function dependable(target: ITerraformDependable): string {
+  return target.fqn;
 }

@@ -1,23 +1,18 @@
+import { generateLogicalId } from "../core/synthesize.js";
 import { createToken, ref } from "../core/tokens.js";
 import { Construct } from "./construct.js";
 
-const ELEMENT_SYMBOL = Symbol.for("tfts/TerraformElement");
-
-type TerraformStackLike = {
-  getLogicalId(element: TerraformElement): string;
-};
-
-let cachedStackClass: { of: (element: Construct) => TerraformStackLike } | null = null;
-
-function getStack(element: Construct): TerraformStackLike {
-  if (cachedStackClass === null) {
-    const mod = require("./terraform-stack.js") as {
-      TerraformStack: { of: (element: Construct) => TerraformStackLike };
-    };
-    cachedStackClass = mod.TerraformStack;
-  }
-  return cachedStackClass.of(element);
-}
+export type ElementKind =
+  | "stack"
+  | "resource"
+  | "data-source"
+  | "provider"
+  | "backend"
+  | "output"
+  | "variable"
+  | "local"
+  | "module"
+  | "remote-state";
 
 export type TerraformElementMetadata = {
   readonly path: string;
@@ -25,8 +20,40 @@ export type TerraformElementMetadata = {
   readonly stackTrace?: string[];
 };
 
-export class TerraformElement extends Construct {
-  protected readonly rawOverrides: Record<string, unknown> = {};
+function buildNestedObject(overrides: Map<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  const nodes = new Map<string, Record<string, unknown>>([["", result]]);
+
+  for (const [path, value] of overrides) {
+    const parts = path.split(".");
+    let currentPath = "";
+    let current = result;
+
+    for (const key of parts.slice(0, -1)) {
+      const nextPath = currentPath === "" ? key : `${currentPath}.${key}`;
+      let next = nodes.get(nextPath);
+      if (next === undefined) {
+        next = {};
+        nodes.set(nextPath, next);
+        current[key] = next;
+      }
+      current = next;
+      currentPath = nextPath;
+    }
+
+    const lastKey = parts[parts.length - 1];
+    if (lastKey !== undefined) {
+      current[lastKey] = value;
+    }
+  }
+
+  return result;
+}
+
+export abstract class TerraformElement extends Construct {
+  abstract readonly kind: ElementKind;
+
+  private readonly _overrides: Map<string, unknown> = new Map();
   private _logicalIdOverride?: string;
   private readonly _elementType?: string;
   private _fqnToken?: string;
@@ -34,20 +61,7 @@ export class TerraformElement extends Construct {
 
   constructor(scope: Construct, id: string, elementType?: string) {
     super(scope, id);
-    Object.defineProperty(this, ELEMENT_SYMBOL, { value: true });
     this._elementType = elementType;
-  }
-
-  static asTerraformElement(x: unknown): TerraformElement | null {
-    if (x === null || typeof x !== "object") return null;
-    if (Object.prototype.hasOwnProperty.call(x, ELEMENT_SYMBOL)) {
-      return x as TerraformElement;
-    }
-    return null;
-  }
-
-  get cdktfStack(): TerraformStackLike {
-    return getStack(this);
   }
 
   get fqn(): string {
@@ -66,10 +80,15 @@ export class TerraformElement extends Construct {
       if (this._logicalIdOverride !== undefined && this._logicalIdOverride !== "") {
         this._friendlyUniqueId = this._logicalIdOverride;
       } else {
-        this._friendlyUniqueId = this.cdktfStack.getLogicalId(this);
+        this._friendlyUniqueId = this.computeLogicalId();
       }
     }
     return this._friendlyUniqueId;
+  }
+
+  private computeLogicalId(): string {
+    const pathParts = this.node.path.split("/");
+    return generateLogicalId(pathParts);
   }
 
   overrideLogicalId(newLogicalId: string): void {
@@ -87,27 +106,11 @@ export class TerraformElement extends Construct {
   }
 
   addOverride(path: string, value: unknown): void {
-    const parts = path.split(".");
-    let curr: Record<string, unknown> = this.rawOverrides;
+    this._overrides.set(path, value);
+  }
 
-    while (parts.length > 1) {
-      const key = parts[0];
-      parts.shift();
-      if (key === undefined) break;
-      const existing = curr[key];
-      if (existing === undefined || typeof existing !== "object" || existing === null) {
-        curr[key] = {};
-      }
-      const next = curr[key];
-      if (typeof next === "object" && next !== null) {
-        curr = next as Record<string, unknown>;
-      }
-    }
-
-    const lastKey = parts[0];
-    if (lastKey !== undefined) {
-      curr[lastKey] = value;
-    }
+  protected get rawOverrides(): Record<string, unknown> {
+    return buildNestedObject(this._overrides);
   }
 
   toTerraform(): Record<string, unknown> {

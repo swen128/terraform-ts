@@ -1,11 +1,17 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { generateLogicalId } from "../core/synthesize.js";
 import type { TerraformJson } from "../core/terraform-json.js";
 import { resolveTokens, type Token, tokenToString } from "../core/tokens.js";
 import { App } from "./app.js";
 import { Construct, type IValidation } from "./construct.js";
+import { LocalBackend, TerraformBackend } from "./terraform-backend.js";
+import type { ElementKind } from "./terraform-element.js";
+import { TerraformElement } from "./terraform-element.js";
+import { TerraformOutput } from "./terraform-output.js";
+import { TerraformProvider } from "./terraform-provider.js";
+import { TerraformRemoteState } from "./terraform-remote-state.js";
 import { deepMerge } from "./util.js";
-
-const STACK_SYMBOL = Symbol.for("tfts/TerraformStack");
 
 export type TerraformStackMetadata = {
   readonly stackName: string;
@@ -13,35 +19,34 @@ export type TerraformStackMetadata = {
   readonly backend: string;
 };
 
-export class TerraformStack extends Construct {
+export class TerraformStack extends TerraformElement {
+  readonly kind: ElementKind = "stack";
+
   public dependencies: TerraformStack[] = [];
   private readonly _crossStackOutputs: Map<string, TerraformOutput> = new Map();
   private readonly _crossStackDataSources: Map<string, TerraformRemoteState> = new Map();
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
-    Object.defineProperty(this, STACK_SYMBOL, { value: true });
-
     this.node.addValidation(new ValidateProviderPresence(this));
   }
 
-  static isStack(x: unknown): x is TerraformStack {
-    return x !== null && typeof x === "object" && STACK_SYMBOL in x;
-  }
-
   static of(construct: Construct): TerraformStack {
-    let current: Construct | undefined = construct;
-    while (current) {
-      if (TerraformStack.isStack(current)) {
-        return current;
-      }
-      current = current._scope;
+    const stacks = construct.node.scopes.flatMap((c) => (c instanceof TerraformStack ? [c] : []));
+    const stack = stacks[0];
+    if (stack === undefined) {
+      throw new Error(`No TerraformStack found in scope of ${construct.node.path}`);
     }
-    throw new Error(`No TerraformStack found in scope of ${construct.node.path}`);
+    return stack;
   }
 
   get stackName(): string {
     return this.node.id;
+  }
+
+  getLogicalId(element: { node: { path: string } }): string {
+    const pathParts = element.node.path.split("/");
+    return generateLogicalId(pathParts);
   }
 
   prepareStack(): void {
@@ -54,9 +59,6 @@ export class TerraformStack extends Construct {
       throw new Error(`No App found in scope of ${this.node.path}`);
     }
     const stackDir = `${app.outdir}/stacks/${this.stackName}`;
-
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
 
     if (!fs.existsSync(stackDir)) {
       fs.mkdirSync(stackDir, { recursive: true });
@@ -76,14 +78,13 @@ export class TerraformStack extends Construct {
     };
   }
 
-  toTerraform(): TerraformJson {
-    const elements = this.node
-      .findAll()
-      .filter((c) => c !== this)
-      .flatMap((c) => {
-        const el = asTerraformElement(c);
-        return el !== null ? [el] : [];
-      });
+  override toTerraform(): TerraformJson {
+    const elements = this.node.findAll().flatMap((c) => {
+      if (c !== this && c instanceof TerraformElement) {
+        return [c];
+      }
+      return [];
+    });
 
     let result: TerraformJson = {
       "//": {
@@ -96,16 +97,11 @@ export class TerraformStack extends Construct {
     };
 
     for (const element of elements) {
-      const fragment = (element as unknown as TerraformElement).toTerraform();
+      const fragment = element.toTerraform();
       result = deepMerge(result, fragment);
     }
 
     return resolveTokens(result, (token: Token) => tokenToString(token)) as TerraformJson;
-  }
-
-  getLogicalId(element: { node: { path: string } }): string {
-    const pathParts = element.node.path.split("/");
-    return generateLogicalId(pathParts);
   }
 
   addDependency(dependency: TerraformStack): void {
@@ -125,8 +121,10 @@ export class TerraformStack extends Construct {
 
   ensureBackendExists(): TerraformBackend {
     const backends = this.node.findAll().flatMap((c) => {
-      const backend = TerraformBackend.asBackend(c);
-      return backend !== null ? [backend] : [];
+      if (c instanceof TerraformBackend) {
+        return [c];
+      }
+      return [];
     });
     if (backends.length > 0 && backends[0] !== undefined) {
       return backends[0];
@@ -135,14 +133,17 @@ export class TerraformStack extends Construct {
   }
 
   allProviders(): TerraformProvider[] {
-    return this.node
-      .findAll()
-      .filter((c): c is TerraformProvider => TerraformProvider.isTerraformProvider(c));
+    return this.node.findAll().flatMap((c) => {
+      if (c instanceof TerraformProvider) {
+        return [c];
+      }
+      return [];
+    });
   }
 
   registerOutgoingCrossStackReference(identifier: string): string {
     let output = this._crossStackOutputs.get(identifier);
-    if (!output) {
+    if (output === undefined) {
       output = new TerraformOutput(this, `cross-stack-output-${identifier}`, {
         value: `\${${identifier}}`,
         sensitive: true,
@@ -155,7 +156,7 @@ export class TerraformStack extends Construct {
   registerIncomingCrossStackReference(fromStack: TerraformStack): TerraformRemoteState {
     const key = fromStack.node.path;
     let remoteState = this._crossStackDataSources.get(key);
-    if (!remoteState) {
+    if (remoteState === undefined) {
       const backend = fromStack.ensureBackendExists();
       remoteState = backend.getRemoteStateDataSource(this, `cross-stack-reference-${key}`, key);
       this._crossStackDataSources.set(key, remoteState);
@@ -174,14 +175,4 @@ class ValidateProviderPresence implements IValidation {
     }
     return [];
   }
-}
-
-import { LocalBackend, TerraformBackend } from "./terraform-backend.js";
-import { TerraformElement } from "./terraform-element.js";
-import { TerraformOutput } from "./terraform-output.js";
-import { TerraformProvider } from "./terraform-provider.js";
-import { TerraformRemoteState } from "./terraform-remote-state.js";
-
-function asTerraformElement(x: unknown): TerraformElement | null {
-  return TerraformElement.asTerraformElement(x);
 }
