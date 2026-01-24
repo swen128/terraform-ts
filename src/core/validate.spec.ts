@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createNode } from "./tree.js";
 import type { ConstructNode } from "./types.js";
-import { detectCircularDependencies, hasErrors, validateNode, validateTree } from "./validate.js";
+import { detectCircularDependencies, hasErrors, validateNode } from "./validate.js";
 
 describe("validate", () => {
   describe("validateNode", () => {

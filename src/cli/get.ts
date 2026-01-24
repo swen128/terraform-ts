@@ -1,11 +1,11 @@
 import { findConfig, readConfig } from "./config.js";
 
-export interface GetOptions {
+export type GetOptions = {
   cwd?: string;
   output?: string;
   providers?: string[];
   modules?: string[];
-}
+};
 
 export async function get(options: GetOptions = {}): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
@@ -69,10 +69,10 @@ async function generateProvider(providerSpec: string, outputDir: string): Promis
   const providerContent = `import { TerraformProvider } from "../../../facade/terraform-provider.js";
 import type { Construct } from "../../../facade/construct.js";
 
-export interface ${className}ProviderConfig {
+export type ${className}ProviderConfig = {
   readonly alias?: string;
   readonly region?: string;
-}
+};
 
 export class ${className}Provider extends TerraformProvider {
   static readonly tfResourceType = "${namespace}/${name}";
@@ -134,10 +134,10 @@ async function generateModule(moduleSpec: string, outputDir: string): Promise<vo
   const content = `import { TerraformModule } from "../../../facade/terraform-module.js";
 import type { Construct } from "../../../facade/construct.js";
 
-export interface ${className}ModuleConfig {
+export type ${className}ModuleConfig = {
   readonly source?: string;
   readonly version?: string;
-}
+};
 
 export class ${className}Module extends TerraformModule {
   constructor(scope: Construct, id: string, config: ${className}ModuleConfig = {}) {

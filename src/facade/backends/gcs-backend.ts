@@ -43,7 +43,7 @@ export class DataTerraformRemoteStateGcs extends TerraformRemoteState {
   }
 }
 
-export interface GcsBackendConfig {
+export type GcsBackendConfig = {
   readonly bucket: string;
   readonly credentials?: string;
   readonly accessToken?: string;
@@ -53,9 +53,9 @@ export interface GcsBackendConfig {
   readonly impersonateServiceAccountDelegates?: string[];
   readonly kmsEncryptionKey?: string;
   readonly storageCustomEndpoint?: string;
-}
+};
 
-export interface DataTerraformRemoteStateGcsConfig extends GcsBackendConfig {
+export type DataTerraformRemoteStateGcsConfig = GcsBackendConfig & {
   readonly workspace?: string;
   readonly defaults?: Record<string, unknown>;
-}
+};

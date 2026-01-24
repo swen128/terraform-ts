@@ -3,7 +3,7 @@ import { TerraformElement } from "./terraform-element.js";
 
 const PROVIDER_SYMBOL = Symbol.for("tfts/TerraformProvider");
 
-export interface TerraformProviderConfig {
+export type TerraformProviderConfig = {
   readonly terraformResourceType: string;
   readonly terraformProviderSource: string;
   readonly terraformGeneratorMetadata?: {

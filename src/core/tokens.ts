@@ -29,13 +29,13 @@ export type TokenContext = {
   readonly resources: ReadonlyMap<string, string>;
 };
 
-export interface IResolvable {
+export type IResolvable = {
   readonly creationStack: readonly string[];
   resolve(context: IResolveContext): unknown;
   toString(): string;
 }
 
-export interface IResolveContext {
+export type IResolveContext = {
   readonly scope: unknown;
   readonly preparing: boolean;
   readonly originStack: readonly string[];
@@ -43,23 +43,23 @@ export interface IResolveContext {
   resolve(value: unknown): unknown;
 }
 
-export interface IPostProcessor {
+export type IPostProcessor = {
   postProcess(input: unknown, context: IResolveContext): unknown;
 }
 
-export interface IStringProducer {
+export type IStringProducer = {
   produce(context: IResolveContext): string | undefined;
 }
 
-export interface INumberProducer {
+export type INumberProducer = {
   produce(context: IResolveContext): number | undefined;
 }
 
-export interface IListProducer {
+export type IListProducer = {
   produce(context: IResolveContext): string[] | undefined;
 }
 
-export interface IAnyProducer {
+export type IAnyProducer = {
   produce(context: IResolveContext): unknown;
 }
 
@@ -89,19 +89,19 @@ export function createNumberToken(token: Token): number {
   return view.getFloat64(0, false);
 }
 
-export function ref(fqn: string, attribute: string): Token {
+export function ref(fqn: string, attribute: string): RefToken {
   return { kind: "ref", fqn, attribute };
 }
 
-export function fn(name: string, ...args: readonly unknown[]): Token {
+export function fn(name: string, ...args: readonly unknown[]): FnToken {
   return { kind: "fn", name, args };
 }
 
-export function raw(expression: string): Token {
+export function raw(expression: string): RawToken {
   return { kind: "raw", expression };
 }
 
-export function lazy(producer: () => unknown): Token {
+export function lazy(producer: () => unknown): LazyToken {
   return { kind: "lazy", producer };
 }
 

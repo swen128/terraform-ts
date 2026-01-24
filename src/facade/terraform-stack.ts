@@ -7,7 +7,7 @@ import { deepMerge } from "./util.js";
 
 const STACK_SYMBOL = Symbol.for("tfts/TerraformStack");
 
-export interface TerraformStackMetadata {
+export type TerraformStackMetadata = {
   readonly stackName: string;
   readonly version: string;
   readonly backend: string;

@@ -4,12 +4,12 @@ import { TerraformElement } from "./terraform-element.js";
 
 const VARIABLE_SYMBOL = Symbol.for("tfts/TerraformVariable");
 
-export interface TerraformVariableValidation {
+export type TerraformVariableValidation = {
   readonly condition: string;
   readonly errorMessage: string;
 }
 
-export interface TerraformVariableConfig {
+export type TerraformVariableConfig = {
   readonly type?: string;
   readonly default?: unknown;
   readonly description?: string;

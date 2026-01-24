@@ -6,32 +6,32 @@ import type { TerraformProvider } from "./terraform-provider.js";
 
 const RESOURCE_SYMBOL = Symbol.for("tfts/TerraformResource");
 
-export interface TerraformResourceLifecycle {
+export type TerraformResourceLifecycle = {
   readonly createBeforeDestroy?: boolean;
   readonly preventDestroy?: boolean;
   readonly ignoreChanges?: string[] | "all";
   readonly replaceTriggeredBy?: string[];
-}
+};
 
-export interface TerraformMetaArguments {
+export type TerraformMetaArguments = {
   readonly dependsOn?: ITerraformDependable[];
   readonly count?: number | TerraformCount;
   readonly provider?: TerraformProvider;
   readonly lifecycle?: TerraformResourceLifecycle;
   readonly forEach?: ITerraformIterator;
-}
+};
 
-export interface ITerraformDependable {
+export type ITerraformDependable = {
   readonly fqn: string;
-}
+};
 
-export interface TerraformResourceConfig extends TerraformMetaArguments {
+export type TerraformResourceConfig = TerraformMetaArguments & {
   readonly terraformResourceType: string;
   readonly terraformGeneratorMetadata?: {
     readonly providerName: string;
     readonly providerVersion?: string;
   };
-}
+};
 
 export class TerraformResource extends TerraformElement implements ITerraformDependable {
   public readonly terraformResourceType: string;

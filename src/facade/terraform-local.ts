@@ -4,7 +4,7 @@ import { TerraformElement } from "./terraform-element.js";
 
 const LOCAL_SYMBOL = Symbol.for("tfts/TerraformLocal");
 
-export interface TerraformLocalConfig {
+export type TerraformLocalConfig = {
   readonly expression: unknown;
 }
 

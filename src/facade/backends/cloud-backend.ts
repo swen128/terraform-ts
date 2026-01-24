@@ -63,7 +63,7 @@ export class CloudBackend extends TerraformBackend {
   }
 }
 
-export interface CloudBackendConfig {
+export type CloudBackendConfig = {
   readonly organization: string;
   readonly workspaces: NamedCloudWorkspace | TaggedCloudWorkspaces;
   readonly hostname?: string;

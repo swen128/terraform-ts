@@ -1,4 +1,4 @@
-export function keysToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
+export function keysToSnakeCase(obj: object): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue;

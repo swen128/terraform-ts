@@ -1,6 +1,6 @@
 import { findConfig, readConfig } from "./config.js";
 
-export interface SynthOptions {
+export type SynthOptions = {
   app?: string;
   output?: string;
   cwd?: string;

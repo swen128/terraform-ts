@@ -2,7 +2,7 @@ import type { IConstruct } from "./construct.js";
 
 const ASPECTS_SYMBOL = Symbol.for("tfts/Aspects");
 
-export interface IAspect {
+export type IAspect = {
   visit(node: IConstruct): void;
 }
 

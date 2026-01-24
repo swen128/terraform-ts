@@ -25,7 +25,7 @@ export abstract class TerraformBackend extends TerraformElement {
   }
 }
 
-export interface LocalBackendConfig {
+export type LocalBackendConfig = {
   readonly path?: string;
   readonly workspaceDir?: string;
 }

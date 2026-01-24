@@ -43,7 +43,7 @@ export class DataTerraformRemoteStateS3 extends TerraformRemoteState {
   }
 }
 
-export interface S3BackendConfig {
+export type S3BackendConfig = {
   readonly bucket: string;
   readonly key: string;
   readonly region?: string;
@@ -94,17 +94,17 @@ export interface S3BackendConfig {
   readonly endpoints?: S3BackendEndpointConfig;
   readonly assumeRole?: S3BackendAssumeRoleConfig;
   readonly assumeRoleWithWebIdentity?: S3BackendAssumeRoleWithWebIdentityConfig;
-}
+};
 
-export interface S3BackendEndpointConfig {
+export type S3BackendEndpointConfig = {
   readonly dynamodb?: string;
   readonly iam?: string;
   readonly s3?: string;
   readonly sso?: string;
   readonly sts?: string;
-}
+};
 
-export interface S3BackendAssumeRoleConfig {
+export type S3BackendAssumeRoleConfig = {
   readonly roleArn: string;
   readonly duration?: string;
   readonly externalId?: string;
@@ -114,9 +114,9 @@ export interface S3BackendAssumeRoleConfig {
   readonly sourceIdentity?: string;
   readonly tags?: Record<string, string>;
   readonly transitiveTagKeys?: string[];
-}
+};
 
-export interface S3BackendAssumeRoleWithWebIdentityConfig {
+export type S3BackendAssumeRoleWithWebIdentityConfig = {
   readonly roleArn?: string;
   readonly duration?: string;
   readonly policy?: string;
@@ -124,9 +124,9 @@ export interface S3BackendAssumeRoleWithWebIdentityConfig {
   readonly sessionName?: string;
   readonly webIdentityToken?: string;
   readonly webIdentityTokenFile?: string;
-}
+};
 
-export interface DataTerraformRemoteStateS3Config extends S3BackendConfig {
+export type DataTerraformRemoteStateS3Config = S3BackendConfig & {
   readonly workspace?: string;
   readonly defaults?: Record<string, unknown>;
-}
+};

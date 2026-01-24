@@ -2,7 +2,7 @@ import { createToken, fn as fnToken, lazy } from "../core/tokens.js";
 
 const ITERATOR_SYMBOL = Symbol.for("tfts/TerraformIterator");
 
-export interface ITerraformIterator {
+export type ITerraformIterator = {
   _getForEachExpression(): unknown;
 }
 
@@ -67,7 +67,7 @@ export abstract class TerraformIterator implements ITerraformIterator {
   }
 }
 
-export interface DynamicBlock {
+export type DynamicBlock = {
   iterator: ITerraformIterator;
   content: Record<string, unknown>;
 }

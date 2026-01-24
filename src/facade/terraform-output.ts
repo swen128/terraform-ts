@@ -3,7 +3,7 @@ import { TerraformElement } from "./terraform-element.js";
 
 const OUTPUT_SYMBOL = Symbol.for("tfts/TerraformOutput");
 
-export interface TerraformOutputConfig {
+export type TerraformOutputConfig = {
   readonly value: unknown;
   readonly description?: string;
   readonly sensitive?: boolean;

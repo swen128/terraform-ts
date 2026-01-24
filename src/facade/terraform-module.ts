@@ -6,12 +6,12 @@ import { deepMerge } from "./util.js";
 
 const MODULE_SYMBOL = Symbol.for("tfts/TerraformModule");
 
-export interface TerraformModuleProvider {
+export type TerraformModuleProvider = {
   readonly provider: TerraformProvider;
   readonly moduleAlias: string;
 }
 
-export interface TerraformModuleConfig {
+export type TerraformModuleConfig = {
   readonly source: string;
   readonly version?: string;
   readonly providers?: (TerraformProvider | TerraformModuleProvider)[];

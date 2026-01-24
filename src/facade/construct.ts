@@ -1,6 +1,6 @@
 const CONSTRUCT_SYMBOL = Symbol.for("tfts/Construct");
 
-export interface IConstruct {
+export type IConstruct = {
   readonly node: Node;
 }
 
@@ -117,7 +117,7 @@ export class Node {
   }
 }
 
-export interface IValidation {
+export type IValidation = {
   validate(): string[];
 }
 

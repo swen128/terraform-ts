@@ -11,7 +11,7 @@ export type AttributeType =
   | ["object", Record<string, AttributeType>]
   | ["tuple", AttributeType[]];
 
-export interface Attribute {
+export type Attribute = {
   type?: AttributeType;
   description?: string;
   required?: boolean;
@@ -21,32 +21,32 @@ export interface Attribute {
   deprecated?: boolean;
 }
 
-export interface BlockType {
+export type BlockType = {
   nesting_mode: "single" | "list" | "set" | "map";
   block: Block;
   min_items?: number;
   max_items?: number;
 }
 
-export interface Block {
+export type Block = {
   attributes?: Record<string, Attribute>;
   block_types?: Record<string, BlockType>;
   description?: string;
   deprecated?: boolean;
 }
 
-export interface ResourceSchema {
+export type ResourceSchema = {
   version: number;
   block: Block;
 }
 
-export interface ProviderSchema {
+export type ProviderSchema = {
   provider?: { block: Block };
   resource_schemas?: Record<string, ResourceSchema>;
   data_source_schemas?: Record<string, ResourceSchema>;
 }
 
-export interface TerraformSchema {
+export type TerraformSchema = {
   format_version: string;
   provider_schemas?: Record<string, ProviderSchema>;
 }
@@ -61,7 +61,7 @@ export function parseTerraformSchema(data: unknown): TerraformSchema {
   return validated as TerraformSchema;
 }
 
-export interface ProviderConstraint {
+export type ProviderConstraint = {
   namespace: string;
   name: string;
   version?: string;

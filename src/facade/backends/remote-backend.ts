@@ -48,7 +48,7 @@ export class DataTerraformRemoteStateRemote extends TerraformRemoteState {
   }
 }
 
-export interface IRemoteWorkspace {}
+export type IRemoteWorkspace = {};
 
 export class NamedRemoteWorkspace implements IRemoteWorkspace {
   constructor(public readonly name: string) {}
@@ -58,14 +58,14 @@ export class PrefixedRemoteWorkspaces implements IRemoteWorkspace {
   constructor(public readonly prefix: string) {}
 }
 
-export interface RemoteBackendConfig {
+export type RemoteBackendConfig = {
   readonly hostname?: string;
   readonly organization: string;
   readonly token?: string;
   readonly workspaces: IRemoteWorkspace;
-}
+};
 
-export interface DataTerraformRemoteStateRemoteConfig extends RemoteBackendConfig {
+export type DataTerraformRemoteStateRemoteConfig = RemoteBackendConfig & {
   readonly workspace?: string;
   readonly defaults?: Record<string, unknown>;
-}
+};

@@ -135,5 +135,5 @@ export function generateBlockInterface(name: string, block: Block): string {
     }
   }
 
-  return `export interface ${interfaceName} {\n${properties.join("\n")}\n}`;
+  return `export type ${interfaceName} = {\n${properties.join("\n")}\n};`;
 }

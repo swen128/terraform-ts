@@ -6,7 +6,7 @@ import { invokeAspects } from "../facade/aspects.js";
 import { Construct, type IConstruct } from "../facade/construct.js";
 import { TerraformStack } from "../facade/terraform-stack.js";
 
-export interface TerraformJson {
+export type TerraformJson = {
   "//": Record<string, unknown>;
   terraform?: {
     backend?: Record<string, Record<string, unknown>>;
@@ -21,11 +21,11 @@ export interface TerraformJson {
   module?: Record<string, Record<string, unknown>>;
 }
 
-export interface IScopeCallback {
+export type IScopeCallback = {
   (scope: Construct): void;
 }
 
-export interface TestingAppConfig {
+export type TestingAppConfig = {
   readonly outdir?: string;
   readonly stackTraces?: boolean;
   readonly stubVersion?: boolean;

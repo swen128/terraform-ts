@@ -9,7 +9,7 @@ function getStack(element: Construct): TerraformStack {
   return StackClass.of(element);
 }
 
-export interface TerraformElementMetadata {
+export type TerraformElementMetadata = {
   readonly path: string;
   readonly uniqueId: string;
   readonly stackTrace?: string[];

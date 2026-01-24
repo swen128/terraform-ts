@@ -1,13 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  addChild,
-  createNode,
-  findNode,
-  getDescendants,
-  pathEquals,
-  updateNode,
-  walkTree,
-} from "./tree.js";
+import { addChild, createNode, findNode, getDescendants, pathEquals, walkTree } from "./tree.js";
 import type { ConstructNode } from "./types.js";
 
 describe("tree", () => {

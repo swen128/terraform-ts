@@ -7,7 +7,7 @@ import type { ITerraformDependable } from "./terraform-resource.js";
 
 const DATASOURCE_SYMBOL = Symbol.for("tfts/TerraformDataSource");
 
-export interface TerraformDataSourceConfig {
+export type TerraformDataSourceConfig = {
   readonly terraformResourceType: string;
   readonly terraformGeneratorMetadata?: {
     readonly providerName: string;

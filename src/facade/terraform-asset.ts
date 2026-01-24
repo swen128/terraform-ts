@@ -14,7 +14,7 @@ export enum AssetType {
   ARCHIVE = 2,
 }
 
-export interface TerraformAssetConfig {
+export type TerraformAssetConfig = {
   readonly path: string;
   readonly type?: AssetType;
   readonly assetHash?: string;

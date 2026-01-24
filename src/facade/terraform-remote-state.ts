@@ -4,7 +4,7 @@ import { TerraformElement } from "./terraform-element.js";
 
 const REMOTE_STATE_SYMBOL = Symbol.for("tfts/TerraformRemoteState");
 
-export interface TerraformRemoteStateConfig {
+export type TerraformRemoteStateConfig = {
   readonly backend: string;
   readonly config: Record<string, unknown>;
   readonly workspace?: string;
@@ -66,7 +66,7 @@ export abstract class TerraformRemoteState extends TerraformElement {
   }
 }
 
-export interface DataTerraformRemoteStateLocalConfig {
+export type DataTerraformRemoteStateLocalConfig = {
   readonly path?: string;
   readonly workspaceDir?: string;
   readonly workspace?: string;

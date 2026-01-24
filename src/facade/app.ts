@@ -7,7 +7,7 @@ const ContextSchema = z.record(z.string(), z.unknown());
 const APP_SYMBOL = Symbol.for("tfts/App");
 export const CONTEXT_ENV = "CDKTF_CONTEXT_JSON";
 
-export interface AppConfig {
+export type AppConfig = {
   readonly outdir?: string;
   readonly stackTraces?: boolean;
   readonly hclOutput?: boolean;
@@ -16,14 +16,14 @@ export interface AppConfig {
   readonly skipBackendValidation?: boolean;
 }
 
-export interface Manifest {
+export type Manifest = {
   readonly version: string;
   readonly outdir: string;
   readonly hclOutput: boolean;
   stacks: Record<string, StackManifest>;
 }
 
-export interface StackManifest {
+export type StackManifest = {
   readonly name: string;
   readonly constructPath: string;
   readonly synthesizedStackPath: string;
@@ -32,7 +32,7 @@ export interface StackManifest {
   readonly dependencies: string[];
 }
 
-export interface Annotation {
+export type Annotation = {
   readonly constructPath: string;
   readonly level: "info" | "warning" | "error";
   readonly message: string;

@@ -12,10 +12,10 @@ import {
   toPascalCase,
 } from "./type-mapper.js";
 
-export interface GeneratedFile {
+export type GeneratedFile = {
   path: string;
   content: string;
-}
+};
 
 export function generateProviderBindings(
   constraint: ProviderConstraint,
@@ -64,10 +64,10 @@ function generateProviderClass(
   const content = `import { TerraformProvider } from "../../facade/terraform-provider.js";
 import type { Construct } from "../../facade/construct.js";
 
-export interface ${configName} {
+export type ${configName} = {
   readonly alias?: string;
 ${configProps}
-}
+};
 
 export class ${className} extends TerraformProvider {
   static readonly tfResourceType = "${constraint.fqn}";
@@ -114,9 +114,9 @@ import type { Construct } from "../../facade/construct.js";
 
 ${nestedInterfaces}
 
-export interface ${configName} {
+export type ${configName} = {
 ${configProps}
-}
+};
 
 export class ${fullClassName} extends ${baseClass} {
   static readonly tfResourceType = "${resourceType}";
