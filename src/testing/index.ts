@@ -6,6 +6,21 @@ import { invokeAspects } from "../facade/aspects.js";
 import { Construct, type IConstruct } from "../facade/construct.js";
 import { TerraformStack } from "../facade/terraform-stack.js";
 
+export interface TerraformJson {
+  "//": Record<string, unknown>;
+  terraform?: {
+    backend?: Record<string, Record<string, unknown>>;
+    required_providers?: Record<string, unknown>;
+  };
+  provider?: Record<string, unknown[]>;
+  resource?: Record<string, Record<string, Record<string, unknown>>>;
+  data?: Record<string, Record<string, Record<string, unknown>>>;
+  variable?: Record<string, Record<string, unknown>>;
+  output?: Record<string, Record<string, unknown>>;
+  locals?: Record<string, unknown>;
+  module?: Record<string, Record<string, unknown>>;
+}
+
 export interface IScopeCallback {
   (scope: Construct): void;
 }
@@ -45,13 +60,13 @@ export class Testing {
     return app;
   }
 
-  static synthScope(fn: IScopeCallback): string {
+  static synthScope(fn: IScopeCallback): TerraformJson {
     const stack = new TerraformStack(Testing.app(), "stack");
     fn(stack);
     return Testing.synth(stack);
   }
 
-  static synth(stack: TerraformStack, runValidations = false): string {
+  static synth(stack: TerraformStack, runValidations = false): TerraformJson {
     invokeAspects(stack);
 
     if (runValidations) {
@@ -62,7 +77,12 @@ export class Testing {
     }
 
     const tfConfig = stack.toTerraform();
-    const cleaned = removeMetadata(tfConfig);
+    return tfConfig as TerraformJson;
+  }
+
+  static synthToJson(stack: TerraformStack, runValidations = false): string {
+    const config = Testing.synth(stack, runValidations);
+    const cleaned = removeMetadata(config);
 
     const sortedKeys =
       typeof cleaned === "object" && cleaned !== null
@@ -76,15 +96,23 @@ export class Testing {
   }
 
   static toHaveResource(
-    received: string,
+    received: TerraformJson,
     resourceType: string,
     properties: Record<string, unknown> = {},
   ): boolean {
     return hasResourceWithProperties(received, "resource", resourceType, properties);
   }
 
+  static toHaveResourceWithProperties(
+    received: TerraformJson,
+    resourceType: string,
+    properties: Record<string, unknown>,
+  ): boolean {
+    return hasResourceWithProperties(received, "resource", resourceType, properties);
+  }
+
   static toHaveDataSource(
-    received: string,
+    received: TerraformJson,
     resourceType: string,
     properties: Record<string, unknown> = {},
   ): boolean {
@@ -92,11 +120,11 @@ export class Testing {
   }
 
   static toHaveProvider(
-    received: string,
+    received: TerraformJson,
     providerType: string,
     properties: Record<string, unknown> = {},
   ): boolean {
-    return hasResourceWithProperties(received, "provider", providerType, properties);
+    return hasProviderWithProperties(received, providerType, properties);
   }
 }
 
@@ -141,33 +169,47 @@ function renderTree(construct: IConstruct, level: number, isLast: boolean): stri
 }
 
 function hasResourceWithProperties(
-  json: string,
-  blockType: "resource" | "data" | "provider",
+  config: TerraformJson,
+  blockType: "resource" | "data",
   resourceType: string,
   expectedProps: Record<string, unknown>,
 ): boolean {
-  try {
-    const parsed = JSON.parse(json);
-    const block = parsed[blockType];
+  const block = config[blockType];
+  if (!block) return false;
 
-    if (!block) return false;
+  const resources = block[resourceType];
+  if (!resources) return false;
 
-    const resources = block[resourceType];
-    if (!resources) return false;
+  const instances = Object.values(resources);
+  if (instances.length === 0) return false;
 
-    const instances = Object.values(resources);
-    if (instances.length === 0) return false;
-
-    for (const instance of instances) {
-      if (matchesProperties(instance as Record<string, unknown>, expectedProps)) {
-        return true;
-      }
+  for (const instance of instances) {
+    if (matchesProperties(instance as Record<string, unknown>, expectedProps)) {
+      return true;
     }
-
-    return false;
-  } catch {
-    return false;
   }
+
+  return false;
+}
+
+function hasProviderWithProperties(
+  config: TerraformJson,
+  providerType: string,
+  expectedProps: Record<string, unknown>,
+): boolean {
+  const providers = config.provider;
+  if (!providers) return false;
+
+  const providerList = providers[providerType];
+  if (!providerList || !Array.isArray(providerList)) return false;
+
+  for (const provider of providerList) {
+    if (matchesProperties(provider as Record<string, unknown>, expectedProps)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function matchesProperties(

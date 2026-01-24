@@ -1,9 +1,9 @@
-import { generateLogicalId, synthesizeStack } from "../core/synthesize.js";
+import { generateLogicalId } from "../core/synthesize.js";
 import type { TerraformJson } from "../core/terraform-json.js";
-import { createNode } from "../core/tree.js";
-import type { ConstructNode } from "../core/types.js";
+import { resolveTokens, type Token, tokenToString } from "../core/tokens.js";
 import { App } from "./app.js";
 import { Construct, type IValidation } from "./construct.js";
+import { deepMerge } from "./util.js";
 
 const STACK_SYMBOL = Symbol.for("tfts/TerraformStack");
 
@@ -74,16 +74,24 @@ export class TerraformStack extends Construct {
   }
 
   toTerraform(): TerraformJson {
-    const node = this.buildConstructNode();
-    return synthesizeStack(node);
-  }
+    const elements = this.node.findAll().filter((c) => c !== this && isTerraformElement(c));
 
-  private buildConstructNode(): ConstructNode {
-    return createNode(this._id, [...this._path], {
-      kind: "stack",
-      stackName: this.stackName,
-      dependencies: this.dependencies.map((d) => d.stackName),
-    });
+    let result: TerraformJson = {
+      "//": {
+        metadata: {
+          version: "0.0.0",
+          stackName: this.stackName,
+          backend: "local",
+        },
+      },
+    };
+
+    for (const element of elements) {
+      const fragment = (element as unknown as TerraformElement).toTerraform();
+      result = deepMerge(result, fragment);
+    }
+
+    return resolveTokens(result, (token: Token) => tokenToString(token)) as TerraformJson;
   }
 
   getLogicalId(element: { node: { path: string } }): string {
@@ -159,6 +167,11 @@ class ValidateProviderPresence implements IValidation {
 }
 
 import { LocalBackend, TerraformBackend } from "./terraform-backend.js";
+import { TerraformElement } from "./terraform-element.js";
 import { TerraformOutput } from "./terraform-output.js";
 import { TerraformProvider } from "./terraform-provider.js";
 import { TerraformRemoteState } from "./terraform-remote-state.js";
+
+function isTerraformElement(x: unknown): x is TerraformElement {
+  return TerraformElement.isTerraformElement(x);
+}

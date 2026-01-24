@@ -1,8 +1,13 @@
 import { createToken, ref } from "../core/tokens.js";
 import { Construct } from "./construct.js";
-import { TerraformStack } from "./terraform-stack.js";
+import type { TerraformStack } from "./terraform-stack.js";
 
 const ELEMENT_SYMBOL = Symbol.for("tfts/TerraformElement");
+
+function getStack(element: Construct): TerraformStack {
+  const { TerraformStack: StackClass } = require("./terraform-stack.js");
+  return StackClass.of(element);
+}
 
 export interface TerraformElementMetadata {
   readonly path: string;
@@ -28,7 +33,7 @@ export class TerraformElement extends Construct {
   }
 
   get cdktfStack(): TerraformStack {
-    return TerraformStack.of(this);
+    return getStack(this);
   }
 
   get fqn(): string {

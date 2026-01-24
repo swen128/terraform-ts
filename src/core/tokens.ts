@@ -224,7 +224,21 @@ export function resolveTokens(value: unknown, resolver: TokenResolver): unknown 
 }
 
 function resolveStringTokens(value: string, resolver: TokenResolver): unknown {
-  const regex = /\$\{TfToken\[(\d+)\]\}/g;
+  const wrappedRegex = /\$\{TfToken\[(\d+)\]\}/g;
+  const bareRegex = /TfToken\[(\d+)\]/g;
+
+  const hasWrapped = wrappedRegex.test(value);
+  const hasBare = bareRegex.test(value);
+
+  if (!hasWrapped && !hasBare) {
+    return value;
+  }
+
+  wrappedRegex.lastIndex = 0;
+  bareRegex.lastIndex = 0;
+
+  const regex = hasWrapped ? wrappedRegex : bareRegex;
+  const isBareMatch = !hasWrapped && hasBare;
   let match: RegExpExecArray | null;
   let lastIndex = 0;
   const parts: unknown[] = [];
@@ -237,7 +251,15 @@ function resolveStringTokens(value: string, resolver: TokenResolver): unknown {
     const tokenId = parseInt(match[1] ?? "0", 10);
     const token = tokenMap.get(tokenId);
     if (token) {
-      parts.push(resolver(token));
+      let resolved = resolver(token);
+      if (isBareMatch && typeof resolved === "string") {
+        resolved = unwrapTerraformExpression(resolved);
+      }
+      if (typeof resolved === "string" && containsTokenPattern(resolved)) {
+        parts.push(resolveStringTokens(resolved, resolver));
+      } else {
+        parts.push(resolved);
+      }
     }
 
     lastIndex = regex.lastIndex;
@@ -255,7 +277,22 @@ function resolveStringTokens(value: string, resolver: TokenResolver): unknown {
     return parts[0];
   }
 
-  return parts.map((p) => (typeof p === "string" ? p : String(p))).join("");
+  const result = parts.map((p) => (typeof p === "string" ? p : String(p))).join("");
+  if (containsTokenPattern(result)) {
+    return resolveStringTokens(result, resolver);
+  }
+  return result;
+}
+
+function containsTokenPattern(value: string): boolean {
+  return /\$\{TfToken\[\d+\]\}/.test(value) || /TfToken\[\d+\]/.test(value);
+}
+
+function unwrapTerraformExpression(expr: string): string {
+  if (expr.startsWith("${") && expr.endsWith("}")) {
+    return expr.slice(2, -1);
+  }
+  return expr;
 }
 
 function resolveNumberToken(value: number, resolver: TokenResolver): unknown {
