@@ -2,10 +2,10 @@ import { createToken, fn, raw } from "../core/tokens.js";
 
 type Expression = string | number | boolean | unknown[] | Record<string, unknown> | IResolvable;
 
-interface IResolvable {
+type IResolvable = {
   resolve(context: unknown): unknown;
   toString(): string;
-}
+};
 
 class FunctionCallExpression implements IResolvable {
   constructor(
@@ -146,7 +146,19 @@ function expressionToString(expr: unknown): string {
   if (Array.isArray(expr)) {
     return `[${expr.map(expressionToString).join(", ")}]`;
   }
-  if (isResolvable(expr)) {
+  if (expr instanceof FunctionCallExpression) {
+    return expr.toString();
+  }
+  if (expr instanceof PropertyAccessExpression) {
+    return expr.toString();
+  }
+  if (expr instanceof ConditionalExpression) {
+    return expr.toString();
+  }
+  if (expr instanceof OperatorExpression) {
+    return expr.toString();
+  }
+  if (expr instanceof RawStringExpression) {
     return expr.toString();
   }
   if (typeof expr === "object") {
@@ -170,15 +182,6 @@ function unwrapExpression(expr: string): string {
     return expr.slice(2, -1);
   }
   return expr;
-}
-
-function isResolvable(value: unknown): value is IResolvable {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "resolve" in value &&
-    typeof (value as IResolvable).resolve === "function"
-  );
 }
 
 function terraformFunction(name: string, args: unknown[]): string {

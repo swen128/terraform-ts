@@ -1,5 +1,5 @@
-export type JsonObject = { [key: string]: JsonValue };
-export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+export type JsonValue = unknown;
+export type JsonObject = Record<string, unknown>;
 
 function processValue(value: JsonValue, transform: (key: string) => string): JsonValue {
   if (value === null || typeof value !== "object") {
@@ -8,7 +8,7 @@ function processValue(value: JsonValue, transform: (key: string) => string): Jso
   if (Array.isArray(value)) {
     return value.map((v) => processValue(v, transform));
   }
-  const obj: JsonObject = value;
+  const obj: JsonObject = Object.fromEntries(Object.entries(value));
   return transformKeys(obj, transform);
 }
 
@@ -45,7 +45,9 @@ export function deepMerge(target: JsonObject, source: JsonObject): JsonObject {
       typeof sourceValue === "object" &&
       !Array.isArray(sourceValue)
     ) {
-      result[key] = deepMerge(targetValue, sourceValue);
+      const targetObj = Object.fromEntries(Object.entries(targetValue));
+      const sourceObj = Object.fromEntries(Object.entries(sourceValue));
+      result[key] = deepMerge(targetObj, sourceObj);
     } else {
       result[key] = sourceValue;
     }

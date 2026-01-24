@@ -1,13 +1,12 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-
-const VARIABLE_SYMBOL = Symbol.for("tfts/TerraformVariable");
 
 export type TerraformVariableValidation = {
   readonly condition: string;
   readonly errorMessage: string;
-}
+};
 
 export type TerraformVariableConfig = {
   readonly type?: string;
@@ -16,9 +15,11 @@ export type TerraformVariableConfig = {
   readonly sensitive?: boolean;
   readonly nullable?: boolean;
   readonly validation?: TerraformVariableValidation[];
-}
+};
 
 export class TerraformVariable extends TerraformElement {
+  readonly kind: ElementKind = "variable";
+
   private readonly _type?: string;
   private readonly _default?: unknown;
   private readonly _description?: string;
@@ -28,7 +29,6 @@ export class TerraformVariable extends TerraformElement {
 
   constructor(scope: Construct, id: string, config: TerraformVariableConfig = {}) {
     super(scope, id);
-    Object.defineProperty(this, VARIABLE_SYMBOL, { value: true });
 
     this._type = config.type;
     this._default = config.default;
@@ -36,10 +36,6 @@ export class TerraformVariable extends TerraformElement {
     this._sensitive = config.sensitive;
     this._nullable = config.nullable;
     this._validation = config.validation;
-  }
-
-  static isTerraformVariable(x: unknown): x is TerraformVariable {
-    return x !== null && typeof x === "object" && VARIABLE_SYMBOL in x;
   }
 
   get value(): unknown {
@@ -64,21 +60,33 @@ export class TerraformVariable extends TerraformElement {
   }
 
   override toTerraform(): Record<string, unknown> {
-    const validations = this._validation?.map((v) => ({
-      condition: v.condition,
-      error_message: v.errorMessage,
-    }));
+    const result: Record<string, unknown> = {};
+
+    if (this._type !== undefined && this._type !== "") {
+      result["type"] = this._type;
+    }
+    if (this._default !== undefined) {
+      result["default"] = this._default;
+    }
+    if (this._description !== undefined && this._description !== "") {
+      result["description"] = this._description;
+    }
+    if (this._sensitive !== undefined) {
+      result["sensitive"] = this._sensitive;
+    }
+    if (this._nullable !== undefined) {
+      result["nullable"] = this._nullable;
+    }
+    if (this._validation !== undefined && this._validation.length > 0) {
+      result["validation"] = this._validation.map((v) => ({
+        condition: v.condition,
+        error_message: v.errorMessage,
+      }));
+    }
 
     return {
       variable: {
-        [this.friendlyUniqueId]: {
-          ...(this._type ? { type: this._type } : {}),
-          ...(this._default !== undefined ? { default: this._default } : {}),
-          ...(this._description ? { description: this._description } : {}),
-          ...(this._sensitive !== undefined ? { sensitive: this._sensitive } : {}),
-          ...(this._nullable !== undefined ? { nullable: this._nullable } : {}),
-          ...(validations?.length ? { validation: validations } : {}),
-        },
+        [this.friendlyUniqueId]: result,
       },
     };
   }

@@ -1,21 +1,13 @@
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
 import type { TerraformRemoteState } from "./terraform-remote-state.js";
 
-const BACKEND_SYMBOL = Symbol.for("tfts/TerraformBackend");
-
 export abstract class TerraformBackend extends TerraformElement {
+  readonly kind: ElementKind = "backend";
+
   constructor(scope: Construct, id: string) {
     super(scope, id);
-    Object.defineProperty(this, BACKEND_SYMBOL, { value: true });
-  }
-
-  static asBackend(x: unknown): TerraformBackend | null {
-    if (x === null || typeof x !== "object") return null;
-    if (Object.prototype.hasOwnProperty.call(x, BACKEND_SYMBOL)) {
-      return x as TerraformBackend;
-    }
-    return null;
   }
 
   abstract getRemoteStateDataSource(
@@ -56,29 +48,31 @@ export class LocalBackend extends TerraformBackend {
   }
 
   override toTerraform(): Record<string, unknown> {
+    const config: Record<string, unknown> = {};
+    if (this.statePath !== undefined && this.statePath !== "") {
+      config["path"] = this.statePath;
+    }
+    if (this.workspaceDir !== undefined && this.workspaceDir !== "") {
+      config["workspace_dir"] = this.workspaceDir;
+    }
     return {
       terraform: {
         backend: {
-          local: {
-            ...(this.statePath !== undefined && this.statePath !== ""
-              ? { path: this.statePath }
-              : {}),
-            ...(this.workspaceDir !== undefined && this.workspaceDir !== ""
-              ? { workspace_dir: this.workspaceDir }
-              : {}),
-          },
+          local: config,
         },
       },
     };
   }
 
   protected override synthesizeAttributes(): Record<string, unknown> {
-    return {
-      ...(this.statePath !== undefined && this.statePath !== "" ? { path: this.statePath } : {}),
-      ...(this.workspaceDir !== undefined && this.workspaceDir !== ""
-        ? { workspace_dir: this.workspaceDir }
-        : {}),
-    };
+    const result: Record<string, unknown> = {};
+    if (this.statePath !== undefined && this.statePath !== "") {
+      result["path"] = this.statePath;
+    }
+    if (this.workspaceDir !== undefined && this.workspaceDir !== "") {
+      result["workspace_dir"] = this.workspaceDir;
+    }
+    return result;
   }
 }
 

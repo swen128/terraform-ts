@@ -1,23 +1,19 @@
 import type { IConstruct } from "./construct.js";
 
-const ASPECTS_SYMBOL = Symbol.for("tfts/Aspects");
+const aspectsRegistry = new WeakMap<IConstruct, Aspects>();
 
 export type IAspect = {
   visit(node: IConstruct): void;
-}
+};
 
 export class Aspects {
   static of(scope: IConstruct): Aspects {
-    const record = scope as unknown as Record<symbol, Aspects>;
-    let aspects = record[ASPECTS_SYMBOL];
-    if (!aspects) {
-      aspects = new Aspects();
-      Object.defineProperty(scope, ASPECTS_SYMBOL, {
-        value: aspects,
-        configurable: false,
-        enumerable: false,
-      });
+    const existing = aspectsRegistry.get(scope);
+    if (existing !== undefined) {
+      return existing;
     }
+    const aspects = new Aspects();
+    aspectsRegistry.set(scope, aspects);
     return aspects;
   }
 

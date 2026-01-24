@@ -1,16 +1,17 @@
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-
-const OUTPUT_SYMBOL = Symbol.for("tfts/TerraformOutput");
 
 export type TerraformOutputConfig = {
   readonly value: unknown;
   readonly description?: string;
   readonly sensitive?: boolean;
   readonly dependsOn?: string[];
-}
+};
 
 export class TerraformOutput extends TerraformElement {
+  readonly kind: ElementKind = "output";
+
   private readonly _value: unknown;
   private readonly _description?: string;
   private readonly _sensitive?: boolean;
@@ -18,7 +19,6 @@ export class TerraformOutput extends TerraformElement {
 
   constructor(scope: Construct, id: string, config: TerraformOutputConfig) {
     super(scope, id);
-    Object.defineProperty(this, OUTPUT_SYMBOL, { value: true });
 
     this._value = config.value;
     this._description = config.description;
@@ -26,23 +26,26 @@ export class TerraformOutput extends TerraformElement {
     this._dependsOn = config.dependsOn;
   }
 
-  static isTerraformOutput(x: unknown): x is TerraformOutput {
-    return x !== null && typeof x === "object" && OUTPUT_SYMBOL in x;
-  }
-
   get value(): unknown {
     return this._value;
   }
 
   override toTerraform(): Record<string, unknown> {
+    const result: Record<string, unknown> = {
+      value: this._value,
+    };
+    if (this._description !== undefined && this._description !== "") {
+      result["description"] = this._description;
+    }
+    if (this._sensitive !== undefined) {
+      result["sensitive"] = this._sensitive;
+    }
+    if (this._dependsOn !== undefined && this._dependsOn.length > 0) {
+      result["depends_on"] = this._dependsOn;
+    }
     return {
       output: {
-        [this.friendlyUniqueId]: {
-          value: this._value,
-          ...(this._description ? { description: this._description } : {}),
-          ...(this._sensitive !== undefined ? { sensitive: this._sensitive } : {}),
-          ...(this._dependsOn?.length ? { depends_on: this._dependsOn } : {}),
-        },
+        [this.friendlyUniqueId]: result,
       },
     };
   }

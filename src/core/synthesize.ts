@@ -405,5 +405,9 @@ function camelToSnake(str: string): string {
 }
 
 function resolveAllTokens(obj: TerraformJson): TerraformJson {
-  return resolveTokens(obj, (token: Token) => tokenToString(token)) as TerraformJson;
+  const result = resolveTokens(obj, (token: Token) => tokenToString(token));
+  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+    return {};
+  }
+  return Object.fromEntries(Object.entries(result));
 }

@@ -3,7 +3,11 @@ import { resolveTokens, type Token, tokenToString } from "../core/tokens.js";
 import { Fn, Op } from "./terraform-functions.js";
 
 function resolveFn(value: string): string {
-  return resolveTokens(value, (token: Token) => tokenToString(token)) as string;
+  const result = resolveTokens(value, (token: Token) => tokenToString(token));
+  if (typeof result !== "string") {
+    return String(result);
+  }
+  return result;
 }
 
 describe("Fn", () => {

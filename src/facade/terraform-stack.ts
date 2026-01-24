@@ -5,6 +5,7 @@ import type { TerraformJson } from "../core/terraform-json.js";
 import { resolveTokens, type Token, tokenToString } from "../core/tokens.js";
 import { App } from "./app.js";
 import { Construct, type IValidation } from "./construct.js";
+import { registerStack } from "./stack-registry.js";
 import { LocalBackend, TerraformBackend } from "./terraform-backend.js";
 import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
@@ -12,6 +13,14 @@ import { TerraformOutput } from "./terraform-output.js";
 import { TerraformProvider } from "./terraform-provider.js";
 import { TerraformRemoteState } from "./terraform-remote-state.js";
 import { deepMerge } from "./util.js";
+
+function asRecord(value: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value));
+}
+
+function toTerraformJson(obj: Record<string, unknown>): TerraformJson {
+  return obj;
+}
 
 export type TerraformStackMetadata = {
   readonly stackName: string;
@@ -29,6 +38,7 @@ export class TerraformStack extends TerraformElement {
   constructor(scope: Construct, id: string) {
     super(scope, id);
     this.node.addValidation(new ValidateProviderPresence(this));
+    registerStack(this, this);
   }
 
   static of(construct: Construct): TerraformStack {
@@ -101,7 +111,11 @@ export class TerraformStack extends TerraformElement {
       result = deepMerge(result, fragment);
     }
 
-    return resolveTokens(result, (token: Token) => tokenToString(token)) as TerraformJson;
+    const resolved = resolveTokens(result, (token: Token) => tokenToString(token));
+    if (resolved === null || typeof resolved !== "object" || Array.isArray(resolved)) {
+      return {};
+    }
+    return toTerraformJson(asRecord(resolved));
   }
 
   addDependency(dependency: TerraformStack): void {

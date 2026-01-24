@@ -1,7 +1,6 @@
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-
-const PROVIDER_SYMBOL = Symbol.for("tfts/TerraformProvider");
 
 export type TerraformProviderConfig = {
   readonly terraformResourceType: string;
@@ -11,9 +10,11 @@ export type TerraformProviderConfig = {
     readonly providerVersion?: string;
   };
   readonly alias?: string;
-}
+};
 
 export abstract class TerraformProvider extends TerraformElement {
+  readonly kind: ElementKind = "provider";
+
   public readonly terraformResourceType: string;
   public readonly terraformProviderSource: string;
   public readonly alias?: string;
@@ -24,7 +25,6 @@ export abstract class TerraformProvider extends TerraformElement {
 
   constructor(scope: Construct, id: string, config: TerraformProviderConfig) {
     super(scope, id);
-    Object.defineProperty(this, PROVIDER_SYMBOL, { value: true });
 
     this.terraformResourceType = config.terraformResourceType;
     this.terraformProviderSource = config.terraformProviderSource;
@@ -32,12 +32,8 @@ export abstract class TerraformProvider extends TerraformElement {
     this.terraformGeneratorMetadata = config.terraformGeneratorMetadata;
   }
 
-  static isTerraformProvider(x: unknown): x is TerraformProvider {
-    return x !== null && typeof x === "object" && PROVIDER_SYMBOL in x;
-  }
-
   override get fqn(): string {
-    if (this.alias) {
+    if (this.alias !== undefined && this.alias !== "") {
       return `${this.terraformResourceType}.${this.alias}`;
     }
     return this.terraformResourceType;
@@ -45,23 +41,25 @@ export abstract class TerraformProvider extends TerraformElement {
 
   override toTerraform(): Record<string, unknown> {
     const config = this.synthesizeAttributes();
+    const providerConfig: Record<string, unknown> = { ...config };
+    if (this.alias !== undefined && this.alias !== "") {
+      providerConfig["alias"] = this.alias;
+    }
+
+    const requiredProvider: Record<string, unknown> = {
+      source: this.terraformProviderSource,
+    };
+    if (this.terraformGeneratorMetadata?.providerVersion !== undefined) {
+      requiredProvider["version"] = this.terraformGeneratorMetadata.providerVersion;
+    }
+
     return {
       provider: {
-        [this.terraformResourceType]: [
-          {
-            ...config,
-            ...(this.alias ? { alias: this.alias } : {}),
-          },
-        ],
+        [this.terraformResourceType]: [providerConfig],
       },
       terraform: {
         required_providers: {
-          [this.terraformResourceType]: {
-            source: this.terraformProviderSource,
-            ...(this.terraformGeneratorMetadata?.providerVersion
-              ? { version: this.terraformGeneratorMetadata.providerVersion }
-              : {}),
-          },
+          [this.terraformResourceType]: requiredProvider,
         },
       },
     };

@@ -3,11 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { App } from "../facade/app.js";
 import { invokeAspects } from "../facade/aspects.js";
-import { Construct, type IConstruct } from "../facade/construct.js";
+import type { IConstruct } from "../facade/construct.js";
 import { TerraformStack } from "../facade/terraform-stack.js";
 
+function toTestTerraformJson(config: Record<string, unknown>): TerraformJson {
+  return config;
+}
+
 export type TerraformJson = {
-  "//": Record<string, unknown>;
+  "//"?: Record<string, unknown>;
   terraform?: {
     backend?: Record<string, Record<string, unknown>>;
     required_providers?: Record<string, unknown>;
@@ -19,18 +23,19 @@ export type TerraformJson = {
   output?: Record<string, Record<string, unknown>>;
   locals?: Record<string, unknown>;
   module?: Record<string, Record<string, unknown>>;
-}
+  validationErrors?: readonly string[];
+};
 
 export type IScopeCallback = {
-  (scope: Construct): void;
-}
+  (scope: TerraformStack): void;
+};
 
 export type TestingAppConfig = {
   readonly outdir?: string;
   readonly stackTraces?: boolean;
   readonly stubVersion?: boolean;
   readonly context?: Record<string, unknown>;
-}
+};
 
 const DefaultTestingAppConfig: TestingAppConfig = {
   stackTraces: false,
@@ -48,7 +53,7 @@ export class Testing {
       context: options.context,
     });
 
-    if (appConfig.stubVersion) {
+    if (appConfig.stubVersion === true) {
       this.stubVersion(app);
     }
 
@@ -69,15 +74,15 @@ export class Testing {
   static synth(stack: TerraformStack, runValidations = false): TerraformJson {
     invokeAspects(stack);
 
-    if (runValidations) {
+    if (runValidations === true) {
       const errors = stack.node.validate();
       if (errors.length > 0) {
-        throw new Error(`Validation errors:\n${errors.join("\n")}`);
+        return { validationErrors: errors };
       }
     }
 
     const tfConfig = stack.toTerraform();
-    return tfConfig as TerraformJson;
+    return toTestTerraformJson(tfConfig);
   }
 
   static synthToJson(stack: TerraformStack, runValidations = false): string {
@@ -85,8 +90,8 @@ export class Testing {
     const cleaned = removeMetadata(config);
 
     const sortedKeys =
-      typeof cleaned === "object" && cleaned !== null
-        ? Object.keys(cleaned as Record<string, unknown>).sort()
+      typeof cleaned === "object" && cleaned !== null && !Array.isArray(cleaned)
+        ? Object.keys(Object.fromEntries(Object.entries(cleaned))).sort()
         : undefined;
     return JSON.stringify(cleaned, sortedKeys, 2);
   }
@@ -137,7 +142,7 @@ function removeMetadata(item: unknown): unknown {
     return item.map(removeMetadata);
   }
 
-  const obj = item as Record<string, unknown>;
+  const obj = Object.fromEntries(Object.entries(item));
   const cleaned: Record<string, unknown> = {};
 
   for (const key of Object.keys(obj).sort()) {
@@ -156,9 +161,8 @@ function renderTree(construct: IConstruct, level: number, isLast: boolean): stri
     prefix = `${spaces}${symbol}── `;
   }
 
-  const name = App.isApp(construct)
-    ? "App"
-    : `${construct.node.id} (${construct.constructor.name})`;
+  const name =
+    App.asApp(construct) !== null ? "App" : `${construct.node.id} (${construct.constructor.name})`;
 
   const childLines = construct.node.children.map((child, idx, arr) => {
     const isLastChild = idx === arr.length - 1;
@@ -184,8 +188,11 @@ function hasResourceWithProperties(
   if (instances.length === 0) return false;
 
   for (const instance of instances) {
-    if (matchesProperties(instance as Record<string, unknown>, expectedProps)) {
-      return true;
+    if (typeof instance === "object" && instance !== null && !Array.isArray(instance)) {
+      const rec = Object.fromEntries(Object.entries(instance));
+      if (matchesProperties(rec, expectedProps)) {
+        return true;
+      }
     }
   }
 
@@ -204,8 +211,11 @@ function hasProviderWithProperties(
   if (!providerList || !Array.isArray(providerList)) return false;
 
   for (const provider of providerList) {
-    if (matchesProperties(provider as Record<string, unknown>, expectedProps)) {
-      return true;
+    if (typeof provider === "object" && provider !== null && !Array.isArray(provider)) {
+      const rec = Object.fromEntries(Object.entries(provider));
+      if (matchesProperties(rec, expectedProps)) {
+        return true;
+      }
     }
   }
 
@@ -217,18 +227,19 @@ function matchesProperties(
   expected: Record<string, unknown>,
 ): boolean {
   for (const [key, value] of Object.entries(expected)) {
-    if (!(key in actual)) return false;
+    if (!Object.prototype.hasOwnProperty.call(actual, key)) return false;
 
-    if (typeof value === "object" && value !== null) {
-      if (typeof actual[key] !== "object" || actual[key] === null) {
+    const actualValue = actual[key];
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      if (typeof actualValue !== "object" || actualValue === null || Array.isArray(actualValue)) {
         return false;
       }
-      if (
-        !matchesProperties(actual[key] as Record<string, unknown>, value as Record<string, unknown>)
-      ) {
+      const actualRec = Object.fromEntries(Object.entries(actualValue));
+      const expectedRec = Object.fromEntries(Object.entries(value));
+      if (!matchesProperties(actualRec, expectedRec)) {
         return false;
       }
-    } else if (actual[key] !== value) {
+    } else if (actualValue !== value) {
       return false;
     }
   }

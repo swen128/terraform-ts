@@ -2,7 +2,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { Construct } from "./construct.js";
-import type { TerraformStack } from "./terraform-stack.js";
+import { getStack, type StackLike } from "./stack-registry.js";
+import { TerraformElement } from "./terraform-element.js";
+
+type TerraformStack = StackLike;
 
 const ContextSchema = z.record(z.string(), z.unknown());
 
@@ -82,11 +85,8 @@ export class App extends Construct {
   }
 
   static asApp(x: unknown): App | null {
-    if (x === null || typeof x !== "object") {
-      return null;
-    }
-    if (Object.prototype.hasOwnProperty.call(x, APP_SYMBOL)) {
-      return x as App;
+    if (x instanceof App) {
+      return x;
     }
     return null;
   }
@@ -136,14 +136,14 @@ export class App extends Construct {
   }
 
   private asStack(c: unknown): TerraformStack | null {
-    if (c === null || typeof c !== "object") {
+    if (!(c instanceof TerraformElement)) {
       return null;
     }
-    const ctor = (c as { constructor: { isStack?: (x: unknown) => boolean } }).constructor;
-    if (typeof ctor.isStack === "function" && ctor.isStack(c)) {
-      return c as TerraformStack;
+    if (c.kind !== "stack") {
+      return null;
     }
-    return null;
+    const stack = getStack(c);
+    return stack !== undefined ? stack : null;
   }
 
   private loadContext(defaults: Record<string, unknown> = {}): void {
@@ -152,16 +152,10 @@ export class App extends Construct {
     }
 
     const contextJson = process.env[CONTEXT_ENV];
-    if (contextJson) {
-      const jsonResult = z
-        .string()
-        .transform((s) => JSON.parse(s))
-        .safeParse(contextJson);
-      if (!jsonResult.success) return;
-
-      const result = ContextSchema.safeParse(jsonResult.data);
-      if (result.success) {
-        for (const [k, v] of Object.entries(result.data)) {
+    if (contextJson !== undefined && contextJson !== "") {
+      const parsed = ContextSchema.safeParse(JSON.parse(contextJson));
+      if (parsed.success) {
+        for (const [k, v] of Object.entries(parsed.data)) {
           this.node.setContext(k, v);
         }
       }

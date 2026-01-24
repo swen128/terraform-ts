@@ -1,20 +1,10 @@
 import { createToken, fn as fnToken, lazy } from "../core/tokens.js";
 
-const ITERATOR_SYMBOL = Symbol.for("tfts/TerraformIterator");
-
 export type ITerraformIterator = {
   _getForEachExpression(): unknown;
-}
+};
 
 export abstract class TerraformIterator implements ITerraformIterator {
-  constructor() {
-    Object.defineProperty(this, ITERATOR_SYMBOL, { value: true });
-  }
-
-  static isIterator(x: unknown): x is TerraformIterator {
-    return x !== null && typeof x === "object" && ITERATOR_SYMBOL in x;
-  }
-
   abstract _getForEachExpression(): unknown;
 
   static fromList(list: unknown[]): ListTerraformIterator {
@@ -70,7 +60,7 @@ export abstract class TerraformIterator implements ITerraformIterator {
 export type DynamicBlock = {
   iterator: ITerraformIterator;
   content: Record<string, unknown>;
-}
+};
 
 export class ListTerraformIterator extends TerraformIterator {
   constructor(private readonly list: unknown[]) {

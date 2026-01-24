@@ -1,17 +1,18 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-
-const REMOTE_STATE_SYMBOL = Symbol.for("tfts/TerraformRemoteState");
 
 export type TerraformRemoteStateConfig = {
   readonly backend: string;
   readonly config: Record<string, unknown>;
   readonly workspace?: string;
   readonly defaults?: Record<string, unknown>;
-}
+};
 
 export abstract class TerraformRemoteState extends TerraformElement {
+  readonly kind: ElementKind = "remote-state";
+
   protected readonly _backend: string;
   protected readonly _config: Record<string, unknown>;
   protected readonly _workspace?: string;
@@ -19,14 +20,9 @@ export abstract class TerraformRemoteState extends TerraformElement {
 
   constructor(scope: Construct, id: string, backend: string, config: Record<string, unknown>) {
     super(scope, id, "data.terraform_remote_state");
-    Object.defineProperty(this, REMOTE_STATE_SYMBOL, { value: true });
 
     this._backend = backend;
     this._config = config;
-  }
-
-  static isTerraformRemoteState(x: unknown): x is TerraformRemoteState {
-    return x !== null && typeof x === "object" && REMOTE_STATE_SYMBOL in x;
   }
 
   get(output: string): string {
@@ -51,15 +47,20 @@ export abstract class TerraformRemoteState extends TerraformElement {
   }
 
   override toTerraform(): Record<string, unknown> {
+    const config: Record<string, unknown> = {
+      backend: this._backend,
+      config: this._config,
+    };
+    if (this._workspace !== undefined && this._workspace !== "") {
+      config["workspace"] = this._workspace;
+    }
+    if (this._defaults !== undefined) {
+      config["defaults"] = this._defaults;
+    }
     return {
       data: {
         terraform_remote_state: {
-          [this.friendlyUniqueId]: {
-            backend: this._backend,
-            config: this._config,
-            ...(this._workspace ? { workspace: this._workspace } : {}),
-            ...(this._defaults ? { defaults: this._defaults } : {}),
-          },
+          [this.friendlyUniqueId]: config,
         },
       },
     };
@@ -71,13 +72,17 @@ export type DataTerraformRemoteStateLocalConfig = {
   readonly workspaceDir?: string;
   readonly workspace?: string;
   readonly defaults?: Record<string, unknown>;
-}
+};
 
 export class DataTerraformRemoteStateLocal extends TerraformRemoteState {
   constructor(scope: Construct, id: string, config: DataTerraformRemoteStateLocalConfig) {
-    super(scope, id, "local", {
-      ...(config.path ? { path: config.path } : {}),
-      ...(config.workspaceDir ? { workspace_dir: config.workspaceDir } : {}),
-    });
+    const backendConfig: Record<string, unknown> = {};
+    if (config.path !== undefined && config.path !== "") {
+      backendConfig["path"] = config.path;
+    }
+    if (config.workspaceDir !== undefined && config.workspaceDir !== "") {
+      backendConfig["workspace_dir"] = config.workspaceDir;
+    }
+    super(scope, id, "local", backendConfig);
   }
 }

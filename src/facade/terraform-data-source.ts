@@ -1,11 +1,10 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
 import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js";
 import type { TerraformProvider } from "./terraform-provider.js";
 import type { ITerraformDependable } from "./terraform-resource.js";
-
-const DATASOURCE_SYMBOL = Symbol.for("tfts/TerraformDataSource");
 
 export type TerraformDataSourceConfig = {
   readonly terraformResourceType: string;
@@ -17,9 +16,11 @@ export type TerraformDataSourceConfig = {
   readonly count?: number | TerraformCount;
   readonly provider?: TerraformProvider;
   readonly forEach?: ITerraformIterator;
-}
+};
 
 export class TerraformDataSource extends TerraformElement implements ITerraformDependable {
+  readonly kind: ElementKind = "data-source";
+
   public readonly terraformResourceType: string;
   public readonly terraformGeneratorMetadata?: {
     readonly providerName: string;
@@ -33,12 +34,11 @@ export class TerraformDataSource extends TerraformElement implements ITerraformD
 
   constructor(scope: Construct, id: string, config: TerraformDataSourceConfig) {
     super(scope, id, `data.${config.terraformResourceType}`);
-    Object.defineProperty(this, DATASOURCE_SYMBOL, { value: true });
 
     this.terraformResourceType = config.terraformResourceType;
     this.terraformGeneratorMetadata = config.terraformGeneratorMetadata;
 
-    if (config.dependsOn) {
+    if (config.dependsOn !== undefined) {
       this.dependsOn = config.dependsOn.map((d) => d.fqn);
     }
     this.count = config.count;
@@ -46,12 +46,8 @@ export class TerraformDataSource extends TerraformElement implements ITerraformD
     this.forEach = config.forEach;
   }
 
-  static isTerraformDataSource(x: unknown): x is TerraformDataSource {
-    return x !== null && typeof x === "object" && DATASOURCE_SYMBOL in x;
-  }
-
   interpolationForAttribute(attribute: string): string {
-    const suffix = this.forEach ? ".*" : "";
+    const suffix = this.forEach !== undefined ? ".*" : "";
     const token = ref(
       `data.${this.terraformResourceType}.${this.friendlyUniqueId}${suffix}`,
       attribute,
@@ -96,16 +92,20 @@ export class TerraformDataSource extends TerraformElement implements ITerraformD
   }
 
   private get terraformMetaArguments(): Record<string, unknown> {
-    return {
-      ...(this.dependsOn?.length ? { depends_on: this.dependsOn } : {}),
-      ...(this.count !== undefined
-        ? {
-            count: typeof this.count === "number" ? this.count : this.count.toNumber(),
-          }
-        : {}),
-      ...(this.provider ? { provider: this.provider.fqn } : {}),
-      ...(this.forEach ? { for_each: this.forEach._getForEachExpression() } : {}),
-    };
+    const result: Record<string, unknown> = {};
+    if (this.dependsOn !== undefined && this.dependsOn.length > 0) {
+      result["depends_on"] = this.dependsOn;
+    }
+    if (this.count !== undefined) {
+      result["count"] = typeof this.count === "number" ? this.count : this.count.toNumber();
+    }
+    if (this.provider !== undefined) {
+      result["provider"] = this.provider.fqn;
+    }
+    if (this.forEach !== undefined) {
+      result["for_each"] = this.forEach._getForEachExpression();
+    }
+    return result;
   }
 
   override toTerraform(): Record<string, unknown> {

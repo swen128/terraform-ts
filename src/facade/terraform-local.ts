@@ -1,24 +1,20 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-
-const LOCAL_SYMBOL = Symbol.for("tfts/TerraformLocal");
 
 export type TerraformLocalConfig = {
   readonly expression: unknown;
-}
+};
 
 export class TerraformLocal extends TerraformElement {
+  readonly kind: ElementKind = "local";
+
   private readonly _expression: unknown;
 
   constructor(scope: Construct, id: string, expression: unknown) {
     super(scope, id);
-    Object.defineProperty(this, LOCAL_SYMBOL, { value: true });
     this._expression = expression;
-  }
-
-  static isTerraformLocal(x: unknown): x is TerraformLocal {
-    return x !== null && typeof x === "object" && LOCAL_SYMBOL in x;
   }
 
   get expression(): unknown {

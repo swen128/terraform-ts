@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { S3Backend } from "./facade/backends/index.js";
-import { Construct } from "./facade/construct.js";
 import {
   App,
   Fn,
@@ -382,8 +381,7 @@ describe("Integration Tests", () => {
 
   describe("Testing Utilities", () => {
     test("synthScope creates isolated scope", () => {
-      const synth = Testing.synthScope((scope: Construct) => {
-        const stack = scope as TerraformStack;
+      const synth = Testing.synthScope((stack: TerraformStack) => {
         new TestProvider(stack, "test");
         new TestResource(stack, "resource", { name: "test" });
       });
@@ -393,8 +391,7 @@ describe("Integration Tests", () => {
     });
 
     test("toHaveResource matcher", () => {
-      const synth = Testing.synthScope((scope: Construct) => {
-        const stack = scope as TerraformStack;
+      const synth = Testing.synthScope((stack: TerraformStack) => {
         new TestProvider(stack, "test");
         new TestResource(stack, "resource", { name: "test-name" });
       });
@@ -404,8 +401,7 @@ describe("Integration Tests", () => {
     });
 
     test("toHaveResourceWithProperties matcher", () => {
-      const synth = Testing.synthScope((scope: Construct) => {
-        const stack = scope as TerraformStack;
+      const synth = Testing.synthScope((stack: TerraformStack) => {
         new TestProvider(stack, "test");
         new TestResource(stack, "resource", { name: "specific-name" });
       });
@@ -424,8 +420,7 @@ describe("Integration Tests", () => {
     });
 
     test("toHaveDataSource matcher", () => {
-      const synth = Testing.synthScope((scope: Construct) => {
-        const stack = scope as TerraformStack;
+      const synth = Testing.synthScope((stack: TerraformStack) => {
         new TestProvider(stack, "test");
         new TestDataSource(stack, "data", { filter: "test" });
       });
@@ -435,8 +430,7 @@ describe("Integration Tests", () => {
     });
 
     test("toHaveProvider matcher", () => {
-      const synth = Testing.synthScope((scope: Construct) => {
-        const stack = scope as TerraformStack;
+      const synth = Testing.synthScope((stack: TerraformStack) => {
         new TestProvider(stack, "test");
       });
 

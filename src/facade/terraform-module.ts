@@ -1,15 +1,14 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
+import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
-import type { TerraformProvider } from "./terraform-provider.js";
+import { TerraformProvider } from "./terraform-provider.js";
 import { deepMerge } from "./util.js";
-
-const MODULE_SYMBOL = Symbol.for("tfts/TerraformModule");
 
 export type TerraformModuleProvider = {
   readonly provider: TerraformProvider;
   readonly moduleAlias: string;
-}
+};
 
 export type TerraformModuleConfig = {
   readonly source: string;
@@ -18,9 +17,11 @@ export type TerraformModuleConfig = {
   readonly dependsOn?: string[];
   readonly forEach?: unknown;
   readonly skipAssetCreationFromLocalModules?: boolean;
-}
+};
 
 export abstract class TerraformModule extends TerraformElement {
+  readonly kind: ElementKind = "module";
+
   readonly source: string;
   readonly version?: string;
   private _providers?: (TerraformProvider | TerraformModuleProvider)[];
@@ -30,7 +31,6 @@ export abstract class TerraformModule extends TerraformElement {
 
   constructor(scope: Construct, id: string, options: TerraformModuleConfig) {
     super(scope, id, "module");
-    Object.defineProperty(this, MODULE_SYMBOL, { value: true });
 
     this.source = options.source;
     this.version = options.version;
@@ -40,23 +40,19 @@ export abstract class TerraformModule extends TerraformElement {
     this.skipAssetCreationFromLocalModules = options.skipAssetCreationFromLocalModules;
   }
 
-  static isTerraformModule(x: unknown): x is TerraformModule {
-    return x !== null && typeof x === "object" && MODULE_SYMBOL in x;
-  }
-
   get providers(): (TerraformProvider | TerraformModuleProvider)[] | undefined {
     return this._providers;
   }
 
   addProvider(provider: TerraformProvider | TerraformModuleProvider): void {
-    if (!this._providers) {
+    if (this._providers === undefined) {
       this._providers = [];
     }
     this._providers.push(provider);
   }
 
   interpolationForOutput(moduleOutput: string): string {
-    const suffix = this.forEach ? ".*" : "";
+    const suffix = this.forEach !== undefined ? ".*" : "";
     const token = ref(`module.${this.friendlyUniqueId}${suffix}`, moduleOutput);
     return createToken(token);
   }
@@ -82,35 +78,41 @@ export abstract class TerraformModule extends TerraformElement {
   }
 
   private synthesizeProviders(): Record<string, string> | undefined {
-    if (!this._providers || this._providers.length === 0) {
+    if (this._providers === undefined || this._providers.length === 0) {
       return undefined;
     }
-    return this._providers.reduce(
-      (acc, p) => {
-        if ("moduleAlias" in p) {
-          const key = `${p.provider.terraformResourceType}.${p.moduleAlias}`;
-          acc[key] = p.provider.fqn;
-        } else {
-          acc[p.terraformResourceType] = p.fqn;
-        }
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
+    const result: Record<string, string> = {};
+    for (const p of this._providers) {
+      if (p instanceof TerraformProvider) {
+        result[p.terraformResourceType] = p.fqn;
+      } else {
+        const key = `${p.provider.terraformResourceType}.${p.moduleAlias}`;
+        result[key] = p.provider.fqn;
+      }
+    }
+    return result;
   }
 
   override toTerraform(): Record<string, unknown> {
-    const attributes = deepMerge(
-      {
-        ...this.synthesizeAttributes(),
-        source: this.source,
-        version: this.version,
-        providers: this.synthesizeProviders(),
-        depends_on: this.dependsOn,
-        for_each: this.forEach,
-      },
-      this.rawOverrides,
-    );
+    const base: Record<string, unknown> = {
+      ...this.synthesizeAttributes(),
+      source: this.source,
+    };
+    if (this.version !== undefined && this.version !== "") {
+      base["version"] = this.version;
+    }
+    const providers = this.synthesizeProviders();
+    if (providers !== undefined) {
+      base["providers"] = providers;
+    }
+    if (this.dependsOn !== undefined && this.dependsOn.length > 0) {
+      base["depends_on"] = this.dependsOn;
+    }
+    if (this.forEach !== undefined) {
+      base["for_each"] = this.forEach;
+    }
+
+    const attributes = deepMerge(base, this.rawOverrides);
 
     return {
       module: {
