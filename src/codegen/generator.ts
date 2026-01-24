@@ -1,3 +1,4 @@
+import { err, ok, type Result } from "neverthrow";
 import type {
   Block,
   ProviderConstraint,
@@ -20,14 +21,14 @@ export type GeneratedFile = {
 export function generateProviderBindings(
   constraint: ProviderConstraint,
   schema: TerraformSchema,
-): GeneratedFile[] {
+): Result<GeneratedFile[], Error> {
   const providerFqn = `registry.terraform.io/${constraint.fqn}`;
   const providerSchema = schema.provider_schemas?.[providerFqn];
 
-  if (!providerSchema) {
+  if (providerSchema === undefined) {
     const available = Object.keys(schema.provider_schemas ?? {});
-    throw new Error(
-      `Provider schema not found for ${providerFqn}. Available: ${available.join(", ")}`,
+    return err(
+      new Error(`Provider schema not found for ${providerFqn}. Available: ${available.join(", ")}`),
     );
   }
 
@@ -35,13 +36,13 @@ export function generateProviderBindings(
 
   files.push(generateProviderClass(constraint, providerSchema));
 
-  if (providerSchema.resource_schemas) {
+  if (providerSchema.resource_schemas !== undefined) {
     for (const [resourceType, resourceSchema] of Object.entries(providerSchema.resource_schemas)) {
       files.push(generateResourceClass(constraint, resourceType, resourceSchema, false));
     }
   }
 
-  if (providerSchema.data_source_schemas) {
+  if (providerSchema.data_source_schemas !== undefined) {
     for (const [dataType, dataSchema] of Object.entries(providerSchema.data_source_schemas)) {
       files.push(generateResourceClass(constraint, dataType, dataSchema, true));
     }
@@ -49,7 +50,7 @@ export function generateProviderBindings(
 
   files.push(generateIndexFile(constraint, providerSchema));
 
-  return files;
+  return ok(files);
 }
 
 function generateProviderClass(
@@ -140,14 +141,14 @@ export class ${fullClassName} extends ${baseClass} {
 }
 
 function generateConfigProperties(block: Block | undefined): string {
-  if (!block) return "";
+  if (block === undefined) return "";
 
   const lines: string[] = [];
 
-  if (block.attributes) {
+  if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
       const tsType = attributeTypeToTS(attr.type);
-      const isOptional = !attr.required || attr.optional || attr.computed;
+      const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
       const optionalMark = isOptional ? "?" : "";
       lines.push(`  readonly ${safeName(name)}${optionalMark}: ${tsType};`);
     }

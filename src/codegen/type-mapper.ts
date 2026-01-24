@@ -1,7 +1,7 @@
 import type { Attribute, AttributeType, Block, BlockType } from "./schema.js";
 
 export function attributeTypeToTS(type: AttributeType | undefined): string {
-  if (!type) return "unknown";
+  if (type === undefined) return "unknown";
 
   if (typeof type === "string") {
     switch (type) {
@@ -35,7 +35,7 @@ export function attributeTypeToTS(type: AttributeType | undefined): string {
 
 export function attributeToConfigProperty(name: string, attr: Attribute): string {
   const tsType = attributeTypeToTS(attr.type);
-  const isOptional = !attr.required || attr.optional || attr.computed;
+  const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
   const optionalMark = isOptional ? "?" : "";
   const readonlyMark = "readonly ";
   return `${readonlyMark}${safeName(name)}${optionalMark}: ${tsType};`;
