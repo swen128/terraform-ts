@@ -1,6 +1,7 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
 import { TerraformElement } from "./terraform-element.js";
+import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js";
 import type { TerraformProvider } from "./terraform-provider.js";
 
 const RESOURCE_SYMBOL = Symbol.for("tfts/TerraformResource");
@@ -22,14 +23,6 @@ export interface TerraformMetaArguments {
 
 export interface ITerraformDependable {
   readonly fqn: string;
-}
-
-export interface ITerraformIterator {
-  _getForEachExpression(): unknown;
-}
-
-export interface TerraformCount {
-  toTerraform(): number;
 }
 
 export interface TerraformResourceConfig extends TerraformMetaArguments {
@@ -120,7 +113,7 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
       ...(this.dependsOn?.length ? { depends_on: this.dependsOn } : {}),
       ...(this.count !== undefined
         ? {
-            count: typeof this.count === "number" ? this.count : this.count.toTerraform(),
+            count: typeof this.count === "number" ? this.count : this.count.toNumber(),
           }
         : {}),
       ...(this.provider ? { provider: this.provider.fqn } : {}),

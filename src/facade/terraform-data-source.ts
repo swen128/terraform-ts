@@ -1,12 +1,9 @@
 import { createToken, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
 import { TerraformElement } from "./terraform-element.js";
+import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js";
 import type { TerraformProvider } from "./terraform-provider.js";
-import type {
-  ITerraformDependable,
-  ITerraformIterator,
-  TerraformCount,
-} from "./terraform-resource.js";
+import type { ITerraformDependable } from "./terraform-resource.js";
 
 const DATASOURCE_SYMBOL = Symbol.for("tfts/TerraformDataSource");
 
@@ -103,7 +100,7 @@ export class TerraformDataSource extends TerraformElement implements ITerraformD
       ...(this.dependsOn?.length ? { depends_on: this.dependsOn } : {}),
       ...(this.count !== undefined
         ? {
-            count: typeof this.count === "number" ? this.count : this.count.toTerraform(),
+            count: typeof this.count === "number" ? this.count : this.count.toNumber(),
           }
         : {}),
       ...(this.provider ? { provider: this.provider.fqn } : {}),
