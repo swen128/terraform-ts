@@ -1,39 +1,38 @@
+import { execSync } from "node:child_process";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { type ProviderConstraint, parseTerraformSchema, type TerraformSchema } from "./schema.js";
 
-export async function fetchProviderSchema(
+export function fetchProviderSchema(
   constraint: ProviderConstraint,
   workDir: string,
-): Promise<TerraformSchema> {
+): TerraformSchema {
   const tfConfig = {
     terraform: {
       required_providers: {
         [constraint.name]: {
           source: constraint.fqn,
-          ...(constraint.version ? { version: constraint.version } : {}),
+          ...(constraint.version !== undefined ? { version: constraint.version } : {}),
         },
       },
     },
   };
 
-  await Bun.$`mkdir -p ${workDir}`;
-  await Bun.write(`${workDir}/main.tf.json`, JSON.stringify(tfConfig, null, 2));
+  mkdirSync(workDir, { recursive: true });
+  writeFileSync(`${workDir}/main.tf.json`, JSON.stringify(tfConfig, null, 2));
 
   console.log(`    Running terraform init...`);
-  const initResult = await Bun.$`cd ${workDir} && terraform init -no-color`.quiet();
-  if (initResult.exitCode !== 0) {
-    throw new Error(`terraform init failed: ${initResult.stderr.toString()}`);
-  }
+  execSync("terraform init -no-color", { cwd: workDir, stdio: "pipe" });
 
   console.log(`    Fetching provider schema...`);
-  const schemaResult = await Bun.$`cd ${workDir} && terraform providers schema -json`.quiet();
-  if (schemaResult.exitCode !== 0) {
-    throw new Error(`terraform providers schema failed: ${schemaResult.stderr.toString()}`);
-  }
+  const schemaOutput = execSync("terraform providers schema -json", {
+    cwd: workDir,
+    stdio: "pipe",
+  });
 
-  const rawSchema = JSON.parse(schemaResult.stdout.toString());
+  const rawSchema: unknown = JSON.parse(schemaOutput.toString());
   return parseTerraformSchema(rawSchema);
 }
 
-export async function cleanupWorkDir(workDir: string): Promise<void> {
-  await Bun.$`rm -rf ${workDir}`.quiet();
+export function cleanupWorkDir(workDir: string): void {
+  rmSync(workDir, { recursive: true, force: true });
 }

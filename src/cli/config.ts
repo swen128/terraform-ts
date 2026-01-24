@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { z } from "zod";
 
 export const TftsConfigSchema = z.object({
@@ -13,21 +14,19 @@ export const TftsConfigSchema = z.object({
 
 export type TftsConfig = z.infer<typeof TftsConfigSchema>;
 
-export async function readConfig(configPath: string): Promise<TftsConfig> {
-  const file = Bun.file(configPath);
-  if (!(await file.exists())) {
+export function readConfig(configPath: string): TftsConfig {
+  if (!existsSync(configPath)) {
     throw new Error(`Config file not found: ${configPath}`);
   }
-  const content = await file.json();
+  const content: unknown = JSON.parse(readFileSync(configPath, "utf-8"));
   return TftsConfigSchema.parse(content);
 }
 
-export async function findConfig(cwd: string): Promise<string | null> {
+export function findConfig(cwd: string): string | null {
   const configNames = ["cdktf.json", "tfts.json"];
   for (const name of configNames) {
     const configPath = `${cwd}/${name}`;
-    const file = Bun.file(configPath);
-    if (await file.exists()) {
+    if (existsSync(configPath)) {
       return configPath;
     }
   }

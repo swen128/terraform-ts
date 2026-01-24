@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import { findConfig, readConfig } from "./config.js";
 
 export type GetOptions = {
@@ -10,8 +11,8 @@ export type GetOptions = {
 export async function get(options: GetOptions = {}): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
 
-  const configPath = await findConfig(cwd);
-  const config = configPath ? await readConfig(configPath) : null;
+  const configPath = findConfig(cwd);
+  const config = configPath !== null ? readConfig(configPath) : null;
 
   const providers = options.providers ?? config?.terraformProviders ?? [];
   const modules = options.modules ?? config?.terraformModules ?? [];
@@ -58,7 +59,7 @@ async function generateProvider(providerSpec: string, outputDir: string): Promis
   const { namespace, name, version } = parseProviderSpec(providerSpec);
 
   const providerDir = `${outputDir}/providers/${namespace}/${name}`;
-  await Bun.$`mkdir -p ${providerDir}`;
+  await mkdir(providerDir, { recursive: true });
 
   console.log(`    Fetching schema for ${namespace}/${name}@${version}...`);
 
@@ -90,8 +91,8 @@ export class ${className}Provider extends TerraformProvider {
 }
 `;
 
-  await Bun.write(`${providerDir}/index.ts`, indexContent);
-  await Bun.write(`${providerDir}/${name}-provider.ts`, providerContent);
+  await writeFile(`${providerDir}/index.ts`, indexContent);
+  await writeFile(`${providerDir}/${name}-provider.ts`, providerContent);
 }
 
 function parseModuleSpec(spec: string): {
@@ -126,7 +127,7 @@ async function generateModule(moduleSpec: string, outputDir: string): Promise<vo
 
   const { namespace, name, provider, version } = parsed;
   const moduleDir = `${outputDir}/modules/${namespace}/${name}/${provider}`;
-  await Bun.$`mkdir -p ${moduleDir}`;
+  await mkdir(moduleDir, { recursive: true });
 
   console.log(`    Generating module ${namespace}/${name}/${provider}@${version}...`);
 
@@ -149,7 +150,7 @@ export class ${className}Module extends TerraformModule {
 }
 `;
 
-  await Bun.write(`${moduleDir}/index.ts`, content);
+  await writeFile(`${moduleDir}/index.ts`, content);
 }
 
 function capitalize(str: string): string {
