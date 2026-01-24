@@ -1,4 +1,6 @@
+export * from "./annotations.js";
 export * from "./app.js";
+export * from "./aspects.js";
 export * from "./backends/index.js";
 export * from "./construct.js";
 export * from "./terraform-asset.js";
