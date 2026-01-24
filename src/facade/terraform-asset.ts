@@ -4,7 +4,6 @@ import { basename, dirname, isAbsolute, join, posix, resolve } from "node:path";
 import { Construct } from "./construct.js";
 import { TerraformStack } from "./terraform-stack.js";
 
-const ASSET_SYMBOL = Symbol.for("tfts/TerraformAsset");
 const ASSETS_DIRECTORY = "assets";
 const ARCHIVE_NAME = "archive.zip";
 
@@ -18,7 +17,7 @@ export type TerraformAssetConfig = {
   readonly path: string;
   readonly type?: AssetType;
   readonly assetHash?: string;
-}
+};
 
 export class TerraformAsset extends Construct {
   private _stack: TerraformStack;
@@ -28,7 +27,6 @@ export class TerraformAsset extends Construct {
 
   constructor(scope: Construct, id: string, config: TerraformAssetConfig) {
     super(scope, id);
-    Object.defineProperty(this, ASSET_SYMBOL, { value: true });
 
     this._stack = TerraformStack.of(this);
 
@@ -54,10 +52,6 @@ export class TerraformAsset extends Construct {
     this.assetHash = config.assetHash ?? this.computeHash(this._sourcePath);
   }
 
-  static isTerraformAsset(x: unknown): x is TerraformAsset {
-    return x !== null && typeof x === "object" && ASSET_SYMBOL in x;
-  }
-
   private get namedFolder(): string {
     return posix.join(ASSETS_DIRECTORY, this._stack.getLogicalId(this));
   }
@@ -74,8 +68,13 @@ export class TerraformAsset extends Construct {
     switch (this.type) {
       case AssetType.ARCHIVE:
         return ARCHIVE_NAME;
-      default:
+      case AssetType.FILE:
+      case AssetType.DIRECTORY:
         return basename(this._sourcePath);
+      default: {
+        const exhaustiveCheck: never = this.type;
+        throw new Error(`Unexpected asset type: ${exhaustiveCheck}`);
+      }
     }
   }
 
@@ -117,12 +116,15 @@ export class TerraformAsset extends Construct {
 
     mkdirSync(targetDir, { recursive: true });
 
-    if (this.type === AssetType.FILE) {
-      copyFileSync(this._sourcePath, targetPath);
-    } else if (this.type === AssetType.DIRECTORY) {
-      this.copyDirectory(this._sourcePath, targetPath);
-    } else if (this.type === AssetType.ARCHIVE) {
-      throw new Error("Archive type requires additional implementation");
+    switch (this.type) {
+      case AssetType.FILE:
+        copyFileSync(this._sourcePath, targetPath);
+        break;
+      case AssetType.DIRECTORY:
+        this.copyDirectory(this._sourcePath, targetPath);
+        break;
+      case AssetType.ARCHIVE:
+        throw new Error("Archive type requires additional implementation");
     }
   }
 
