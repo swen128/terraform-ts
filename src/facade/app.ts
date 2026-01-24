@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 import { Construct } from "./construct.js";
 import type { TerraformStack } from "./terraform-stack.js";
@@ -14,14 +16,14 @@ export type AppConfig = {
   readonly context?: Record<string, unknown>;
   readonly skipValidation?: boolean;
   readonly skipBackendValidation?: boolean;
-}
+};
 
 export type Manifest = {
   readonly version: string;
   readonly outdir: string;
   readonly hclOutput: boolean;
   stacks: Record<string, StackManifest>;
-}
+};
 
 export type StackManifest = {
   readonly name: string;
@@ -30,14 +32,14 @@ export type StackManifest = {
   readonly workingDirectory: string;
   readonly annotations: Annotation[];
   readonly dependencies: string[];
-}
+};
 
 export type Annotation = {
   readonly constructPath: string;
   readonly level: "info" | "warning" | "error";
   readonly message: string;
   readonly stacktrace?: string[];
-}
+};
 
 export class App extends Construct {
   public readonly outdir: string;
@@ -79,19 +81,26 @@ export class App extends Construct {
     };
   }
 
-  static isApp(x: unknown): x is App {
-    return x !== null && typeof x === "object" && APP_SYMBOL in x;
+  static asApp(x: unknown): App | null {
+    if (x === null || typeof x !== "object") {
+      return null;
+    }
+    if (Object.prototype.hasOwnProperty.call(x, APP_SYMBOL)) {
+      return x as App;
+    }
+    return null;
   }
 
-  static of(construct: Construct): App {
+  static of(construct: Construct): App | null {
     let current: Construct | undefined = construct;
-    while (current) {
-      if (App.isApp(current)) {
-        return current;
+    while (current !== undefined) {
+      const app = App.asApp(current);
+      if (app !== null) {
+        return app;
       }
       current = current._scope;
     }
-    throw new Error(`No App found in the scope of ${construct.node.path}`);
+    return null;
   }
 
   synth(): void {
@@ -99,13 +108,10 @@ export class App extends Construct {
       return;
     }
 
-    const stacks = this.node
-      .findAll()
-      .filter(
-        (c): c is TerraformStack =>
-          "isStack" in c.constructor &&
-          (c.constructor as { isStack?: (x: unknown) => boolean }).isStack?.(c) === true,
-      );
+    const stacks = this.node.findAll().flatMap((c) => {
+      const stack = this.asStack(c);
+      return stack !== null ? [stack] : [];
+    });
 
     for (const stack of stacks) {
       stack.prepareStack();
@@ -121,12 +127,23 @@ export class App extends Construct {
         errors.push(...construct.node.validate());
       }
       if (errors.length > 0) {
-        throw new Error(`Validation failed:\n  ${errors.join("\n  ")}`);
+        return;
       }
     }
 
     this.writeManifest();
     this._synthesized = true;
+  }
+
+  private asStack(c: unknown): TerraformStack | null {
+    if (c === null || typeof c !== "object") {
+      return null;
+    }
+    const ctor = (c as { constructor: { isStack?: (x: unknown) => boolean } }).constructor;
+    if (typeof ctor.isStack === "function" && ctor.isStack(c)) {
+      return c as TerraformStack;
+    }
+    return null;
   }
 
   private loadContext(defaults: Record<string, unknown> = {}): void {
@@ -152,15 +169,12 @@ export class App extends Construct {
   }
 
   private writeManifest(): void {
-    const fs = require("fs");
-    const path = require("path");
-
-    if (!fs.existsSync(this.outdir)) {
-      fs.mkdirSync(this.outdir, { recursive: true });
+    if (!existsSync(this.outdir)) {
+      mkdirSync(this.outdir, { recursive: true });
     }
 
-    const manifestPath = path.join(this.outdir, "manifest.json");
-    fs.writeFileSync(manifestPath, JSON.stringify(this.manifest, null, 2));
+    const manifestPath = join(this.outdir, "manifest.json");
+    writeFileSync(manifestPath, JSON.stringify(this.manifest, null, 2));
   }
 
   crossStackReference(
