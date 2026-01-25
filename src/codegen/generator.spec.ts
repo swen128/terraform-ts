@@ -302,4 +302,69 @@ describe("generateProviderBindings", () => {
 
     expect(content).toContain("get id(): string {");
   });
+
+  test("generates single OutputReference for blocks with max_items=1", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_function: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  service_config: {
+                    nesting_mode: "list",
+                    max_items: 1,
+                    block: {
+                      attributes: {
+                        service: { type: "string", computed: true },
+                        uri: { type: "string", computed: true },
+                      },
+                    },
+                  },
+                  labels: {
+                    nesting_mode: "list",
+                    block: {
+                      attributes: {
+                        key: { type: "string", required: true },
+                        value: { type: "string", required: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/function/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("get serviceConfig(): FunctionServiceConfigOutputReference");
+    expect(content).not.toContain("FunctionServiceConfigList");
+
+    expect(content).toContain("readonly labels?: Labels[];");
+
+    expect(content).toContain("class FunctionLabelsOutputReference extends ComplexObject");
+    expect(content).toContain("class FunctionLabelsList extends ComplexList");
+  });
 });

@@ -31,6 +31,11 @@ function isComputedOnlyBlock(block: Block): boolean {
   return true;
 }
 
+function isBlockTypeArray(blockType: { nesting_mode: string; max_items?: number }): boolean {
+  const isListOrSet = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+  return isListOrSet && blockType.max_items !== 1;
+}
+
 type AttributeType =
   | "string"
   | "number"
@@ -288,7 +293,7 @@ export class ${listName} extends ComplexList {
       const blockClassName = toPascalCase(name);
       const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
       const listName = `${resourceClassName}${blockClassName}List`;
-      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const isArray = isBlockTypeArray(blockType);
 
       const getters = generateOutputReferenceGetters(blockType.block);
 
@@ -397,7 +402,7 @@ function generateComputedBlockGetters(block: Block, resourceClassName: string): 
     for (const [name, blockType] of Object.entries(block.block_types)) {
       const camelName = toCamelCase(name.replace(/_/g, "-"));
       const blockClassName = toPascalCase(name);
-      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const isArray = isBlockTypeArray(blockType);
 
       if (isArray) {
         const listName = `${resourceClassName}${blockClassName}List`;
@@ -446,7 +451,7 @@ function generateProviderConfigStorage(block: Block | undefined): {
   if (block.block_types !== undefined) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
       const interfaceName = toPascalCase(name);
-      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const isArray = isBlockTypeArray(blockType);
       const camelPropName = safeCamelName(name);
       const fieldName = `_${camelPropName}`;
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
@@ -509,7 +514,7 @@ function generateConfigStorage(
       if (isComputedOnlyBlock(blockType.block)) continue;
 
       const interfaceName = toPascalCase(name);
-      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const isArray = isBlockTypeArray(blockType);
       const camelPropName = safeCamelName(name);
       const fieldName = `_${camelPropName}`;
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
@@ -643,7 +648,7 @@ function generateConfigProperties(block: Block | undefined): string {
       if (isComputedOnlyBlock(blockType.block)) continue;
 
       const interfaceName = toPascalCase(name);
-      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const isArray = isBlockTypeArray(blockType);
       const isOptional = (blockType.min_items ?? 0) === 0;
       const optionalMark = isOptional ? "?" : "";
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;

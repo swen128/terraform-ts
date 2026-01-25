@@ -41,9 +41,14 @@ export function attributeToConfigProperty(name: string, attr: Attribute): string
   return `${readonlyMark}${safeCamelName(name)}${optionalMark}: ${tsType};`;
 }
 
+function isBlockTypeArray(blockType: { nesting_mode: string; max_items?: number }): boolean {
+  const isListOrSet = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+  return isListOrSet && blockType.max_items !== 1;
+}
+
 export function blockToConfigProperty(name: string, block: BlockType): string {
   const innerType = blockToInterfaceName(name);
-  const isArray = block.nesting_mode === "list" || block.nesting_mode === "set";
+  const isArray = isBlockTypeArray(block);
   const isOptional = (block.min_items ?? 0) === 0;
   const optionalMark = isOptional ? "?" : "";
   const tsType = isArray ? `${innerType}[]` : innerType;
