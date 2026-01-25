@@ -131,17 +131,18 @@ export class Construct implements IConstruct {
   readonly node: Node;
 
   constructor(scope: Construct | undefined, id: string) {
-    this._id = id;
+    const sanitizedId = id.replace(/\//g, "--");
+    this._id = sanitizedId;
     this._scope = scope;
 
     if (scope !== undefined) {
       const scopePath = scope._path ?? [];
-      this._path = [...scopePath, id];
+      this._path = [...scopePath, sanitizedId];
       if (scope._path !== undefined) {
         scope.node.addChild(this);
       }
     } else {
-      this._path = id !== "" ? [id] : [];
+      this._path = sanitizedId !== "" ? [sanitizedId] : [];
     }
 
     this.node = new Node(this);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { err, ok, type Result } from "neverthrow";
 import type {
   LifecycleBlock,
@@ -345,10 +346,10 @@ export function generateLogicalId(path: readonly string[]): string {
   }
 
   const stackIndex = 1;
-  const components = path.slice(stackIndex);
+  const components = path.slice(stackIndex + 1);
 
-  if (components.length === 1) {
-    return sanitizeLogicalId(components[0] ?? "");
+  if (components.length === 0) {
+    return sanitizeLogicalId(path[stackIndex] ?? "");
   }
 
   return makeUniqueId(components);
@@ -358,20 +359,42 @@ function sanitizeLogicalId(id: string): string {
   return id.replace(/[^A-Za-z0-9_-]/g, "");
 }
 
+const HIDDEN_ID = "Default";
+const HIDDEN_FROM_HUMAN_ID = "Resource";
+const HASH_LEN = 8;
+const MAX_HUMAN_LEN = 240;
+const MAX_ID_LEN = 255;
+
 function makeUniqueId(components: readonly string[]): string {
-  const hash = simpleHash(components.join("/"));
-  const lastComponent = sanitizeLogicalId(components[components.length - 1] ?? "");
-  return `${lastComponent}_${hash.slice(0, 8)}`;
+  const filtered = components.filter((x) => x !== HIDDEN_ID);
+  if (filtered.length === 0) return "";
+
+  if (filtered.length === 1) {
+    const candidate = sanitizeLogicalId(filtered[0] ?? "");
+    if (candidate.length <= MAX_ID_LEN) return candidate;
+  }
+
+  const hash = md5Hash(filtered.join("/")).slice(0, HASH_LEN).toUpperCase();
+
+  const deduped: string[] = [];
+  for (const c of filtered) {
+    const lastItem = deduped[deduped.length - 1];
+    if (deduped.length === 0 || lastItem === undefined || !lastItem.endsWith(c)) {
+      deduped.push(c);
+    }
+  }
+
+  const human = deduped
+    .filter((x) => x !== HIDDEN_FROM_HUMAN_ID)
+    .map(sanitizeLogicalId)
+    .join("_")
+    .slice(0, MAX_HUMAN_LEN);
+
+  return `${human}_${hash}`;
 }
 
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16);
+function md5Hash(str: string): string {
+  return createHash("md5").update(str).digest("hex");
 }
 
 export function generateFqn(resourceType: string, logicalId: string): string {
