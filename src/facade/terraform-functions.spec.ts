@@ -98,22 +98,22 @@ describe("Fn", () => {
 
     test("keys", () => {
       const result = resolveFn(Fn.keys({ a: 1, b: 2 }));
-      expect(result).toBe("${keys({a = 1, b = 2})}");
+      expect(result).toBe('${keys({"a" = 1, "b" = 2})}');
     });
 
     test("values", () => {
       const result = resolveFn(Fn.values({ a: 1, b: 2 }));
-      expect(result).toBe("${values({a = 1, b = 2})}");
+      expect(result).toBe('${values({"a" = 1, "b" = 2})}');
     });
 
     test("merge", () => {
       const result = resolveFn(Fn.merge({ a: 1 }, { b: 2 }));
-      expect(result).toBe("${merge({a = 1}, {b = 2})}");
+      expect(result).toBe('${merge({"a" = 1}, {"b" = 2})}');
     });
 
     test("lookup with default", () => {
       const result = resolveFn(Fn.lookup({ a: 1 }, "a", 0));
-      expect(result).toBe('${lookup({a = 1}, "a", 0)}');
+      expect(result).toBe('${lookup({"a" = 1}, "a", 0)}');
     });
 
     test("toset", () => {
@@ -128,14 +128,14 @@ describe("Fn", () => {
 
     test("tomap", () => {
       const result = resolveFn(Fn.tomap({ a: 1 }));
-      expect(result).toBe("${tomap({a = 1})}");
+      expect(result).toBe('${tomap({"a" = 1})}');
     });
   });
 
   describe("Encoding Functions", () => {
     test("jsonencode", () => {
       const result = resolveFn(Fn.jsonencode({ key: "value" }));
-      expect(result).toBe('${jsonencode({key = "value"})}');
+      expect(result).toBe('${jsonencode({"key" = "value"})}');
     });
 
     test("jsondecode", () => {
@@ -167,7 +167,7 @@ describe("Fn", () => {
 
     test("templatefile", () => {
       const result = resolveFn(Fn.templatefile("./template.tpl", { name: "world" }));
-      expect(result).toBe('${templatefile("./template.tpl", {name = "world"})}');
+      expect(result).toBe('${templatefile("./template.tpl", {"name" = "world"})}');
     });
 
     test("abspath", () => {

@@ -149,9 +149,16 @@ export function tokenToString(token: Token): string {
   }
 }
 
+function escapeStringForTerraform(str: string): string {
+  return str.replace(/\n/g, "\\n").replace(/\${/g, "$${");
+}
+
 function argToString(arg: unknown): string {
   if (typeof arg === "string") {
-    return `"${arg}"`;
+    if (arg !== '"' && arg.startsWith('"') && arg.endsWith('"')) {
+      return escapeStringForTerraform(arg);
+    }
+    return `"${escapeStringForTerraform(arg)}"`;
   }
   if (typeof arg === "number" || typeof arg === "boolean") {
     return String(arg);
@@ -165,7 +172,7 @@ function argToString(arg: unknown): string {
       return tokenToString(token);
     }
     const entries = Object.entries(arg);
-    return `{${entries.map(([k, v]) => `${k} = ${argToString(v)}`).join(", ")}}`;
+    return `{${entries.map(([k, v]) => `"${k}" = ${argToString(v)}`).join(", ")}}`;
   }
   return String(arg);
 }

@@ -163,7 +163,7 @@ function expressionToString(expr: unknown): string {
   }
   if (typeof expr === "object") {
     const entries = Object.entries(expr);
-    const parts = entries.map(([k, v]) => `${k} = ${expressionToString(v)}`);
+    const parts = entries.map(([k, v]) => `"${k}" = ${expressionToString(v)}`);
     return `{${parts.join(", ")}}`;
   }
   return String(expr);
