@@ -86,6 +86,12 @@ function migrateFile(filePath: string, projectRoot: string): { modified: boolean
     changes.push('from "cdktf" -> from "tfts"');
   }
 
+  const constructsPattern = /from\s+["']constructs["']/g;
+  if (constructsPattern.test(newContent)) {
+    newContent = newContent.replace(constructsPattern, 'from "tfts"');
+    changes.push('from "constructs" -> from "tfts"');
+  }
+
   const namespaceImportPattern = /from\s+["']@cdktf\/provider-([^/"']+)["']/g;
   newContent = newContent.replace(namespaceImportPattern, (_, provider) => {
     const newPath = `${relToGen}/providers/hashicorp/${provider}/index.js`;
@@ -143,16 +149,16 @@ if (totalModified > 0) console.log("\nNext: npx tfts get");
 
 The script converts:
 - `from "cdktf"` → `from "tfts"`
+- `from "constructs"` → `from "tfts"`
 - `@cdktf/provider-X` → `{relPath}/.gen/providers/hashicorp/X/index.js`
 - `@cdktf/provider-X/lib/Y` → `{relPath}/.gen/providers/hashicorp/X/lib/Y/index.js`
-
-
 
 ## Import Path Reference
 
 | CDKTF Import | tfts Import |
 |--------------|-------------|
 | `from "cdktf"` | `from "tfts"` |
+| `from "constructs"` | `from "tfts"` |
 | `from "@cdktf/provider-google"` | `from "{relPath}/.gen/providers/hashicorp/google/index.js"` |
 | `from "@cdktf/provider-google/lib/provider"` | `from "{relPath}/.gen/providers/hashicorp/google/lib/provider/index.js"` |
 | `from "@cdktf/provider-google/lib/compute-instance"` | `from "{relPath}/.gen/providers/hashicorp/google/lib/compute-instance/index.js"` |
