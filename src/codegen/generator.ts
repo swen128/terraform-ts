@@ -189,7 +189,7 @@ function generateResourceClass(
   const baseImport = isDataSource ? "TerraformDataSource" : "TerraformResource";
   const complexImports = hasComplexClasses ? ", ComplexList, ComplexObject" : "";
 
-  const { privateFields, assignments, synthesizeBody } = generateConfigStorage(
+  const { privateFields, assignments, synthesizeBody, configGetters } = generateConfigStorage(
     schema.block,
     className,
   );
@@ -229,6 +229,8 @@ ${privateFields}
     });
 ${assignments}
   }
+
+${configGetters}
 
 ${computedGetters}
 
@@ -469,14 +471,16 @@ function generateConfigStorage(
   privateFields: string;
   assignments: string;
   synthesizeBody: string;
+  configGetters: string;
 } {
   if (block === undefined) {
-    return { privateFields: "", assignments: "", synthesizeBody: "" };
+    return { privateFields: "", assignments: "", synthesizeBody: "", configGetters: "" };
   }
 
   const fields: string[] = [];
   const assigns: string[] = [];
   const synth: string[] = [];
+  const getters: string[] = [];
 
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
@@ -492,6 +496,11 @@ function generateConfigStorage(
       fields.push(`  private ${fieldName}?: ${tsType};`);
       assigns.push(`    this.${fieldName} = config.${safePropName};`);
       synth.push(`      ${name}: this.${fieldName},`);
+
+      const getter = generateConfigGetter(name, safePropName, tsType);
+      if (getter !== undefined) {
+        getters.push(getter);
+      }
     }
   }
 
@@ -515,7 +524,38 @@ function generateConfigStorage(
     privateFields: fields.join("\n"),
     assignments: assigns.join("\n"),
     synthesizeBody: synth.join("\n"),
+    configGetters: getters.join("\n\n"),
   };
+}
+
+function generateConfigGetter(
+  attrName: string,
+  safePropName: string,
+  tsType: string,
+): string | undefined {
+  const stringTypes = new Set(["string", "string | undefined"]);
+  const numberTypes = new Set(["number", "number | undefined"]);
+  const booleanTypes = new Set(["boolean", "boolean | undefined"]);
+
+  if (stringTypes.has(tsType)) {
+    return `  get ${safePropName}(): string {
+    return this.getStringAttribute("${attrName}");
+  }`;
+  }
+
+  if (numberTypes.has(tsType)) {
+    return `  get ${safePropName}(): number {
+    return this.getNumberAttribute("${attrName}");
+  }`;
+  }
+
+  if (booleanTypes.has(tsType)) {
+    return `  get ${safePropName}(): boolean {
+    return this.getBooleanAttribute("${attrName}");
+  }`;
+  }
+
+  return undefined;
 }
 
 function generateComputedGetters(block: Block | undefined): string {

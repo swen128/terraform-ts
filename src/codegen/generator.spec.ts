@@ -248,4 +248,58 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("get status(): RunServiceStatusList");
     expect(content).not.toContain("readonly status?:");
   });
+
+  test("generates config getters for required/optional attributes", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_resource: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                  description: { type: "string", optional: true },
+                  count: { type: "number", optional: true },
+                  enabled: { type: "bool", optional: true },
+                  id: { type: "string", computed: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/resource/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain('get name(): string {');
+    expect(content).toContain('return this.getStringAttribute("name");');
+
+    expect(content).toContain('get description(): string {');
+    expect(content).toContain('return this.getStringAttribute("description");');
+
+    expect(content).toContain('get count(): number {');
+    expect(content).toContain('return this.getNumberAttribute("count");');
+
+    expect(content).toContain('get enabled(): boolean {');
+    expect(content).toContain('return this.getBooleanAttribute("enabled");');
+
+    expect(content).toContain('get id(): string {');
+  });
 });
