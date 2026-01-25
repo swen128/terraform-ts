@@ -61,7 +61,13 @@ export function blockToConfigProperty(
 }
 
 export function blockToInterfaceName(name: string): string {
-  return toPascalCase(name);
+  const pascalName = toPascalCase(name);
+  // If the block type name ends with 'Config', it would collide with the resource's
+  // own config type (e.g., ApiHubInstanceConfig). Add 'Block' suffix to avoid collision.
+  if (pascalName.endsWith("Config")) {
+    return `${pascalName}Block`;
+  }
+  return pascalName;
 }
 
 const JS_RESERVED = new Set([

@@ -9,6 +9,7 @@ import type {
 } from "./schema.js";
 import {
   attributeTypeToTS,
+  blockToInterfaceName,
   generateBlockInterface,
   safeCamelName,
   toPascalCase,
@@ -169,7 +170,7 @@ function generateResourceClass(
   const configProps = generateConfigProperties(schema.block, fullClassName);
   const nestedInterfaces = generateNestedInterfaces(schema.block, fullClassName);
   const toTerraformFunctions = generateToTerraformFunctions(schema.block, fullClassName);
-  const complexClasses = generateComplexClasses(schema.block, className);
+  const complexClasses = generateComplexClasses(schema.block, fullClassName);
   const hasComplexClasses = complexClasses.length > 0;
 
   const baseClass = isDataSource ? "TerraformDataSource" : "TerraformResource";
@@ -178,10 +179,10 @@ function generateResourceClass(
 
   const { privateFields, assignments, synthesizeBody, configGetters } = generateConfigStorage(
     schema.block,
-    className,
+    fullClassName,
   );
   const computedGetters = generateComputedGetters(schema.block);
-  const computedBlockGetters = generateComputedBlockGetters(schema.block, className);
+  const computedBlockGetters = generateComputedBlockGetters(schema.block, fullClassName);
 
   const complexTypeImports = hasComplexClasses ? ", IInterpolatingParent" : "";
   const metaArgsImport = isDataSource
@@ -478,7 +479,8 @@ function generateConfigStorage(
     });
 
   const blockEntries = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
-    const fullTypeName = `${resourceClassName}${toPascalCase(name)}`;
+    const fullName = `${resourceClassName}_${name}`;
+    const fullTypeName = blockToInterfaceName(fullName);
     const isArray = isBlockTypeArray(blockType);
     const camelPropName = safeCamelName(name);
     const fieldName = getFieldName(camelPropName);
@@ -621,9 +623,8 @@ function generateConfigProperties(block: Block | undefined, resourcePrefix: stri
   });
 
   const blockLines = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
-    const fullTypeName = resourcePrefix
-      ? `${resourcePrefix}${toPascalCase(name)}`
-      : toPascalCase(name);
+    const fullName = resourcePrefix ? `${resourcePrefix}_${name}` : name;
+    const fullTypeName = blockToInterfaceName(fullName);
     const isArray = isBlockTypeArray(blockType);
     const isOptional = (blockType.min_items ?? 0) === 0;
     const optionalMark = isOptional ? "?" : "";
@@ -650,10 +651,11 @@ function generateNestedInterfaces(block: Block, prefix: string = ""): string {
 function generateToTerraformFunctions(block: Block, prefix: string = ""): string {
   return Object.entries(block.block_types ?? {})
     .flatMap(([name, blockType]) => {
-      const funcPrefix = prefix ? `${prefix}${toPascalCase(name)}` : safeCamelName(name);
+      const fullName = prefix ? `${prefix}_${name}` : name;
+      const typeName = blockToInterfaceName(fullName);
       return [
-        generateSingleToTerraformFunction(name, blockType.block, funcPrefix),
-        generateToTerraformFunctions(blockType.block, funcPrefix),
+        generateSingleToTerraformFunction(name, blockType.block, fullName, typeName),
+        generateToTerraformFunctions(blockType.block, fullName),
       ];
     })
     .filter(Boolean)
@@ -663,10 +665,10 @@ function generateToTerraformFunctions(block: Block, prefix: string = ""): string
 function generateSingleToTerraformFunction(
   _name: string,
   block: Block,
-  funcPrefix: string,
+  fullPath: string,
+  typeName: string,
 ): string {
-  const funcName = `${funcPrefix}ToTerraform`;
-  const typeName = funcPrefix.charAt(0).toUpperCase() + funcPrefix.slice(1);
+  const funcName = `${typeName}ToTerraform`;
 
   const attrLines = Object.entries(block.attributes ?? {}).flatMap(([attrName, attr]) => {
     if (attr.computed === true && attr.optional !== true && attr.required !== true) {
@@ -678,8 +680,9 @@ function generateSingleToTerraformFunction(
 
   const blockLines = Object.entries(block.block_types ?? {}).map(([blockName, blockType]) => {
     const camelBlockName = safeCamelName(blockName);
-    const nestedFuncPrefix = `${funcPrefix}${toPascalCase(blockName)}`;
-    const nestedFuncName = `${nestedFuncPrefix}ToTerraform`;
+    const nestedFullPath = `${fullPath}_${blockName}`;
+    const nestedTypeName = blockToInterfaceName(nestedFullPath);
+    const nestedFuncName = `${nestedTypeName}ToTerraform`;
     const isArray = isBlockTypeArray(blockType);
 
     return isArray

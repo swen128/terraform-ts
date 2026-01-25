@@ -425,7 +425,7 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain("function ServiceConfigToTerraform(");
+    expect(content).toContain("function ServiceConfigBlockToTerraform(");
     expect(content).toContain("timeout: config?.timeout,");
     expect(content).toContain("enabled: config?.enabled,");
     expect(content).toContain("nested: config?.nested?.map(ServiceConfigNestedToTerraform),");
@@ -433,7 +433,7 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("function ServiceConfigNestedToTerraform(");
     expect(content).toContain("key: config?.key,");
 
-    expect(content).toContain("config: ServiceConfigToTerraform(this._config),");
+    expect(content).toContain("config: ServiceConfigBlockToTerraform(this._config),");
   });
 
   test("generates config and synthesizeAttributes for empty blocks (blocks with only computed attrs)", () => {
@@ -482,11 +482,11 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain("readonly ttlConfig?: FieldTtlConfig;");
-    expect(content).toContain("private _ttlConfig?: FieldTtlConfig;");
+    expect(content).toContain("readonly ttlConfig?: FieldTtlConfigBlock;");
+    expect(content).toContain("private _ttlConfig?: FieldTtlConfigBlock;");
     expect(content).toContain("this._ttlConfig = config.ttlConfig;");
-    expect(content).toContain("ttl_config: FieldTtlConfigToTerraform(this._ttlConfig),");
-    expect(content).toContain("function FieldTtlConfigToTerraform(");
+    expect(content).toContain("ttl_config: FieldTtlConfigBlockToTerraform(this._ttlConfig),");
+    expect(content).toContain("function FieldTtlConfigBlockToTerraform(");
   });
 
   test("uses prefixed field names for reserved attributes that conflict with base class", () => {
@@ -587,6 +587,57 @@ describe("generateProviderBindings", () => {
 
     expect(content).toContain("private _tfScope?: ApplicationScope;");
     expect(content).not.toContain("private _scope?:");
+  });
+
+  test("avoids collision when block type named 'config' matches resource config type", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_api_hub_instance: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  config: {
+                    nesting_mode: "list",
+                    max_items: 1,
+                    block: {
+                      attributes: {
+                        enabled: { type: "bool", optional: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/api-hub-instance/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("export type ApiHubInstanceConfigBlock = {");
+    expect(content).toContain("export type ApiHubInstanceConfig = TerraformMetaArguments");
+    expect(content).not.toMatch(/export type ApiHubInstanceConfig = \{[^T]/);
   });
 
   test("prefixes nested block type names with resource class name for CDKTF compatibility", () => {
