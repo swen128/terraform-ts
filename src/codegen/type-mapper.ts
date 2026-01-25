@@ -46,8 +46,13 @@ function isBlockTypeArray(blockType: { nesting_mode: string; max_items?: number 
   return isListOrSet && blockType.max_items !== 1;
 }
 
-export function blockToConfigProperty(name: string, block: BlockType): string {
-  const innerType = blockToInterfaceName(name);
+export function blockToConfigProperty(
+  name: string,
+  block: BlockType,
+  parentPrefix: string = "",
+): string {
+  const fullName = parentPrefix ? `${parentPrefix}_${name}` : name;
+  const innerType = blockToInterfaceName(fullName);
   const isArray = isBlockTypeArray(block);
   const isOptional = (block.min_items ?? 0) === 0;
   const optionalMark = isOptional ? "?" : "";
@@ -126,14 +131,15 @@ export function toCamelCase(str: string): string {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
-export function generateBlockInterface(name: string, block: Block): string {
-  const interfaceName = blockToInterfaceName(name);
+export function generateBlockInterface(name: string, block: Block, prefix: string = ""): string {
+  const fullName = prefix ? `${prefix}_${name}` : name;
+  const interfaceName = blockToInterfaceName(fullName);
   const properties = [
     ...Object.entries(block.attributes ?? {}).map(
       ([attrName, attr]) => `  ${attributeToConfigProperty(attrName, attr)}`,
     ),
     ...Object.entries(block.block_types ?? {}).map(
-      ([blockName, blockType]) => `  ${blockToConfigProperty(blockName, blockType)}`,
+      ([blockName, blockType]) => `  ${blockToConfigProperty(blockName, blockType, fullName)}`,
     ),
   ];
 

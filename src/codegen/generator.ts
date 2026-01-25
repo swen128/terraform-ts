@@ -186,7 +186,7 @@ function generateResourceClass(
     ? "TerraformDataSourceMetaArguments"
     : "TerraformMetaArguments";
   const content = `import { ${baseImport}${complexImports} } from "tfts";
-import type { Construct${complexTypeImports}, ${metaArgsImport} } from "tfts";
+import type { Construct${complexTypeImports}, ${metaArgsImport}, IResolvable } from "tfts";
 
 ${nestedInterfaces}
 
@@ -342,7 +342,7 @@ function generateComplexObjectGetter(
   }
 
   if (booleanTypes.has(tsType)) {
-    return `  get ${safePropName}(): boolean {
+    return `  get ${safePropName}(): IResolvable {
     return this.getBooleanAttribute("${attrName}");
   }`;
   }
@@ -452,7 +452,8 @@ function generateConfigStorage(
     .map(([name, attr]) => {
       const tsType = attributeTypeToTS(attr.type);
       const camelPropName = safeCamelName(name);
-      const fieldName = `_${camelPropName}`;
+      // Use different field name for 'id' to avoid conflict with Construct._id
+      const fieldName = name === "id" ? "_configId" : `_${camelPropName}`;
       return {
         field: `  private ${fieldName}?: ${tsType};`,
         assign: `    this.${fieldName} = config.${camelPropName};`,
@@ -517,7 +518,7 @@ function generateConfigGetter(
   }
 
   if (booleanTypes.has(tsType)) {
-    return `  get ${safePropName}(): boolean {
+    return `  get ${safePropName}(): IResolvable {
     return this.getBooleanAttribute("${attrName}");
   }`;
   }
@@ -564,7 +565,7 @@ function generateGetterForType(
   }
 
   if (booleanTypes.has(tsType)) {
-    return `  get ${safePropName}(): boolean {
+    return `  get ${safePropName}(): IResolvable {
     return this.getBooleanAttribute("${attrName}");
   }`;
   }
@@ -608,12 +609,15 @@ function generateConfigProperties(block: Block | undefined): string {
   return [...attrLines, ...blockLines].join("\n");
 }
 
-function generateNestedInterfaces(block: Block): string {
+function generateNestedInterfaces(block: Block, prefix: string = ""): string {
   return Object.entries(block.block_types ?? {})
-    .flatMap(([name, blockType]) => [
-      generateBlockInterface(name, blockType.block),
-      generateNestedInterfaces(blockType.block),
-    ])
+    .flatMap(([name, blockType]) => {
+      const fullName = prefix ? `${prefix}_${name}` : name;
+      return [
+        generateBlockInterface(name, blockType.block, prefix),
+        generateNestedInterfaces(blockType.block, fullName),
+      ];
+    })
     .filter(Boolean)
     .join("\n\n");
 }
@@ -631,9 +635,13 @@ function generateToTerraformFunctions(block: Block, prefix: string = ""): string
     .join("\n\n");
 }
 
-function generateSingleToTerraformFunction(name: string, block: Block, funcPrefix: string): string {
+function generateSingleToTerraformFunction(
+  _name: string,
+  block: Block,
+  funcPrefix: string,
+): string {
   const funcName = `${funcPrefix}ToTerraform`;
-  const typeName = toPascalCase(name);
+  const typeName = funcPrefix.charAt(0).toUpperCase() + funcPrefix.slice(1);
 
   const attrLines = Object.entries(block.attributes ?? {}).flatMap(([attrName, attr]) => {
     if (attr.computed === true && attr.optional !== true && attr.required !== true) {

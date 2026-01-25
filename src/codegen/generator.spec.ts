@@ -198,7 +198,7 @@ describe("generateProviderBindings", () => {
 
     expect(content).toContain("class ServiceStatusOutputReference extends ComplexObject");
     expect(content).toContain("get url(): string");
-    expect(content).toContain("get ready(): boolean");
+    expect(content).toContain("get ready(): IResolvable");
 
     expect(content).toContain("get status(): ServiceStatusList");
   });
@@ -243,7 +243,7 @@ describe("generateProviderBindings", () => {
 
     expect(content).toContain("class RunServiceStatusOutputReference extends ComplexObject");
     expect(content).toContain("get url(): string");
-    expect(content).toContain("get ready(): boolean");
+    expect(content).toContain("get ready(): IResolvable");
 
     expect(content).toContain("get status(): RunServiceStatusList");
     expect(content).not.toContain("readonly status?:");
@@ -297,7 +297,7 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("get count(): number {");
     expect(content).toContain('return this.getNumberAttribute("count");');
 
-    expect(content).toContain("get enabled(): boolean {");
+    expect(content).toContain("get enabled(): IResolvable {");
     expect(content).toContain('return this.getBooleanAttribute("enabled");');
 
     expect(content).toContain("get id(): string {");
