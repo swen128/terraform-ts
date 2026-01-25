@@ -76,14 +76,17 @@ class Token {
 }
 
 class Fn {
-  static tolist(value: IResolvable): IResolvable {
-    const resolved = value.resolve({
-      scope: undefined,
-      preparing: false,
-      originStack: [],
-      registerPostProcessor: () => {},
-      resolve: (v) => v,
-    });
+  static tolist(value: IResolvable | string): IResolvable {
+    const resolved =
+      typeof value === "string"
+        ? value
+        : value.resolve({
+            scope: undefined,
+            preparing: false,
+            originStack: [],
+            registerPostProcessor: () => {},
+            resolve: (v) => v,
+          });
     return {
       creationStack: [],
       resolve(_context: IResolveContext): unknown {
@@ -95,15 +98,22 @@ class Fn {
     };
   }
 
-  static element(list: IResolvable, index: number): IResolvable {
+  static element(list: IResolvable | string, index: number): IResolvable {
     return {
       creationStack: [],
       resolve(_context: IResolveContext): unknown {
-        const resolved = list.resolve(_context);
+        const resolved =
+          typeof list === "string"
+            ? list
+            : list.resolve(_context);
         return createToken(fn("element", resolved, index));
       },
       toString(): string {
-        return createToken(fn("element", list, index));
+        const resolved =
+          typeof list === "string"
+            ? list
+            : list.toString();
+        return createToken(fn("element", resolved, index));
       },
     };
   }

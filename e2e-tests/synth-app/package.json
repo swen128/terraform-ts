@@ -1,0 +1,7 @@
+{
+  "name": "synth-app-test",
+  "private": true,
+  "dependencies": {
+    "tfts": "file:../../"
+  }
+}

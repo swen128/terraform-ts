@@ -13,6 +13,55 @@ import {
   toPascalCase,
 } from "./type-mapper.js";
 
+function isComputedOnlyBlock(block: Block): boolean {
+  if (block.attributes !== undefined) {
+    for (const attr of Object.values(block.attributes)) {
+      if (attr.required === true || attr.optional === true) {
+        return false;
+      }
+    }
+  }
+  if (block.block_types !== undefined) {
+    for (const blockType of Object.values(block.block_types)) {
+      if (!isComputedOnlyBlock(blockType.block)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+type AttributeType =
+  | "string"
+  | "number"
+  | "bool"
+  | "dynamic"
+  | ["list", AttributeType]
+  | ["set", AttributeType]
+  | ["map", AttributeType]
+  | ["object", Record<string, AttributeType>]
+  | ["tuple", AttributeType[]];
+
+function isComputedListOfObjects(
+  attr: { type?: AttributeType; computed?: boolean; required?: boolean; optional?: boolean },
+): attr is { type: ["list", ["object", Record<string, AttributeType>]]; computed: true } {
+  if (attr.computed !== true) return false;
+  if (attr.required === true || attr.optional === true) return false;
+  if (attr.type === undefined) return false;
+  if (!Array.isArray(attr.type)) return false;
+  if (attr.type[0] !== "list") return false;
+  const inner = attr.type[1];
+  if (!Array.isArray(inner)) return false;
+  if (inner[0] !== "object") return false;
+  return true;
+}
+
+function getObjectTypeFields(
+  type: ["list", ["object", Record<string, AttributeType>]],
+): Record<string, AttributeType> {
+  return type[1][1];
+}
+
 export type GeneratedFile = {
   path: string;
   content: string;
@@ -86,7 +135,7 @@ export class ${className} extends TerraformProvider {
 `;
 
   return {
-    path: `providers/${constraint.namespace}/${constraint.name}/provider.ts`,
+    path: `providers/${constraint.namespace}/${constraint.name}/lib/provider/index.ts`,
     content,
   };
 }
@@ -98,25 +147,33 @@ function generateResourceClass(
   isDataSource: boolean,
 ): GeneratedFile {
   const shortName = resourceType.replace(`${constraint.name}_`, "");
-  const className = toPascalCase(shortName);
+  const className = isDataSource ? toPascalCase(resourceType) : toPascalCase(shortName);
   const prefix = isDataSource ? "Data" : "";
   const fullClassName = `${prefix}${className}`;
   const configName = `${fullClassName}Config`;
   const configProps = generateConfigProperties(schema.block);
   const nestedInterfaces = generateNestedInterfaces(schema.block);
+  const complexClasses = generateComplexClasses(schema.block, className);
+  const hasComplexClasses = complexClasses.length > 0;
 
   const baseClass = isDataSource ? "TerraformDataSource" : "TerraformResource";
-  const baseImport = isDataSource
-    ? `import { TerraformDataSource } from "tfts";`
-    : `import { TerraformResource } from "tfts";`;
+  const baseImport = isDataSource ? "TerraformDataSource" : "TerraformResource";
+  const complexImports = hasComplexClasses ? ", ComplexList, ComplexObject" : "";
 
-  const { privateFields, assignments, synthesizeBody } = generateConfigStorage(schema.block);
+  const { privateFields, assignments, synthesizeBody } = generateConfigStorage(
+    schema.block,
+    className,
+  );
   const computedGetters = generateComputedGetters(schema.block);
+  const computedBlockGetters = generateComputedBlockGetters(schema.block, className);
 
-  const content = `${baseImport}
-import type { Construct } from "tfts";
+  const complexTypeImports = hasComplexClasses ? ", IInterpolatingParent" : "";
+  const content = `import { ${baseImport}${complexImports} } from "tfts";
+import type { Construct${complexTypeImports} } from "tfts";
 
 ${nestedInterfaces}
+
+${complexClasses}
 
 export type ${configName} = {
 ${configProps}
@@ -139,6 +196,8 @@ ${assignments}
 
 ${computedGetters}
 
+${computedBlockGetters}
+
   protected override synthesizeAttributes(): Record<string, unknown> {
     return {
 ${synthesizeBody}
@@ -147,14 +206,175 @@ ${synthesizeBody}
 }
 `;
 
-  const folder = isDataSource ? "data-sources" : "resources";
+  const kebabName = shortName.replace(/_/g, "-");
+  const pathPrefix = isDataSource ? `data-${constraint.name}-` : "";
   return {
-    path: `providers/${constraint.namespace}/${constraint.name}/${folder}/${shortName}.ts`,
+    path: `providers/${constraint.namespace}/${constraint.name}/lib/${pathPrefix}${kebabName}/index.ts`,
     content,
   };
 }
 
-function generateConfigStorage(block: Block | undefined): {
+function generateComplexClasses(block: Block, resourceClassName: string): string {
+  const classes: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      if (!isComputedListOfObjects(attr)) continue;
+
+      const blockClassName = toPascalCase(name);
+      const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+      const listName = `${resourceClassName}${blockClassName}List`;
+      const fields = getObjectTypeFields(attr.type);
+
+      const getters = generateOutputReferenceGettersFromFields(fields);
+
+      classes.push(`export class ${outputRefName} extends ComplexObject {
+  constructor(terraformResource: IInterpolatingParent, terraformAttribute: string, complexObjectIndex: number, complexObjectIsFromSet: boolean) {
+    super(terraformResource, terraformAttribute, complexObjectIsFromSet, complexObjectIndex);
+  }
+
+${getters}
+}
+
+export class ${listName} extends ComplexList {
+  get(index: number): ${outputRefName} {
+    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, true);
+  }
+}`);
+    }
+  }
+
+  if (block.block_types !== undefined) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (!isComputedOnlyBlock(blockType.block)) continue;
+
+      const blockClassName = toPascalCase(name);
+      const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+      const listName = `${resourceClassName}${blockClassName}List`;
+
+      const getters = generateOutputReferenceGetters(blockType.block);
+
+      classes.push(`export class ${outputRefName} extends ComplexObject {
+  constructor(terraformResource: IInterpolatingParent, terraformAttribute: string, complexObjectIndex: number, complexObjectIsFromSet: boolean) {
+    super(terraformResource, terraformAttribute, complexObjectIsFromSet, complexObjectIndex);
+  }
+
+${getters}
+}
+
+export class ${listName} extends ComplexList {
+  get(index: number): ${outputRefName} {
+    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, true);
+  }
+}`);
+    }
+  }
+
+  return classes.join("\n\n");
+}
+
+function generateOutputReferenceGettersFromFields(fields: Record<string, AttributeType>): string {
+  const getters: string[] = [];
+
+  for (const [name, fieldType] of Object.entries(fields)) {
+    const safePropName = safeName(name);
+    const tsType = attributeTypeToTS(fieldType);
+    const getter = generateComplexObjectGetter(name, safePropName, tsType);
+    if (getter !== undefined) {
+      getters.push(getter);
+    }
+  }
+
+  return getters.join("\n\n");
+}
+
+function generateOutputReferenceGetters(block: Block): string {
+  const getters: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      const safePropName = safeName(name);
+      const tsType = attributeTypeToTS(attr.type);
+      const getter = generateComplexObjectGetter(name, safePropName, tsType);
+      if (getter !== undefined) {
+        getters.push(getter);
+      }
+    }
+  }
+
+  return getters.join("\n\n");
+}
+
+function generateComplexObjectGetter(
+  attrName: string,
+  safePropName: string,
+  tsType: string,
+): string | undefined {
+  const stringTypes = new Set(["string", "string | undefined"]);
+  const numberTypes = new Set(["number", "number | undefined"]);
+  const booleanTypes = new Set(["boolean", "boolean | undefined"]);
+
+  if (stringTypes.has(tsType)) {
+    return `  get ${safePropName}(): string {
+    return this.getStringAttribute("${attrName}");
+  }`;
+  }
+
+  if (numberTypes.has(tsType)) {
+    return `  get ${safePropName}(): number {
+    return this.getNumberAttribute("${attrName}");
+  }`;
+  }
+
+  if (booleanTypes.has(tsType)) {
+    return `  get ${safePropName}(): boolean {
+    return this.getBooleanAttribute("${attrName}");
+  }`;
+  }
+
+  return undefined;
+}
+
+function generateComputedBlockGetters(block: Block, resourceClassName: string): string {
+  const getters: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      if (!isComputedListOfObjects(attr)) continue;
+
+      const safePropName = safeName(name);
+      const blockClassName = toPascalCase(name);
+      const listName = `${resourceClassName}${blockClassName}List`;
+
+      getters.push(`  private _${safePropName} = new ${listName}(this, "${name}", false);
+  get ${safePropName}(): ${listName} {
+    return this._${safePropName};
+  }`);
+    }
+  }
+
+  if (block.block_types !== undefined) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (!isComputedOnlyBlock(blockType.block)) continue;
+
+      const safePropName = safeName(name);
+      const blockClassName = toPascalCase(name);
+      const listName = `${resourceClassName}${blockClassName}List`;
+
+      getters.push(`  private _${safePropName} = new ${listName}(this, "${name}", false);
+  get ${safePropName}(): ${listName} {
+    return this._${safePropName};
+  }`);
+    }
+  }
+
+  return getters.join("\n\n");
+}
+
+function generateConfigStorage(
+  block: Block | undefined,
+  _resourceClassName: string,
+): {
   privateFields: string;
   assignments: string;
   synthesizeBody: string;
@@ -169,10 +389,10 @@ function generateConfigStorage(block: Block | undefined): {
 
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
-      // Skip computed-only attributes (they're outputs, not inputs)
       if (attr.computed === true && attr.optional !== true && attr.required !== true) {
         continue;
       }
+      if (isComputedListOfObjects(attr)) continue;
 
       const tsType = attributeTypeToTS(attr.type);
       const safePropName = safeName(name);
@@ -186,6 +406,8 @@ function generateConfigStorage(block: Block | undefined): {
 
   if (block.block_types !== undefined) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (isComputedOnlyBlock(blockType.block)) continue;
+
       const interfaceName = toPascalCase(name);
       const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
       const safePropName = safeName(name);
@@ -213,6 +435,7 @@ function generateComputedGetters(block: Block | undefined): string {
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
       if (attr.computed !== true) continue;
+      if (isComputedListOfObjects(attr)) continue;
 
       const safePropName = safeName(name);
       const tsType = attributeTypeToTS(attr.type);
@@ -275,6 +498,8 @@ function generateConfigProperties(block: Block | undefined): string {
 
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
+      if (isComputedListOfObjects(attr)) continue;
+
       const tsType = attributeTypeToTS(attr.type);
       const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
       const optionalMark = isOptional ? "?" : "";
@@ -284,6 +509,8 @@ function generateConfigProperties(block: Block | undefined): string {
 
   if (block.block_types) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (isComputedOnlyBlock(blockType.block)) continue;
+
       const interfaceName = toPascalCase(name);
       const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
       const isOptional = (blockType.min_items ?? 0) === 0;
@@ -301,6 +528,8 @@ function generateNestedInterfaces(block: Block): string {
 
   if (block.block_types) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (isComputedOnlyBlock(blockType.block)) continue;
+
       interfaces.push(generateBlockInterface(name, blockType.block));
       interfaces.push(generateNestedInterfaces(blockType.block));
     }
@@ -309,22 +538,32 @@ function generateNestedInterfaces(block: Block): string {
   return interfaces.filter(Boolean).join("\n\n");
 }
 
+function toCamelCase(str: string): string {
+  return str.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
 function generateIndexFile(constraint: ProviderConstraint, schema: ProviderSchema): GeneratedFile {
   const exports: string[] = [];
 
-  exports.push(`export * from "./provider.js";`);
+  exports.push(`export * from "./lib/provider/index.js";`);
 
   if (schema.resource_schemas) {
     for (const resourceType of Object.keys(schema.resource_schemas)) {
       const shortName = resourceType.replace(`${constraint.name}_`, "");
-      exports.push(`export * from "./resources/${shortName}.js";`);
+      const kebabName = shortName.replace(/_/g, "-");
+      const camelName = toCamelCase(kebabName);
+      exports.push(`export * as ${camelName} from "./lib/${kebabName}/index.js";`);
     }
   }
 
   if (schema.data_source_schemas) {
     for (const dataType of Object.keys(schema.data_source_schemas)) {
       const shortName = dataType.replace(`${constraint.name}_`, "");
-      exports.push(`export * from "./data-sources/${shortName}.js";`);
+      const kebabName = shortName.replace(/_/g, "-");
+      const camelName = `data${constraint.name.charAt(0).toUpperCase() + constraint.name.slice(1)}${toPascalCase(shortName)}`;
+      exports.push(
+        `export * as ${camelName} from "./lib/data-${constraint.name}-${kebabName}/index.js";`,
+      );
     }
   }
 
