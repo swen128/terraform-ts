@@ -5,7 +5,7 @@ A TypeScript SDK for defining Terraform infrastructure as code. Drop-in replacem
 ## Installation
 
 ```bash
-bun add tfts
+npm install tfts
 ```
 
 ## Quick Start
@@ -25,7 +25,7 @@ Create `cdktf.json` in your project root:
 ### Generate provider bindings
 
 ```bash
-bunx tfts get
+npx tfts get
 ```
 
 ### Define your infrastructure
@@ -71,7 +71,7 @@ app.synth();
 ### Synthesize and deploy
 
 ```bash
-bunx tfts synth
+npx tfts synth
 cd cdktf.out/stacks/my-stack
 terraform init
 terraform apply
@@ -83,6 +83,11 @@ terraform apply
 |---------|-------------|
 | `tfts get` | Generate provider bindings from `cdktf.json` |
 | `tfts synth` | Synthesize Terraform JSON configuration |
+| `tfts diff` | Show planned changes (terraform plan) |
+| `tfts deploy` | Deploy the stack (terraform apply) |
+| `tfts destroy` | Destroy the stack (terraform destroy) |
+| `tfts output` | Show stack outputs (terraform output) |
+| `tfts list` | List all stacks |
 
 ## Core Concepts
 
