@@ -1,21 +1,36 @@
 {
   "name": "tfts",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "TypeScript-first infrastructure as code for Terraform",
   "type": "module",
-  "private": true,
   "workspaces": [
     "e2e-tests/*"
   ],
-  "files": [
-    "src",
-    "dist"
-  ],
-  "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts"
-  },
   "bin": {
-    "tfts": "./src/cli/main.ts"
+    "tfts": "./dist/cli/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "keywords": [
+    "terraform",
+    "infrastructure",
+    "iac",
+    "cdktf",
+    "typescript"
+  ],
+  "author": "PND",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pnd280/tfts"
   },
   "scripts": {
     "build": "tsc",
@@ -26,6 +41,7 @@
     "knip": "knip",
     "test": "bun test",
     "check": "bun format && bun typecheck && bun test && bun lint && bun knip",
+    "prepublishOnly": "bun run build",
     "prepare": "husky"
   },
   "devDependencies": {

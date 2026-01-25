@@ -1,15 +1,16 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
-      "entry": ["bin/tfts.ts"],
+      "entry": ["src/index.ts", "src/cli/main.ts"],
+      "project": ["src/**/*.ts"],
       "ignore": ["**/*.spec.ts", "**/*.test.ts"]
     },
     "e2e-tests/*": {
       "entry": ["main.ts"]
     }
   },
-  "ignoreExportsUsedInFile": true,
   "eslint": {
     "config": ["eslint.config.js"]
   },
