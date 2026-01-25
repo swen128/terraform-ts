@@ -1,72 +1,153 @@
 ---
 title: "Migrating from CDKTF"
-description: "Learn how to migrate your existing CDK for Terraform (CDKTF) projects to tfts."
+description: "Migrate your CDK for Terraform (CDKTF) projects to tfts"
 ---
 
-tfts is designed to be a faster, simpler, and more modern alternative to CDKTF. Since tfts maintains high API compatibility with CDKTF, migrating your existing projects is straightforward.
-
-## Why Migrate?
-
-- **Performance**: tfts is built for the Bun runtime, offering significantly faster synthesis times.
-- **Simplicity**: Reduced boilerplate and a more streamlined developer experience.
-- **Maintenance**: tfts is actively maintained and optimized for modern TypeScript workflows.
+tfts is a drop-in replacement for CDKTF. Migration requires updating imports and regenerating provider bindings.
 
 ## Migration Steps
 
-### Step 1: Update package.json
+### Step 1: Update Dependencies
 
-Remove `cdktf` and related dependencies, and add `tfts`.
+Remove CDKTF packages and add tfts:
 
 ```bash
-# Remove CDKTF
-bun remove cdktf
+# Remove CDKTF and pre-built providers
+npm remove cdktf cdktf-cli @cdktf/provider-aws @cdktf/provider-google
 
 # Add tfts
-bun add tfts
+npm install tfts
 ```
 
-### Step 2: Update Imports
+### Step 2: Update Core Imports
 
-Change your import statements from `cdktf` to `tfts`.
+Change imports from `cdktf` to `tfts`:
 
 ```typescript
 // Before
-import { App, TerraformStack } from "cdktf";
+import { App, TerraformStack, TerraformOutput, TerraformVariable, Fn } from "cdktf";
 
 // After
-import { App, Stack } from "tfts";
+import { App, TerraformStack, TerraformOutput, TerraformVariable, Fn } from "tfts";
 ```
 
-Note: In tfts, `TerraformStack` is simply called `Stack`.
+### Step 3: Update Provider Imports
 
-### Step 3: Regenerate Bindings
+CDKTF uses pre-built provider packages (`@cdktf/provider-*`). tfts generates providers locally.
 
-tfts uses its own code generator for provider bindings. Run the following command to generate them:
+```typescript
+// Before (CDKTF pre-built providers)
+import { GoogleProvider } from "@cdktf/provider-google/lib/provider";
+import { ComputeInstance } from "@cdktf/provider-google/lib/compute-instance";
+
+// After (tfts generated providers)
+import { GoogleProvider } from "./.gen/providers/hashicorp/google/provider.js";
+import { ComputeInstance } from "./.gen/providers/hashicorp/google/resources/compute-instance.js";
+```
+
+### Step 4: Regenerate Provider Bindings
 
 ```bash
 npx tfts get
 ```
 
-This will read your `tfts.json` (or `cdktf.json` if you haven't renamed it yet) and generate the necessary TypeScript classes in the `.gen` directory.
+This reads `cdktf.json` (or `tfts.json`) and generates TypeScript classes in `.gen/`.
 
-## Automated Migration with ast-grep
+### Step 5: Update Configuration (Optional)
 
-You can automate the import updates using `ast-grep`. This is especially useful for large projects with many files.
+Rename `cdktf.json` to `tfts.json` if desired (both are supported):
 
 ```bash
-ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
+mv cdktf.json tfts.json
 ```
 
-## API Compatibility Notes
+## Automated Migration
 
-tfts aims for 100% API compatibility with the core constructs of CDKTF. Most of your existing code should work without modification after updating the imports.
+### Using ast-grep
 
-- `App` remains `App`.
-- `TerraformStack` is aliased to `Stack` (you can use either, but `Stack` is preferred).
-- `TerraformResource` remains `TerraformResource`.
-- `TerraformOutput` remains `TerraformOutput`.
-- `TerraformVariable` remains `TerraformVariable`.
+Automate import updates for large projects:
 
-## Breaking Changes
+```bash
+# Update core imports
+ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
 
-Currently, there are no major breaking changes when migrating from the core CDKTF API to tfts. However, always ensure you run your tests after migration to verify the generated Terraform JSON remains identical.
+# Note: Provider imports require manual update or custom patterns
+```
+
+### Provider Import Pattern
+
+For AWS provider:
+```bash
+ast-grep --pattern 'from "@cdktf/provider-aws/lib/$NAME"' \
+  --rewrite 'from "./.gen/providers/hashicorp/aws/$NAME.js"' \
+  --lang ts -U .
+```
+
+## Import Path Reference
+
+| CDKTF Import | tfts Import |
+|--------------|-------------|
+| `from "cdktf"` | `from "tfts"` |
+| `from "@cdktf/provider-google/lib/provider"` | `from "./.gen/providers/hashicorp/google/provider.js"` |
+| `from "@cdktf/provider-google/lib/compute-instance"` | `from "./.gen/providers/hashicorp/google/resources/compute-instance.js"` |
+| `from "@cdktf/provider-aws/lib/provider"` | `from "./.gen/providers/hashicorp/aws/provider.js"` |
+| `from "@cdktf/provider-aws/lib/s3-bucket"` | `from "./.gen/providers/hashicorp/aws/resources/s3-bucket.js"` |
+
+## API Compatibility
+
+tfts maintains API compatibility with CDKTF core constructs:
+
+| Class | Status |
+|-------|--------|
+| `App` | Compatible |
+| `TerraformStack` | Compatible |
+| `TerraformResource` | Compatible |
+| `TerraformDataSource` | Compatible |
+| `TerraformOutput` | Compatible |
+| `TerraformVariable` | Compatible |
+| `TerraformLocal` | Compatible |
+| `TerraformProvider` | Compatible |
+| `Fn` | Compatible |
+| `TerraformIterator` | Compatible |
+| Backends (S3, GCS, etc.) | Compatible |
+
+## Verification
+
+After migration, verify the generated Terraform JSON is correct:
+
+```bash
+# Synthesize
+npx tfts synth
+
+# Compare output (if you have previous output)
+diff -r old-cdktf.out/stacks/my-stack cdktf.out/stacks/my-stack
+
+# Or run terraform plan to check
+cd cdktf.out/stacks/my-stack
+terraform init
+terraform plan
+```
+
+## Troubleshooting
+
+### Import Errors
+
+If you see import errors after migration, ensure:
+1. You ran `npx tfts get` to generate providers
+2. Provider imports use `.js` extension (ESM requirement)
+3. Provider paths match the structure in `.gen/`
+
+### Missing Providers
+
+Add any missing providers to your config:
+
+```json
+{
+  "terraformProviders": [
+    "hashicorp/google@~>6.0",
+    "hashicorp/aws@~>5.0"
+  ]
+}
+```
+
+Then regenerate: `npx tfts get`
