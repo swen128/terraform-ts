@@ -15,7 +15,8 @@ import {
 
 function isComputedOnlyBlock(block: Block): boolean {
   const hasAttributes = block.attributes !== undefined && Object.keys(block.attributes).length > 0;
-  const hasBlockTypes = block.block_types !== undefined && Object.keys(block.block_types).length > 0;
+  const hasBlockTypes =
+    block.block_types !== undefined && Object.keys(block.block_types).length > 0;
 
   // Empty blocks are valid config options (e.g., bigquery_profile: {})
   if (!hasAttributes && !hasBlockTypes) {
