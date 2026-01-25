@@ -8,6 +8,8 @@ export type DiffOptions = {
   output?: string;
   cwd?: string;
   skipSynth?: boolean;
+  refreshOnly?: boolean;
+  target?: string[];
 };
 
 async function runCommand(command: string, args: readonly string[], cwd: string): Promise<number> {
@@ -77,7 +79,17 @@ export async function diff(options: DiffOptions = {}): Promise<void> {
     console.log();
   }
 
-  const planCode = await runCommand("terraform", ["plan"], stackDir);
+  const planArgs = ["plan"];
+  if (options.refreshOnly === true) {
+    planArgs.push("-refresh-only");
+  }
+  if (options.target !== undefined) {
+    for (const t of options.target) {
+      planArgs.push("-target", t);
+    }
+  }
+
+  const planCode = await runCommand("terraform", planArgs, stackDir);
   if (planCode !== 0) {
     throw new Error(`terraform plan failed for stack ${targetStack}`);
   }

@@ -22,6 +22,14 @@ export const diffCommand = command(
         type: Boolean,
         description: "Skip synthesis before diff",
       },
+      refreshOnly: {
+        type: Boolean,
+        description: "Check for drift without proposing changes",
+      },
+      target: {
+        type: [String],
+        description: "Target specific resource (can be used multiple times)",
+      },
     },
   },
   async (argv) => {
@@ -30,6 +38,8 @@ export const diffCommand = command(
       app: argv.flags.app,
       output: argv.flags.output,
       skipSynth: argv.flags.skipSynth,
+      refreshOnly: argv.flags.refreshOnly,
+      target: argv.flags.target,
     });
   },
 );
