@@ -1,0 +1,88 @@
+---
+title: "tfts deploy"
+description: "Deploy infrastructure changes"
+---
+
+Apply changes to your infrastructure.
+
+## Usage
+
+```bash
+npx tfts deploy [stack] [options]
+```
+
+## Aliases
+
+- `apply`
+
+## Description
+
+The `deploy` command synthesizes your configuration and runs `terraform apply` to create, update, or delete infrastructure resources.
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory | `cdktf.out` |
+| `--skipSynth` | boolean | Skip synthesis step | `false` |
+| `--autoApprove` | boolean | Skip interactive approval | `false` |
+| `--target` | string | Target specific resources (repeatable) | - |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts deploy
+```
+
+You will be prompted to approve the changes.
+
+### Specific Stack
+
+```bash
+npx tfts deploy production
+```
+
+### Auto-Approve (CI/CD)
+
+Skip the interactive approval prompt:
+
+```bash
+npx tfts deploy --autoApprove
+```
+
+### Skip Synthesis
+
+Use when you've already run `tfts synth`:
+
+```bash
+npx tfts deploy --skipSynth
+```
+
+### Target Specific Resources
+
+Deploy only specific resources:
+
+```bash
+npx tfts deploy --target google_compute_instance.web
+```
+
+## CI/CD Usage
+
+For automated deployments:
+
+```bash
+npx tfts deploy --autoApprove
+```
+
+Or with environment-specific stacks:
+
+```bash
+npx tfts deploy production --autoApprove
+```
+
+## Automatic Initialization
+
+If the stack hasn't been initialized, `tfts deploy` automatically runs `terraform init` before applying.

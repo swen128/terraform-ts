@@ -1,0 +1,87 @@
+---
+title: "References and Tokens"
+description: "Learn how to link resources together using the tfts token system."
+---
+
+In Terraform, you often need to use an attribute of one resource as an input for another. tfts makes this seamless by automatically creating Terraform references when you access resource properties.
+
+## Automatic References
+
+When you access a property on a resource object, tfts returns a **Token**. This token represents a value that will only be known during synthesis or after Terraform runs.
+
+For example, if you have a Google Cloud Storage bucket and you want to use its name in another resource:
+
+```typescript
+import { StorageBucket } from "./.gen/providers/google/storage-bucket";
+import { StorageBucketObject } from "./.gen/providers/google/storage-bucket-object";
+
+const bucket = new StorageBucket(stack, "my-bucket", {
+  name: "my-unique-bucket-name",
+  location: "US",
+});
+
+// bucket.name returns a Token that resolves to ${google_storage_bucket.my-bucket.name}
+new StorageBucketObject(stack, "my-object", {
+  bucket: bucket.name,
+  name: "config.json",
+  content: JSON.stringify({ env: "prod" }),
+});
+```
+
+## The Token System
+
+Tokens are placeholders for values. They allow tfts to handle lazy evaluation. When you pass `bucket.name` to another resource, you aren't passing a string; you are passing a `Token` object that tfts knows how to serialize into the correct Terraform reference syntax (`${...}`).
+
+### Lazy Evaluation
+
+Because values are represented as tokens, the order in which you define resources in your TypeScript code doesn't strictly dictate the order in the generated Terraform JSON. tfts tracks dependencies through these tokens to ensure Terraform understands the relationship between resources.
+
+## Cross-Resource References
+
+References can span across different types of resources. This is the primary way to build complex infrastructure graphs.
+
+```typescript
+import { ComputeNetwork } from "./.gen/providers/google/compute-network";
+import { ComputeSubnetwork } from "./.gen/providers/google/compute-subnetwork";
+
+const network = new ComputeNetwork(stack, "vpc", {
+  name: "my-vpc",
+});
+
+const subnet = new ComputeSubnetwork(stack, "subnet", {
+  name: "my-subnet",
+  ipCidrRange: "10.0.1.0/24",
+  region: "us-central1",
+  network: network.id, // Reference to the VPC ID
+});
+```
+
+## String Interpolation
+
+Sometimes you need to combine a reference with other text. tfts supports string interpolation with tokens.
+
+```typescript
+import { TerraformStack } from "tfts";
+import { StorageBucket } from "./.gen/providers/google/storage-bucket";
+
+const bucket = new StorageBucket(stack, "data", {
+  name: "app-data",
+  location: "US",
+});
+
+// Using a reference inside a string
+const bucketUrl = `gs://${bucket.name}/uploads`;
+```
+
+During synthesis, `bucketUrl` will be converted to the Terraform equivalent: `"gs://${google_storage_bucket.data.name}/uploads"`.
+
+## Explicit Dependencies
+
+While tokens handle most dependencies automatically, you can explicitly define dependencies using the `dependsOn` property available on all resources if a relationship isn't captured by a direct attribute reference.
+
+```typescript
+new SomeResource(stack, "res", {
+  // ...
+  dependsOn: [bucket],
+});
+```

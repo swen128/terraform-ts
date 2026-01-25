@@ -1,0 +1,103 @@
+---
+title: "Terraform Backends"
+---
+
+Backends define where Terraform's state snapshots are stored. In tfts, you can configure backends within a `Stack`.
+
+## Local Backend
+
+Stores state on the local filesystem.
+
+```typescript
+import { Stack, LocalBackend } from "tfts";
+
+const stack = new Stack(app, "my-stack", {
+  backend: new LocalBackend({
+    path: "terraform.tfstate",
+    workspaceDir: "terraform.tfstate.d"
+  })
+});
+```
+
+## S3 Backend
+
+Stores state in an Amazon S3 bucket with optional locking via DynamoDB.
+
+```typescript
+import { Stack, S3Backend } from "tfts";
+
+const stack = new Stack(app, "my-stack", {
+  backend: new S3Backend({
+    bucket: "my-terraform-state",
+    key: "network/terraform.tfstate",
+    region: "us-east-1",
+    encrypt: true,
+    dynamodbTable: "terraform-lock",
+    profile: "my-aws-profile"
+  })
+});
+```
+
+## GCS Backend
+
+Stores state in Google Cloud Storage.
+
+```typescript
+import { Stack, GcsBackend } from "tfts";
+
+const stack = new Stack(app, "my-stack", {
+  backend: new GcsBackend({
+    bucket: "my-terraform-state",
+    prefix: "terraform/state",
+    credentials: "path/to/service-account.json"
+  })
+});
+```
+
+## Remote Backend
+
+Used for Terraform Cloud or Terraform Enterprise with the `remote` backend block.
+
+```typescript
+import { Stack, RemoteBackend } from "tfts";
+
+// Named workspace
+const stack = new Stack(app, "my-stack", {
+  backend: new RemoteBackend({
+    organization: "my-org",
+    workspaces: { name: "my-workspace" }
+  })
+});
+
+// Prefixed workspaces
+const stackWithPrefix = new Stack(app, "my-stack-prefixed", {
+  backend: new RemoteBackend({
+    organization: "my-org",
+    workspaces: { prefix: "my-app-" }
+  })
+});
+```
+
+## Cloud Backend
+
+The modern way to configure Terraform Cloud integration.
+
+```typescript
+import { Stack, CloudBackend } from "tfts";
+
+// Named workspace
+const stack = new Stack(app, "my-stack", {
+  backend: new CloudBackend({
+    organization: "my-org",
+    workspaces: { name: "my-workspace" }
+  })
+});
+
+// Tagged workspaces
+const stackWithTags = new Stack(app, "my-stack-tagged", {
+  backend: new CloudBackend({
+    organization: "my-org",
+    workspaces: { tags: ["networking", "prod"] }
+  })
+});
+```

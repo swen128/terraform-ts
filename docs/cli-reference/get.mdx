@@ -1,0 +1,92 @@
+---
+title: "tfts get"
+description: "Generate provider and module bindings"
+---
+
+Generate TypeScript bindings for Terraform providers and modules.
+
+## Usage
+
+```bash
+npx tfts get [options]
+```
+
+## Description
+
+The `get` command reads your `cdktf.json` configuration and generates fully-typed TypeScript classes for the specified providers and modules. These bindings are placed in the output directory (default: `.gen`).
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--output` | string | Output directory for generated bindings | `.gen` |
+| `--providers` | string | Comma-separated list of providers (overrides config) | From cdktf.json |
+| `--modules` | string | Comma-separated list of modules (overrides config) | From cdktf.json |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts get
+```
+
+Generates bindings for all providers and modules specified in `cdktf.json`.
+
+### Custom Output Directory
+
+```bash
+npx tfts get --output src/generated
+```
+
+### Override Providers
+
+```bash
+npx tfts get --providers "hashicorp/aws@~>5.0,hashicorp/google@~>6.0"
+```
+
+### Generate Specific Module
+
+```bash
+npx tfts get --modules "terraform-aws-modules/vpc/aws@~>5.0"
+```
+
+## Configuration
+
+Configure providers and modules in your `cdktf.json`:
+
+```json
+{
+  "language": "typescript",
+  "app": "npx ts-node main.ts",
+  "codeMakerOutput": ".gen",
+  "terraformProviders": [
+    "hashicorp/aws@~>5.0",
+    "hashicorp/google@~>6.0"
+  ],
+  "terraformModules": [
+    "terraform-aws-modules/vpc/aws@~>5.0"
+  ]
+}
+```
+
+## Output Structure
+
+```
+.gen/
+├── providers/
+│   └── hashicorp/
+│       ├── aws/
+│       │   ├── provider.ts
+│       │   ├── resources/
+│       │   └── data-sources/
+│       └── google/
+│           ├── provider.ts
+│           ├── resources/
+│           └── data-sources/
+└── modules/
+    └── terraform-aws-modules/
+        └── vpc/
+            └── aws/
+                └── index.ts
+```

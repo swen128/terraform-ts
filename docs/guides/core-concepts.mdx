@@ -1,0 +1,85 @@
+---
+title: "Core Concepts"
+description: "Understand the fundamental building blocks of tfts."
+---
+
+tfts is built on a hierarchical tree of constructs that represent your infrastructure. This architecture allows for powerful abstractions and modularity.
+
+## App
+
+The `App` class is the root of your tfts application. It manages the lifecycle of your infrastructure definition and serves as the entry point for synthesis.
+
+```typescript
+import { App } from "tfts";
+
+const app = new App();
+
+// Define stacks and resources here
+
+app.synth();
+```
+
+When you call `app.synth()`, tfts traverses the construct tree and generates the corresponding Terraform JSON configuration for each stack.
+
+## TerraformStack
+
+A `TerraformStack` represents a single unit of deployment. In Terraform terms, one stack corresponds to one state file. Stacks are children of the `App`.
+
+```typescript
+import { App, TerraformStack } from "tfts";
+
+const app = new App();
+const stack = new TerraformStack(app, "my-stack");
+```
+
+## Construct
+
+`Construct` is the base class for all building blocks in tfts. Every resource, module, or higher-level abstraction inherits from `Construct`.
+
+Each construct has a `node` property of type `Node`, which provides access to the tree structure and metadata.
+
+### Node
+
+The `Node` manages:
+- **Tree Hierarchy**: Parent-child relationships between constructs.
+- **Context**: Shared data passed down the tree.
+- **Metadata**: Information about the construct (e.g., warnings, errors).
+- **Validation**: Logic to ensure the construct is correctly configured before synthesis.
+
+## Construct Tree Hierarchy
+
+Constructs are organized in a tree. The `App` is the root, `Stacks` are its children, and `Resources` are children of `Stacks`.
+
+```typescript
+import { App, TerraformStack } from "tfts";
+import { ComputeInstance } from "./.gen/providers/google/compute-instance";
+
+const app = new App();
+const stack = new TerraformStack(app, "prod-stack");
+
+// ComputeInstance is a child of stack
+new ComputeInstance(stack, "web-server", {
+  name: "web-server",
+  machineType: "f1-micro",
+  zone: "us-central1-a",
+  bootDisk: {
+    initializeParams: {
+      image: "debian-cloud/debian-11",
+    },
+  },
+  networkInterface: {
+    network: "default",
+  },
+});
+```
+
+## Synthesis Process
+
+Synthesis is the process of converting your TypeScript code into Terraform JSON.
+
+1. **App.synth()**: Initiates the process.
+2. **Validation**: tfts runs validation logic on all constructs in the tree.
+3. **Stack.toTerraform()**: Each stack generates its own Terraform configuration.
+4. **JSON Generation**: The final output is written as `.tf.json` files, which Terraform can execute.
+
+This decoupled approach allows you to use the full power of TypeScript (loops, conditionals, classes) to define infrastructure while still producing standard Terraform configurations.

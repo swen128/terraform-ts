@@ -1,0 +1,34 @@
+---
+title: "TerraformProvider"
+description: "Base class for all Terraform providers."
+---
+
+`TerraformProvider` is an abstract class that all generated provider classes inherit from.
+
+## Properties
+
+### terraformResourceType
+`readonly terraformResourceType: string`
+The type of the provider (e.g., `aws`).
+
+### terraformProviderSource
+`readonly terraformProviderSource: string`
+The source of the provider (e.g., `hashicorp/aws`).
+
+### alias
+`readonly alias?: string`
+The alias for the provider instance.
+
+### fqn
+`readonly fqn: string`
+The fully qualified name of the provider.
+
+## Usage
+
+Generated provider classes (like `AwsProvider`) inherit from this class and provide specific configuration options.
+
+```typescript
+new AwsProvider(this, "aws", {
+  region: "us-east-1",
+});
+```

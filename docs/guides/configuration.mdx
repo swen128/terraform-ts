@@ -1,0 +1,77 @@
+---
+title: "Configuration"
+description: "Learn how to configure tfts using cdktf.json and environment variables."
+---
+
+## Configuration File
+
+tfts uses a configuration file named `cdktf.json` (or `tfts.json`) to manage project settings, providers, and modules.
+
+### Schema
+
+The following fields are supported in the configuration file:
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `language` | `string` | Must be set to `"typescript"`. (Required) |
+| `app` | `string` | The command to run your application (e.g., `"bun run main.ts"` or `"node main.js"`). |
+| `output` | `string` | The directory where synthesized Terraform JSON will be stored. Default: `"cdktf.out"`. |
+| `codeMakerOutput` | `string` | The directory where generated provider bindings will be stored. Default: `".gen"`. |
+| `terraformProviders` | `string[]` | An array of provider specifications (e.g., `"hashicorp/aws@~> 5.0"`). |
+| `terraformModules` | `string[]` | An array of module sources to generate bindings for. |
+| `context` | `object` | Optional key-value pairs for context variables. |
+
+### Example Configuration
+
+```json cdktf.json
+{
+  "language": "typescript",
+  "app": "bun run main.ts",
+  "terraformProviders": [
+    "hashicorp/aws@~> 5.0",
+    "hashicorp/google@~> 6.0"
+  ],
+  "terraformModules": [
+    "terraform-aws-modules/vpc/aws"
+  ],
+  "output": "dist",
+  "codeMakerOutput": "src/gen"
+}
+```
+
+## Environment Variables
+
+You can override certain configuration settings using environment variables:
+
+- `CDKTF_OUTDIR`: Overrides the `output` directory setting.
+- `CDKTF_CONTEXT_JSON`: Provides context variables as a JSON string.
+
+## Advanced Examples
+
+### Using Context Variables
+
+You can define context variables in your configuration file and access them in your code.
+
+```json cdktf.json
+{
+  "language": "typescript",
+  "app": "bun run main.ts",
+  "context": {
+    "environment": "production",
+    "region": "us-west-2"
+  }
+}
+```
+
+### Custom Output Directories
+
+If you want to separate your generated bindings from your source code:
+
+```json cdktf.json
+{
+  "language": "typescript",
+  "app": "bun run main.ts",
+  "codeMakerOutput": ".generated-bindings",
+  "output": "terraform.out"
+}
+```

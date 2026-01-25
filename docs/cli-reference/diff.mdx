@@ -1,0 +1,80 @@
+---
+title: "tfts diff"
+description: "Show planned infrastructure changes"
+---
+
+Preview the changes that will be made to your infrastructure.
+
+## Usage
+
+```bash
+npx tfts diff [stack] [options]
+```
+
+## Aliases
+
+- `plan`
+
+## Description
+
+The `diff` command synthesizes your configuration and runs `terraform plan` to show what changes would be made to your infrastructure. If no stack is specified, it operates on all stacks.
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory | `cdktf.out` |
+| `--skipSynth` | boolean | Skip synthesis step | `false` |
+| `--refreshOnly` | boolean | Only refresh state, no changes | `false` |
+| `--target` | string | Target specific resources (repeatable) | - |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts diff
+```
+
+### Specific Stack
+
+```bash
+npx tfts diff production
+```
+
+### Skip Synthesis
+
+Use when you've already run `tfts synth`:
+
+```bash
+npx tfts diff --skipSynth
+```
+
+### Refresh Only
+
+Only update state without planning changes:
+
+```bash
+npx tfts diff --refreshOnly
+```
+
+### Target Specific Resources
+
+```bash
+npx tfts diff --target google_compute_instance.web
+npx tfts diff --target google_compute_instance.web --target google_compute_disk.data
+```
+
+## Output
+
+The command shows Terraform's plan output, including:
+
+- Resources to be created (`+`)
+- Resources to be updated (`~`)
+- Resources to be destroyed (`-`)
+- Resource attributes that will change
+
+## Automatic Initialization
+
+If the stack hasn't been initialized, `tfts diff` automatically runs `terraform init` before planning.

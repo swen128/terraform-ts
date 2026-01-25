@@ -1,0 +1,76 @@
+---
+title: "Construct"
+description: "The basic building block of tfts applications."
+---
+
+`Construct` is the base class for all elements in the tfts construct tree.
+
+## Constructor
+
+```typescript
+new Construct(scope: Construct, id: string)
+```
+
+## Properties
+
+### node
+`readonly node: Node`
+The tree node for this construct.
+
+## Node Class Methods
+
+The `node` property provides access to the following methods:
+
+### setContext()
+```typescript
+setContext(key: string, value: any): void
+```
+Sets a context value for this node and its children.
+
+### getContext()
+```typescript
+getContext(key: string): any
+```
+Gets a context value from this node or its parents.
+
+### tryGetContext()
+```typescript
+tryGetContext(key: string): any
+```
+Tries to get a context value, returning `undefined` if not found.
+
+### findAll()
+```typescript
+findAll(): IConstruct[]
+```
+Returns all children of this node.
+
+### findChild()
+```typescript
+findChild(id: string): IConstruct
+```
+Finds a child by its ID. Throws if not found.
+
+### tryFindChild()
+```typescript
+tryFindChild(id: string): IConstruct | undefined
+```
+Tries to find a child by its ID.
+
+### addMetadata()
+```typescript
+addMetadata(type: string, data: any): void
+```
+Adds metadata to the construct.
+
+### addValidation()
+```typescript
+addValidation(validation: IValidation): void
+```
+Adds a validation to the construct.
+
+### validate()
+```typescript
+validate(): string[]
+```
+Runs all validations on the construct and returns a list of errors.

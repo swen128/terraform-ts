@@ -1,43 +1,91 @@
-# Mintlify Starter Kit
+# tfts Documentation
 
-Use the starter kit to get your docs deployed and ready to customize.
+This directory contains the documentation for [tfts](https://github.com/swen128/terraform-ts), a TypeScript SDK for generating Terraform configurations.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Local Development
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview documentation changes locally:
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
+```bash
 npm i -g mint
 ```
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+Run the development server:
 
-```
+```bash
+cd docs
 mint dev
 ```
 
 View your local preview at `http://localhost:3000`.
 
-## Publishing changes
+## Documentation Structure
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+```
+docs/
+├── index.mdx              # Home page
+├── quickstart.mdx         # Getting started guide
+├── guides/                # Core guides
+│   ├── installation.mdx
+│   ├── configuration.mdx
+│   ├── core-concepts.mdx
+│   ├── references.mdx
+│   ├── variables-outputs.mdx
+│   ├── functions.mdx
+│   ├── backends.mdx
+│   └── migration-cdktf.mdx
+├── cli-reference/         # CLI command documentation
+│   ├── overview.mdx
+│   ├── get.mdx
+│   ├── synth.mdx
+│   ├── diff.mdx
+│   ├── deploy.mdx
+│   ├── destroy.mdx
+│   ├── output.mdx
+│   ├── list.mdx
+│   └── force-unlock.mdx
+├── advanced/              # Advanced topics
+│   ├── aspects.mdx
+│   ├── iterators.mdx
+│   ├── remote-state.mdx
+│   ├── assets.mdx
+│   ├── modules.mdx
+│   └── tokens.mdx
+├── api-reference/         # API documentation
+│   ├── app.mdx
+│   ├── stack.mdx
+│   ├── construct.mdx
+│   ├── resource.mdx
+│   ├── data-source.mdx
+│   ├── provider.mdx
+│   ├── variable.mdx
+│   ├── output.mdx
+│   ├── local.mdx
+│   ├── backends.mdx
+│   ├── functions.mdx
+│   ├── operators.mdx
+│   ├── iterator.mdx
+│   └── remote-state.mdx
+├── testing/               # Testing documentation
+│   └── overview.mdx
+└── examples/              # Example projects
+    ├── aws.mdx
+    ├── gcp.mdx
+    ├── multi-stack.mdx
+    └── reusable-constructs.mdx
+```
 
-## Need help?
+## Configuration
 
-### Troubleshooting
+The `docs.json` file configures the documentation site, including navigation, colors, and branding.
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+## Troubleshooting
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+- If the dev environment is not running: Run `mint update` to ensure you have the latest CLI version.
+- If a page shows 404: Make sure you are running in the `docs/` directory where `docs.json` is located.
+
+## Resources
+
+- [Mintlify Documentation](https://mintlify.com/docs)
+- [tfts GitHub Repository](https://github.com/swen128/terraform-ts)
+- [tfts npm Package](https://www.npmjs.com/package/tfts)

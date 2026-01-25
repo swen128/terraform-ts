@@ -1,0 +1,67 @@
+---
+title: "TerraformRemoteState"
+description: "Access outputs from other Terraform stacks."
+---
+
+`TerraformRemoteState` allows you to read output values from a remote Terraform state file.
+
+## Methods
+
+### get()
+```typescript
+get(name: string): any
+```
+Returns a remote state output value.
+
+### getString()
+```typescript
+getString(name: string): string
+```
+Returns a remote state output value as a string.
+
+### getNumber()
+```typescript
+getNumber(name: string): number
+```
+Returns a remote state output value as a number.
+
+### getList()
+```typescript
+getList(name: string): string[]
+```
+Returns a remote state output value as a list of strings.
+
+### getBoolean()
+```typescript
+getBoolean(name: string): boolean
+```
+Returns a remote state output value as a boolean.
+
+## Remote State Classes
+
+Each backend has a corresponding remote state class:
+
+### DataTerraformRemoteStateLocal
+```typescript
+new DataTerraformRemoteStateLocal(scope: Construct, id: string, config: LocalBackendConfig)
+```
+
+### DataTerraformRemoteStateS3
+```typescript
+new DataTerraformRemoteStateS3(scope: Construct, id: string, config: S3BackendConfig)
+```
+
+### DataTerraformRemoteStateGcs
+```typescript
+new DataTerraformRemoteStateGcs(scope: Construct, id: string, config: GcsBackendConfig)
+```
+
+### DataTerraformRemoteStateRemote
+```typescript
+new DataTerraformRemoteStateRemote(scope: Construct, id: string, config: RemoteBackendConfig)
+```
+
+### DataTerraformRemoteStateCloud
+```typescript
+new DataTerraformRemoteStateCloud(scope: Construct, id: string, config: CloudBackendConfig)
+```

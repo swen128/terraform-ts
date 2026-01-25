@@ -1,0 +1,77 @@
+---
+title: "Aspects"
+description: "Apply operations to all constructs in a scope using the Visitor pattern."
+---
+
+Aspects are a powerful tool for applying operations to all constructs within a given scope. They follow the Visitor pattern and are commonly used for cross-cutting concerns such as tagging, compliance checks, and validation.
+
+## The IAspect Interface
+
+An Aspect is a class that implements the `IAspect` interface. This interface requires a single method: `visit`.
+
+```typescript
+interface IAspect {
+  visit(node: IConstruct): void;
+}
+```
+
+The `visit` method is called for every construct in the scope where the Aspect is applied, including the scope itself and all its children.
+
+## Applying Aspects
+
+You apply an Aspect to a scope (such as an `App` or a `Stack`) using the `Aspects` class.
+
+```typescript
+import { Aspects } from "tfts";
+
+Aspects.of(scope).add(new MyAspect());
+```
+
+## Use Cases
+
+### Tagging
+
+One of the most common use cases for Aspects is applying a consistent set of tags to all resources in a stack.
+
+```typescript
+import { IAspect, IConstruct, TerraformResource, Aspects } from "tfts";
+
+class TaggingAspect implements IAspect {
+  constructor(private tags: Record<string, string>) {}
+
+  public visit(node: IConstruct): void {
+    if (node instanceof TerraformResource) {
+      const currentTags = node.getAttribute("tags") || {};
+      node.setAttribute("tags", { ...currentTags, ...this.tags });
+    }
+  }
+}
+
+// Usage
+Aspects.of(stack).add(new TaggingAspect({
+  Environment: "production",
+  Project: "InternalTooling"
+}));
+```
+
+### Compliance and Validation
+
+Aspects can be used to enforce security policies or organizational standards.
+
+```typescript
+class S3PublicReadProhibitedAspect implements IAspect {
+  public visit(node: IConstruct): void {
+    if (node instanceof S3Bucket) {
+      if (node.acl === "public-read") {
+        throw new Error(`Public read access is prohibited for S3 bucket: ${node.node.path}`);
+      }
+    }
+  }
+}
+```
+
+## Execution Flow
+
+Aspects are invoked during the synthesis process. When `app.synth()` is called, the framework triggers `invokeAspects()`. This method performs a depth-first traversal of the construct tree, applying all registered Aspects to each node.
+
+Because Aspects run during synthesis, they can modify the properties of resources before the final Terraform HCL is generated. This allows for dynamic adjustments based on the state of the entire construct tree.

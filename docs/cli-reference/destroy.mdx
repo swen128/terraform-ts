@@ -1,0 +1,73 @@
+---
+title: "tfts destroy"
+description: "Destroy infrastructure"
+---
+
+Destroy all resources managed by a stack.
+
+## Usage
+
+```bash
+npx tfts destroy [stack] [options]
+```
+
+## Description
+
+The `destroy` command synthesizes your configuration and runs `terraform destroy` to remove all infrastructure resources managed by the stack.
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory | `cdktf.out` |
+| `--skipSynth` | boolean | Skip synthesis step | `false` |
+| `--autoApprove` | boolean | Skip interactive approval | `false` |
+| `--target` | string | Target specific resources (repeatable) | - |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts destroy
+```
+
+You will be prompted to confirm destruction.
+
+### Specific Stack
+
+```bash
+npx tfts destroy staging
+```
+
+### Auto-Approve
+
+Skip the interactive confirmation:
+
+```bash
+npx tfts destroy --autoApprove
+```
+
+### Target Specific Resources
+
+Destroy only specific resources:
+
+```bash
+npx tfts destroy --target google_compute_instance.web
+```
+
+## Safety
+
+By default, `destroy` requires interactive confirmation. Use `--autoApprove` only in automated environments where you're certain about the destruction.
+
+To protect critical resources from accidental deletion, use lifecycle rules:
+
+```typescript
+new ComputeInstance(this, "critical", {
+  // ...
+  lifecycle: {
+    preventDestroy: true,
+  },
+});
+```

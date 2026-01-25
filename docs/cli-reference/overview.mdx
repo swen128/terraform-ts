@@ -1,0 +1,65 @@
+---
+title: "CLI Overview"
+description: "Command line interface for tfts"
+---
+
+The tfts CLI provides commands to manage your infrastructure-as-code workflow.
+
+## Installation
+
+The CLI is included when you install tfts:
+
+```bash
+npm install tfts
+```
+
+## Usage
+
+```bash
+npx tfts <command> [options]
+```
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| [get](/cli-reference/get) | Generate provider and module bindings |
+| [synth](/cli-reference/synth) | Synthesize Terraform JSON configuration |
+| [diff](/cli-reference/diff) | Show planned infrastructure changes |
+| [deploy](/cli-reference/deploy) | Deploy infrastructure changes |
+| [destroy](/cli-reference/destroy) | Destroy infrastructure |
+| [output](/cli-reference/output) | Display stack outputs |
+| [list](/cli-reference/list) | List all stacks |
+| [force-unlock](/cli-reference/force-unlock) | Release a stuck state lock |
+
+## Common Workflow
+
+```bash
+# 1. Generate provider bindings
+npx tfts get
+
+# 2. Synthesize Terraform configuration
+npx tfts synth
+
+# 3. Review planned changes
+npx tfts diff
+
+# 4. Deploy changes
+npx tfts deploy
+
+# 5. View outputs
+npx tfts output
+```
+
+## Global Options
+
+Most commands support these common options:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--app` | Command to run the tfts app | From cdktf.json |
+| `--output` | Output directory for synthesis | `cdktf.out` |
+
+## Configuration File
+
+Commands read configuration from `cdktf.json` or `tfts.json` in your project root. See the [Configuration guide](/guides/configuration) for details.

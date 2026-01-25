@@ -1,0 +1,93 @@
+---
+title: "Google Cloud Example"
+description: "A complete example of deploying Google Cloud infrastructure using tfts."
+---
+
+This example demonstrates how to create a basic Google Cloud (GCP) infrastructure including a VPC network, a firewall rule, and a compute instance. It also shows how to configure a GCS backend for state management.
+
+## Prerequisites
+
+Ensure you have the Google provider generated in your project:
+
+```bash
+npx tfts get
+```
+
+## Complete Example
+
+```typescript
+import { App, Stack, GcsBackend } from "tfts";
+import { GoogleProvider } from "./.gen/providers/google/provider";
+import { ComputeNetwork } from "./.gen/providers/google/compute-network";
+import { ComputeFirewall } from "./.gen/providers/google/compute-firewall";
+import { ComputeInstance } from "./.gen/providers/google/compute-instance";
+
+class MyGcpStack extends Stack {
+  constructor(scope: App, id: string) {
+    super(scope, id);
+
+    const project = "my-gcp-project-id";
+    const region = "us-central1";
+
+    // Configure the Google Provider
+    new GoogleProvider(this, "google", {
+      project: project,
+      region: region,
+    });
+
+    // Configure GCS Backend
+    new GcsBackend(this, {
+      bucket: "my-terraform-state-bucket",
+      prefix: "terraform/state",
+    });
+
+    // Create a VPC Network
+    const network = new ComputeNetwork(this, "main-network", {
+      name: "main-network",
+      autoCreateSubnetworks: true,
+    });
+
+    // Create a Firewall Rule
+    new ComputeFirewall(this, "allow-http", {
+      name: "allow-http",
+      network: network.name,
+      allow: [
+        {
+          protocol: "tcp",
+          ports: ["80"],
+        },
+      ],
+      sourceRanges: ["0.0.0.0/0"],
+    });
+
+    // Create a Compute Instance
+    new ComputeInstance(this, "web-instance", {
+      name: "web-instance",
+      machineType: "f1-micro",
+      zone: "us-central1-a",
+      bootDisk: {
+        initializeParams: {
+          image: "debian-cloud/debian-11",
+        },
+      },
+      networkInterface: [
+        {
+          network: network.id,
+          accessConfig: [{}], // Assigns an ephemeral public IP
+        },
+      ],
+    });
+  }
+}
+
+const app = new App();
+new MyGcpStack(app, "gcp-example");
+app.synth();
+```
+
+## Key Concepts
+
+- **Provider Configuration**: The `GoogleProvider` requires a `project` ID and a default `region`.
+- **Backend Configuration**: `GcsBackend` stores the state in a Google Cloud Storage bucket.
+- **Network Interface**: In GCP, the `networkInterface` block is used to connect the instance to a VPC. Including an empty `accessConfig` block ensures the instance gets a public IP address.
+- **Boot Disk**: The `bootDisk` property defines the operating system image and disk size for the instance.

@@ -1,0 +1,79 @@
+---
+title: "tfts synth"
+description: "Synthesize Terraform JSON configuration"
+---
+
+Synthesize your TypeScript infrastructure code into Terraform JSON configuration.
+
+## Usage
+
+```bash
+npx tfts synth [options]
+```
+
+## Aliases
+
+- `synthesize`
+
+## Description
+
+The `synth` command executes your tfts application and generates Terraform JSON configuration files. The output is written to the specified output directory (default: `cdktf.out`).
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory for synthesized files | `cdktf.out` |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts synth
+```
+
+Runs the app command from `cdktf.json` and outputs to `cdktf.out/`.
+
+### Custom App Command
+
+```bash
+npx tfts synth --app "npx ts-node main.ts"
+```
+
+### Custom Output Directory
+
+```bash
+npx tfts synth --output terraform-out
+```
+
+## Output Structure
+
+After synthesis, the output directory contains:
+
+```
+cdktf.out/
+├── manifest.json           # Stack metadata
+└── stacks/
+    └── my-stack/
+        └── cdk.tf.json     # Terraform configuration
+```
+
+## Using with Terraform
+
+After synthesis, navigate to the stack directory and run Terraform:
+
+```bash
+cd cdktf.out/stacks/my-stack
+terraform init
+terraform plan
+terraform apply
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `CDKTF_OUTDIR` | Override output directory |
+| `CDKTF_TARGET_STACK_ID` | Synthesize only a specific stack |

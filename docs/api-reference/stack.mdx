@@ -1,0 +1,82 @@
+---
+title: "TerraformStack"
+description: "Represents a single Terraform configuration file (or directory)."
+---
+
+`TerraformStack` is a unit of deployment. Each stack synthesizes into its own Terraform configuration.
+
+## Constructor
+
+```typescript
+new TerraformStack(scope: Construct, id: string)
+```
+
+## Properties
+
+### kind
+`readonly kind: string`
+The kind of stack.
+
+### dependencies
+`readonly dependencies: TerraformStack[]`
+List of stacks that this stack depends on.
+
+### stackName
+`readonly stackName: string`
+The name of the stack.
+
+## Methods
+
+### static of()
+```typescript
+static of(construct: IConstruct): TerraformStack
+```
+Returns the `TerraformStack` instance that contains the given construct.
+
+### getLogicalId()
+```typescript
+getLogicalId(element: any): string
+```
+Returns the logical ID for a given element within the stack.
+
+### prepareStack()
+```typescript
+prepareStack(): void
+```
+Performs preparation steps before synthesis.
+
+### synthesize()
+```typescript
+synthesize(): void
+```
+Synthesizes the stack into a Terraform configuration.
+
+### toTerraform()
+```typescript
+toTerraform(): any
+```
+Returns the Terraform JSON representation of the stack.
+
+### addDependency()
+```typescript
+addDependency(stack: TerraformStack): void
+```
+Adds a dependency on another stack.
+
+### dependsOn()
+```typescript
+dependsOn(stack: TerraformStack): boolean
+```
+Checks if this stack depends on another stack.
+
+### ensureBackendExists()
+```typescript
+ensureBackendExists(): TerraformBackend
+```
+Ensures that a backend is defined for the stack.
+
+### allProviders()
+```typescript
+allProviders(): TerraformProvider[]
+```
+Returns all providers defined in the stack.

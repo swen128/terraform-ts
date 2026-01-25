@@ -1,0 +1,75 @@
+---
+title: "tfts list"
+description: "List all stacks"
+---
+
+List all stacks defined in your tfts application.
+
+## Usage
+
+```bash
+npx tfts list [options]
+```
+
+## Aliases
+
+- `ls`
+
+## Description
+
+The `list` command synthesizes your configuration and displays all stacks defined in the application.
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory | `cdktf.out` |
+| `--skipSynth` | boolean | Skip synthesis step | `false` |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts list
+```
+
+### Using Alias
+
+```bash
+npx tfts ls
+```
+
+### Skip Synthesis
+
+```bash
+npx tfts list --skipSynth
+```
+
+## Output
+
+```
+Stack name: production
+Stack name: staging
+Stack name: development
+```
+
+## Multi-Stack Applications
+
+When you have multiple stacks:
+
+```typescript
+const app = new App();
+new ProductionStack(app, "production");
+new StagingStack(app, "staging");
+new DevelopmentStack(app, "development");
+app.synth();
+```
+
+The `list` command helps you see all available stacks before targeting specific ones with other commands:
+
+```bash
+npx tfts list
+npx tfts deploy production
+```

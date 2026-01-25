@@ -1,0 +1,72 @@
+---
+title: "TerraformIterator"
+description: "Iterate over collections in Terraform resources."
+---
+
+`TerraformIterator` is used with the `forEach` meta-argument to create multiple instances of a resource or data source.
+
+## Static Methods
+
+### fromList()
+```typescript
+static fromList(list: any[]): TerraformIterator
+```
+Creates an iterator from a list.
+
+### fromMap()
+```typescript
+static fromMap(map: Record<string, any>): TerraformIterator
+```
+Creates an iterator from a map.
+
+## Properties
+
+### key
+`readonly key: string`
+The key of the current element (for maps) or the index (for lists).
+
+### value
+`readonly value: any`
+The value of the current element.
+
+## Methods
+
+### getString()
+```typescript
+getString(name: string): string
+```
+Returns a string attribute from the current element.
+
+### getNumber()
+```typescript
+getNumber(name: string): number
+```
+Returns a number attribute from the current element.
+
+### getBoolean()
+```typescript
+getBoolean(name: string): boolean
+```
+Returns a boolean attribute from the current element.
+
+### getList()
+```typescript
+getList(name: string): string[]
+```
+Returns a list attribute from the current element.
+
+### getMap()
+```typescript
+getMap(name: string): Record<string, any>
+```
+Returns a map attribute from the current element.
+
+---
+
+## TerraformCount
+
+`TerraformCount` is used with the `count` meta-argument.
+
+### index
+`readonly index: number`
+The current index in the count loop.

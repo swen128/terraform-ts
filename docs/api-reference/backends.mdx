@@ -1,0 +1,81 @@
+---
+title: "Backend Classes"
+description: "Configuration for Terraform backends."
+---
+
+`TerraformBackend` is the base class for all backend configurations.
+
+## LocalBackend
+
+Configures a local backend.
+
+```typescript
+new LocalBackend(scope: Construct, config?: LocalBackendConfig)
+```
+
+### LocalBackendConfig
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `path` | `string` | Path to the state file. |
+| `workspaceDir` | `string` | Directory for workspaces. |
+
+## S3Backend
+
+Configures an AWS S3 backend.
+
+```typescript
+new S3Backend(scope: Construct, config: S3BackendConfig)
+```
+
+### S3BackendConfig
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `bucket` | `string` | Name of the S3 bucket. |
+| `key` | `string` | Path to the state file in the bucket. |
+| `region` | `string` | AWS region. |
+| `encrypt` | `boolean` | Whether to enable server-side encryption. |
+| `dynamodbTable` | `string` | DynamoDB table for state locking. |
+
+## GcsBackend
+
+Configures a Google Cloud Storage backend.
+
+```typescript
+new GcsBackend(scope: Construct, config: GcsBackendConfig)
+```
+
+### GcsBackendConfig
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `bucket` | `string` | Name of the GCS bucket. |
+| `prefix` | `string` | Prefix for the state file. |
+
+## RemoteBackend
+
+Configures a Terraform Cloud/Enterprise remote backend (legacy).
+
+```typescript
+new RemoteBackend(scope: Construct, config: RemoteBackendConfig)
+```
+
+### RemoteBackendConfig
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `hostname` | `string` | Terraform Cloud/Enterprise hostname. |
+| `organization` | `string` | Organization name. |
+| `workspaces` | `RemoteBackendWorkspaces` | Workspace configuration. |
+
+## CloudBackend
+
+Configures the modern Terraform Cloud backend.
+
+```typescript
+new CloudBackend(scope: Construct, config: CloudBackendConfig)
+```
+
+### CloudBackendConfig
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `organization` | `string` | Organization name. |
+| `workspaces` | `CloudBackendWorkspaces` | Workspace configuration. |
+| `hostname` | `string` | Terraform Cloud hostname. |

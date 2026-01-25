@@ -1,0 +1,111 @@
+---
+title: "AWS Infrastructure Example"
+description: "A complete example of deploying AWS infrastructure using tfts."
+---
+
+This example demonstrates how to create a basic AWS infrastructure including a VPC, subnet, security group, and an EC2 instance. It also shows how to configure an S3 backend for state management.
+
+## Prerequisites
+
+Ensure you have the AWS provider generated in your project:
+
+```bash
+npx tfts get
+```
+
+## Complete Example
+
+```typescript
+import { App, Stack, S3Backend } from "tfts";
+import { AwsProvider } from "./.gen/providers/aws/provider";
+import { Vpc } from "./.gen/providers/aws/vpc";
+import { Subnet } from "./.gen/providers/aws/subnet";
+import { SecurityGroup } from "./.gen/providers/aws/security-group";
+import { Instance } from "./.gen/providers/aws/instance";
+
+class MyAwsStack extends Stack {
+  constructor(scope: App, id: string) {
+    super(scope, id);
+
+    // Configure the AWS Provider
+    new AwsProvider(this, "aws", {
+      region: "us-west-2",
+    });
+
+    // Configure S3 Backend
+    new S3Backend(this, {
+      bucket: "my-terraform-state-bucket",
+      key: "network/terraform.tfstate",
+      region: "us-west-2",
+    });
+
+    // Create a VPC
+    const vpc = new Vpc(this, "main-vpc", {
+      cidrBlock: "10.0.0.0/16",
+      enableDnsHostnames: true,
+      tags: {
+        Name: "main-vpc",
+      },
+    });
+
+    // Create a Subnet
+    const subnet = new Subnet(this, "main-subnet", {
+      vpcId: vpc.id,
+      cidrBlock: "10.0.1.0/24",
+      availabilityZone: "us-west-2a",
+      tags: {
+        Name: "main-subnet",
+      },
+    });
+
+    // Create a Security Group
+    const sg = new SecurityGroup(this, "web-sg", {
+      vpcId: vpc.id,
+      ingress: [
+        {
+          fromPort: 80,
+          toPort: 80,
+          protocol: "tcp",
+          cidrBlocks: ["0.0.0.0/0"],
+        },
+        {
+          fromPort: 22,
+          toPort: 22,
+          protocol: "tcp",
+          cidrBlocks: ["0.0.0.0/0"],
+        },
+      ],
+      egress: [
+        {
+          fromPort: 0,
+          toPort: 0,
+          protocol: "-1",
+          cidrBlocks: ["0.0.0.0/0"],
+        },
+      ],
+    });
+
+    // Create an EC2 Instance
+    new Instance(this, "web-server", {
+      ami: "ami-0c55b159cbfafe1f0", // Amazon Linux 2
+      instanceType: "t3.micro",
+      subnetId: subnet.id,
+      vpcSecurityGroupIds: [sg.id],
+      tags: {
+        Name: "web-server",
+      },
+    });
+  }
+}
+
+const app = new App();
+new MyAwsStack(app, "aws-example");
+app.synth();
+```
+
+## Key Concepts
+
+- **Provider Configuration**: The `AwsProvider` construct initializes the connection to AWS.
+- **Backend Configuration**: `S3Backend` tells Terraform to store the state file in an S3 bucket.
+- **Resource Referencing**: Notice how `subnet.id` and `sg.id` are used to link resources together. tfts handles the underlying Terraform references automatically.
+- **Tags**: Most AWS resources support a `tags` property for organization and cost tracking.

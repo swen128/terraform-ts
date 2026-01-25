@@ -1,0 +1,27 @@
+---
+title: "TerraformOutput"
+description: "Defines a Terraform output value."
+---
+
+`TerraformOutput` allows you to define output values for your Terraform configuration.
+
+## Constructor
+
+```typescript
+new TerraformOutput(scope: Construct, id: string, config: TerraformOutputConfig)
+```
+
+### TerraformOutputConfig
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `value` | `any` | The value to output. |
+| `description` | `string` | A description of the output. |
+| `sensitive` | `boolean` | Whether the output contains sensitive information. |
+| `dependsOn` | `ITerraformAddressable[]` | Explicit dependencies for the output. |
+
+## Properties
+
+### value
+`readonly value: any`
+The value of the output.

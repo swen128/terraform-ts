@@ -1,0 +1,158 @@
+---
+title: "Fn Class Reference"
+description: "Complete list of Terraform functions available via the Fn class."
+---
+
+The `Fn` class provides access to all built-in Terraform functions.
+
+## Numeric Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `abs` | `Fn.abs(num: number)` | `number` |
+| `ceil` | `Fn.ceil(num: number)` | `number` |
+| `floor` | `Fn.floor(num: number)` | `number` |
+| `log` | `Fn.log(num: number, base: number)` | `number` |
+| `max` | `Fn.max(...nums: number[])` | `number` |
+| `min` | `Fn.min(...nums: number[])` | `number` |
+| `parseint` | `Fn.parseint(str: string, base: number)` | `number` |
+| `pow` | `Fn.pow(num: number, power: number)` | `number` |
+| `signum` | `Fn.signum(num: number)` | `number` |
+
+## String Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `chomp` | `Fn.chomp(str: string)` | `string` |
+| `format` | `Fn.format(format: string, ...args: any[])` | `string` |
+| `formatlist` | `Fn.formatlist(format: string, ...args: any[])` | `string[]` |
+| `indent` | `Fn.indent(num: number, str: string)` | `string` |
+| `join` | `Fn.join(sep: string, list: string[])` | `string` |
+| `lower` | `Fn.lower(str: string)` | `string` |
+| `replace` | `Fn.replace(str: string, substr: string, replace: string)` | `string` |
+| `split` | `Fn.split(sep: string, str: string)` | `string[]` |
+| `strrev` | `Fn.strrev(str: string)` | `string` |
+| `substr` | `Fn.substr(str: string, offset: number, length: number)` | `string` |
+| `trim` | `Fn.trim(str: string, cutset: string)` | `string` |
+| `trimprefix` | `Fn.trimprefix(str: string, prefix: string)` | `string` |
+| `trimsuffix` | `Fn.trimsuffix(str: string, suffix: string)` | `string` |
+| `trimspace` | `Fn.trimspace(str: string)` | `string` |
+| `upper` | `Fn.upper(str: string)` | `string` |
+
+## Collection Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `alltrue` | `Fn.alltrue(list: any[])` | `boolean` |
+| `anytrue` | `Fn.anytrue(list: any[])` | `boolean` |
+| `chunklist` | `Fn.chunklist(list: any[], size: number)` | `any[][]` |
+| `coalesce` | `Fn.coalesce(...args: any[])` | `any` |
+| `coalescelist` | `Fn.coalescelist(...args: any[][])` | `any[]` |
+| `compact` | `Fn.compact(list: string[])` | `string[]` |
+| `concat` | `Fn.concat(...lists: any[][])` | `any[]` |
+| `contains` | `Fn.contains(list: any[], value: any)` | `boolean` |
+| `distinct` | `Fn.distinct(list: any[])` | `any[]` |
+| `element` | `Fn.element(list: any[], index: number)` | `any` |
+| `flatten` | `Fn.flatten(list: any[])` | `any[]` |
+| `index` | `Fn.index(list: any[], value: any)` | `number` |
+| `keys` | `Fn.keys(map: Record<string, any>)` | `string[]` |
+| `length` | `Fn.length(list: any)` | `number` |
+| `lookup` | `Fn.lookup(map: Record<string, any>, key: string, default?: any)` | `any` |
+| `matchkeys` | `Fn.matchkeys(values: any[], keys: any[], search: any[])` | `any[]` |
+| `merge` | `Fn.merge(...maps: Record<string, any>[])` | `Record<string, any>` |
+| `one` | `Fn.one(list: any[])` | `any` |
+| `range` | `Fn.range(start: number, end?: number, step?: number)` | `number[]` |
+| `reverse` | `Fn.reverse(list: any[])` | `any[]` |
+| `setintersection` | `Fn.setintersection(...sets: any[][])` | `any[]` |
+| `setproduct` | `Fn.setproduct(...lists: any[][])` | `any[]` |
+| `setsubtract` | `Fn.setsubtract(a: any[], b: any[])` | `any[]` |
+| `setunion` | `Fn.setunion(...sets: any[][])` | `any[]` |
+| `slice` | `Fn.slice(list: any[], start: number, end: number)` | `any[]` |
+| `sort` | `Fn.sort(list: string[])` | `string[]` |
+| `sum` | `Fn.sum(list: number[])` | `number` |
+| `transpose` | `Fn.transpose(map: Record<string, string[]>)` | `Record<string, string[]>` |
+| `values` | `Fn.values(map: Record<string, any>)` | `any[]` |
+| `zipmap` | `Fn.zipmap(keys: string[], values: any[])` | `Record<string, any>` |
+
+## Encoding Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `base64decode` | `Fn.base64decode(str: string)` | `string` |
+| `base64encode` | `Fn.base64encode(str: string)` | `string` |
+| `base64gzip` | `Fn.base64gzip(str: string)` | `string` |
+| `csvdecode` | `Fn.csvdecode(str: string)` | `any[]` |
+| `jsondecode` | `Fn.jsondecode(str: string)` | `any` |
+| `jsonencode` | `Fn.jsonencode(val: any)` | `string` |
+| `textdecodebase64` | `Fn.textdecodebase64(str: string, encoding: string)` | `string` |
+| `textencodebase64` | `Fn.textencodebase64(str: string, encoding: string)` | `string` |
+| `urlencode` | `Fn.urlencode(str: string)` | `string` |
+| `yamldecode` | `Fn.yamldecode(str: string)` | `any` |
+| `yamlencode` | `Fn.yamlencode(val: any)` | `string` |
+
+## Filesystem Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `abspath` | `Fn.abspath(path: string)` | `string` |
+| `dirname` | `Fn.dirname(path: string)` | `string` |
+| `file` | `Fn.file(path: string)` | `string` |
+| `filebase64` | `Fn.filebase64(path: string)` | `string` |
+| `fileexists` | `Fn.fileexists(path: string)` | `boolean` |
+| `fileset` | `Fn.fileset(path: string, pattern: string)` | `string[]` |
+| `filebase64sha256` | `Fn.filebase64sha256(path: string)` | `string` |
+| `filebase64sha512` | `Fn.filebase64sha512(path: string)` | `string` |
+| `filemd5` | `Fn.filemd5(path: string)` | `string` |
+| `filesha1` | `Fn.filesha1(path: string)` | `string` |
+| `filesha256` | `Fn.filesha256(path: string)` | `string` |
+| `filesha512` | `Fn.filesha512(path: string)` | `string` |
+| `basename` | `Fn.basename(path: string)` | `string` |
+| `pathexpand` | `Fn.pathexpand(path: string)` | `string` |
+
+## Date and Time Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `formatdate` | `Fn.formatdate(format: string, time: string)` | `string` |
+| `timeadd` | `Fn.timeadd(time: string, duration: string)` | `string` |
+| `timestamp` | `Fn.timestamp()` | `string` |
+
+## Hash and Crypto Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `base64sha256` | `Fn.base64sha256(str: string)` | `string` |
+| `base64sha512` | `Fn.base64sha512(str: string)` | `string` |
+| `bcrypt` | `Fn.bcrypt(str: string, cost?: number)` | `string` |
+| `md5` | `Fn.md5(str: string)` | `string` |
+| `rsadecrypt` | `Fn.rsadecrypt(str: string, key: string)` | `string` |
+| `sha1` | `Fn.sha1(str: string)` | `string` |
+| `sha256` | `Fn.sha256(str: string)` | `string` |
+| `sha512` | `Fn.sha512(str: string)` | `string` |
+| `uuid` | `Fn.uuid()` | `string` |
+| `uuidv5` | `Fn.uuidv5(namespace: string, name: string)` | `string` |
+
+## IP Network Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `cidrhost` | `Fn.cidrhost(prefix: string, hostnum: number)` | `string` |
+| `cidrnetmask` | `Fn.cidrnetmask(prefix: string)` | `string` |
+| `cidrsubnet` | `Fn.cidrsubnet(prefix: string, newbits: number, netnum: number)` | `string` |
+| `cidrsubnets` | `Fn.cidrsubnets(prefix: string, ...newbits: number[])` | `string[]` |
+
+## Type Conversion Functions
+
+| Method | Signature | Return Type |
+| :--- | :--- | :--- |
+| `can` | `Fn.can(exp: any)` | `boolean` |
+| `nonsensitive` | `Fn.nonsensitive(val: any)` | `any` |
+| `sensitive` | `Fn.sensitive(val: any)` | `any` |
+| `tobool` | `Fn.tobool(val: any)` | `boolean` |
+| `tolist` | `Fn.tolist(val: any)` | `any[]` |
+| `tomap` | `Fn.tomap(val: any)` | `Record<string, any>` |
+| `tonumber` | `Fn.tonumber(val: any)` | `number` |
+| `toset` | `Fn.toset(val: any)` | `any[]` |
+| `tostring` | `Fn.tostring(val: any)` | `string` |
+| `try` | `Fn.try(...exps: any[])` | `any` |
+| `type` | `Fn.type(val: any)` | `string` |

@@ -1,0 +1,89 @@
+---
+title: "TerraformResource"
+description: "Base class for all Terraform resources."
+---
+
+`TerraformResource` represents a resource in Terraform.
+
+## TerraformMetaArguments
+
+All resources support the following meta-arguments:
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `dependsOn` | `ITerraformAddressable[]` | Explicit dependencies. |
+| `count` | `number \| TerraformCount` | Resource count. |
+| `provider` | `TerraformProvider` | Specific provider instance. |
+| `lifecycle` | `TerraformResourceLifecycle` | Lifecycle configuration. |
+| `forEach` | `TerraformIterator` | Iterator for multiple resources. |
+
+## TerraformResourceLifecycle
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `createBeforeDestroy` | `boolean` | Create new resource before destroying old one. |
+| `preventDestroy` | `boolean` | Prevent accidental destruction. |
+| `ignoreChanges` | `string[]` | List of attributes to ignore changes for. |
+| `replaceTriggeredBy` | `any[]` | Replace resource when these change. |
+
+## Methods
+
+### importFrom()
+```typescript
+importFrom(id: string): void
+```
+Configures the resource to be imported from an existing ID.
+
+### moveTo()
+```typescript
+moveTo(target: string): void
+```
+Moves the resource to a new address in the state.
+
+### moveToId()
+```typescript
+moveToId(id: string): void
+```
+Moves the resource to a specific ID.
+
+### moveFromId()
+```typescript
+moveFromId(id: string): void
+```
+Moves the resource from a specific ID.
+
+### interpolationForAttribute()
+```typescript
+interpolationForAttribute(attr: string): IResolvable
+```
+Returns an interpolation token for a specific attribute.
+
+### getStringAttribute()
+```typescript
+getStringAttribute(name: string): string
+```
+Returns a string attribute value.
+
+### getNumberAttribute()
+```typescript
+getNumberAttribute(name: string): number
+```
+Returns a number attribute value.
+
+### getBooleanAttribute()
+```typescript
+getBooleanAttribute(name: string): boolean
+```
+Returns a boolean attribute value.
+
+### getListAttribute()
+```typescript
+getListAttribute(name: string): string[]
+```
+Returns a list attribute value.
+
+### getMapAttribute()
+```typescript
+getMapAttribute(name: string): Record<string, any>
+```
+Returns a map attribute value.

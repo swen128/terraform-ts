@@ -1,0 +1,89 @@
+---
+title: "Iterators and Dynamic Blocks"
+description: "Handle loops and dynamic configurations using Terraform iterators."
+---
+
+tfts provides a type-safe way to work with Terraform's `for_each` and `dynamic` blocks using the `TerraformIterator` class.
+
+## TerraformIterator
+
+A `TerraformIterator` represents a collection that Terraform will iterate over at runtime. You can create an iterator from a list or a map.
+
+```typescript
+import { TerraformIterator } from "tfts";
+
+const listIterator = TerraformIterator.fromList(["a", "b", "c"]);
+const mapIterator = TerraformIterator.fromMap({ key1: "val1", key2: "val2" });
+```
+
+### Properties and Methods
+
+Iterators provide access to the current element's key and value:
+
+- `iterator.key`: The key (for maps) or index (for lists).
+- `iterator.value`: The value of the current element.
+
+To access specific types from the value, use the getter methods:
+
+- `iterator.getString(path)`
+- `iterator.getNumber(path)`
+- `iterator.getBoolean(path)`
+- `iterator.getList(path)`
+
+You can also retrieve all keys or values using `iterator.keys()` and `iterator.values()`.
+
+## Resource for_each
+
+To use an iterator with a resource, pass it to the `forEach` property.
+
+```typescript
+const subnets = TerraformIterator.fromList(["10.0.1.0/24", "10.0.2.0/24"]);
+
+new Subnet(stack, "subnet", {
+  vpcId: vpc.id,
+  cidrBlock: subnets.value,
+  forEach: subnets,
+});
+```
+
+## Dynamic Blocks
+
+Dynamic blocks allow you to generate multiple nested blocks based on a collection. Use the `iterator.dynamic()` method to define the block structure.
+
+```typescript
+const ingressRules = TerraformIterator.fromList([
+  { port: 80, protocol: "tcp" },
+  { port: 443, protocol: "tcp" },
+]);
+
+new SecurityGroup(stack, "sg", {
+  name: "web-sg",
+  ingress: ingressRules.dynamic({
+    fromPort: ingressRules.getNumber("port"),
+    toPort: ingressRules.getNumber("port"),
+    protocol: ingressRules.getString("protocol"),
+    cidrBlocks: ["0.0.0.0/0"],
+  }),
+});
+```
+
+## TerraformCount
+
+For simple numeric loops, use `TerraformCount`.
+
+```typescript
+import { TerraformCount } from "tfts";
+
+const count = TerraformCount.of(3);
+
+new Instance(stack, "server", {
+  ami: "ami-123456",
+  instanceType: "t2.micro",
+  count: count,
+  tags: {
+    Name: `Server-${count.index}`,
+  },
+});
+```
+
+The `count.index` property provides the current iteration index (0, 1, 2, ...).

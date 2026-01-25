@@ -1,0 +1,34 @@
+---
+title: "TerraformLocal"
+description: "Defines a Terraform local value."
+---
+
+`TerraformLocal` allows you to define local values in your Terraform configuration.
+
+## Constructor
+
+```typescript
+new TerraformLocal(scope: Construct, id: string, expression: any)
+```
+
+## Properties
+
+### expression
+`readonly expression: any`
+The expression assigned to the local value.
+
+### asString
+`readonly asString: string`
+The local value cast to a string.
+
+### asNumber
+`readonly asNumber: number`
+The local value cast to a number.
+
+### asBoolean
+`readonly asBoolean: boolean`
+The local value cast to a boolean.
+
+### asList
+`readonly asList: string[]`
+The local value cast to a list of strings.

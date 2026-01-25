@@ -1,0 +1,75 @@
+---
+title: "App"
+description: "The root construct of a tfts application."
+---
+
+`App` is the root of the construct tree. It represents the entire tfts application and manages the synthesis process.
+
+## Constructor
+
+```typescript
+new App(config?: AppConfig)
+```
+
+### AppConfig
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `outdir` | `string` | The directory where synthesized files will be written. |
+| `stackTraces` | `boolean` | Whether to include stack traces in the output. |
+| `hclOutput` | `boolean` | Whether to output HCL instead of JSON. |
+| `context` | `Record<string, any>` | Initial context values. |
+| `skipValidation` | `boolean` | Whether to skip resource validation. |
+| `skipBackendValidation` | `boolean` | Whether to skip backend validation. |
+
+## Properties
+
+### outdir
+`readonly outdir: string`
+The output directory for synthesized files.
+
+### hclOutput
+`readonly hclOutput: boolean`
+Whether HCL output is enabled.
+
+### targetStackId
+`readonly targetStackId?: string`
+The ID of the stack being targeted for synthesis.
+
+### skipValidation
+`readonly skipValidation: boolean`
+Whether validation is skipped.
+
+### skipBackendValidation
+`readonly skipBackendValidation: boolean`
+Whether backend validation is skipped.
+
+### manifest
+`readonly manifest: Manifest`
+The synthesis manifest.
+
+## Methods
+
+### synth()
+```typescript
+synth(): void
+```
+Synthesizes the application, generating Terraform configurations in the output directory.
+
+### static asApp()
+```typescript
+static asApp(x: any): App
+```
+Returns the `App` instance if the object is an `App`.
+
+### static of()
+```typescript
+static of(construct: IConstruct): App
+```
+Returns the `App` instance that contains the given construct.
+
+### crossStackReference()
+```typescript
+crossStackReference(from: TerraformStack, to: TerraformStack, id: string): string
+```
+Manages references between different stacks.

@@ -1,0 +1,72 @@
+---
+title: "Migrating from CDKTF"
+description: "Learn how to migrate your existing CDK for Terraform (CDKTF) projects to tfts."
+---
+
+tfts is designed to be a faster, simpler, and more modern alternative to CDKTF. Since tfts maintains high API compatibility with CDKTF, migrating your existing projects is straightforward.
+
+## Why Migrate?
+
+- **Performance**: tfts is built for the Bun runtime, offering significantly faster synthesis times.
+- **Simplicity**: Reduced boilerplate and a more streamlined developer experience.
+- **Maintenance**: tfts is actively maintained and optimized for modern TypeScript workflows.
+
+## Migration Steps
+
+### Step 1: Update package.json
+
+Remove `cdktf` and related dependencies, and add `tfts`.
+
+```bash
+# Remove CDKTF
+bun remove cdktf
+
+# Add tfts
+bun add tfts
+```
+
+### Step 2: Update Imports
+
+Change your import statements from `cdktf` to `tfts`.
+
+```typescript
+// Before
+import { App, TerraformStack } from "cdktf";
+
+// After
+import { App, Stack } from "tfts";
+```
+
+Note: In tfts, `TerraformStack` is simply called `Stack`.
+
+### Step 3: Regenerate Bindings
+
+tfts uses its own code generator for provider bindings. Run the following command to generate them:
+
+```bash
+npx tfts get
+```
+
+This will read your `tfts.json` (or `cdktf.json` if you haven't renamed it yet) and generate the necessary TypeScript classes in the `.gen` directory.
+
+## Automated Migration with ast-grep
+
+You can automate the import updates using `ast-grep`. This is especially useful for large projects with many files.
+
+```bash
+ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
+```
+
+## API Compatibility Notes
+
+tfts aims for 100% API compatibility with the core constructs of CDKTF. Most of your existing code should work without modification after updating the imports.
+
+- `App` remains `App`.
+- `TerraformStack` is aliased to `Stack` (you can use either, but `Stack` is preferred).
+- `TerraformResource` remains `TerraformResource`.
+- `TerraformOutput` remains `TerraformOutput`.
+- `TerraformVariable` remains `TerraformVariable`.
+
+## Breaking Changes
+
+Currently, there are no major breaking changes when migrating from the core CDKTF API to tfts. However, always ensure you run your tests after migration to verify the generated Terraform JSON remains identical.

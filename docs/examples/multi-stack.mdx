@@ -1,0 +1,112 @@
+---
+title: "Multi-Stack Applications"
+description: "Learn how to manage multiple environments and cross-stack references in tfts."
+---
+
+In larger projects, it is common to split your infrastructure into multiple stacks. This allows you to manage different environments (e.g., staging, production) or different layers of your infrastructure (e.g., network, database, application) independently.
+
+## Creating Multiple Stacks
+
+You can define multiple stacks within a single tfts application. Each stack will generate its own Terraform configuration file.
+
+```typescript
+import { App, Stack } from "tfts";
+import { MyInfrastructure } from "./my-infrastructure";
+
+const app = new App();
+
+// Staging environment
+new MyInfrastructure(app, "staging", {
+  environment: "staging",
+  instanceType: "t3.micro",
+});
+
+// Production environment
+new MyInfrastructure(app, "production", {
+  environment: "production",
+  instanceType: "t3.large",
+});
+
+app.synth();
+```
+
+## Cross-Stack References
+
+Sometimes one stack needs to reference a resource created in another stack. tfts handles this by automatically creating Terraform outputs in the producing stack and using data sources or remote state in the consuming stack.
+
+```typescript
+import { App, Stack, TerraformOutput } from "tfts";
+import { Vpc } from "./.gen/providers/aws/vpc";
+import { Instance } from "./.gen/providers/aws/instance";
+
+class NetworkStack extends Stack {
+  public readonly vpcId: string;
+
+  constructor(scope: App, id: string) {
+    super(scope, id);
+
+    const vpc = new Vpc(this, "vpc", {
+      cidrBlock: "10.0.0.0/16",
+    });
+
+    this.vpcId = vpc.id;
+
+    // Explicitly export the VPC ID
+    new TerraformOutput(this, "vpc_id_output", {
+      value: vpc.id,
+    });
+  }
+}
+
+class AppStack extends Stack {
+  constructor(scope: App, id: string, vpcId: string) {
+    super(scope, id);
+
+    new Instance(this, "server", {
+      ami: "ami-0c55b159cbfafe1f0",
+      instanceType: "t3.micro",
+      // Reference the VPC ID from the other stack
+      subnetId: vpcId, 
+    });
+  }
+}
+
+const app = new App();
+const network = new NetworkStack(app, "network");
+new AppStack(app, "app", network.vpcId);
+app.synth();
+```
+
+## Stack Dependencies
+
+When one stack references another, tfts automatically tracks the dependency. This ensures that the stacks are deployed in the correct order.
+
+In the example above, `AppStack` depends on `NetworkStack` because it uses `network.vpcId`. When you run `tfts deploy`, it will ensure the network stack is applied before the application stack.
+
+## Environment-Specific Configuration
+
+A common pattern is to use a configuration object or a factory function to create stacks for different environments.
+
+```typescript
+interface EnvConfig {
+  region: string;
+  instanceType: string;
+}
+
+const environments: Record<string, EnvConfig> = {
+  staging: {
+    region: "us-west-2",
+    instanceType: "t3.micro",
+  },
+  prod: {
+    region: "us-east-1",
+    instanceType: "m5.large",
+  },
+};
+
+const app = new App();
+
+Object.entries(environments).forEach(([name, config]) => {
+  new MyStack(app, name, config);
+});
+```

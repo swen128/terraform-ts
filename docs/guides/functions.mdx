@@ -1,0 +1,172 @@
+---
+title: "Terraform Functions"
+---
+
+import { Fn, Op } from "tfts"
+
+tfts provides a type-safe way to use Terraform functions and operators through the `Fn` and `Op` classes.
+
+## Functions (Fn)
+
+The `Fn` class contains static methods corresponding to Terraform's built-in functions.
+
+### Numeric
+- `Fn.abs(number)`
+- `Fn.ceil(number)`
+- `Fn.floor(number)`
+- `Fn.log(number, base)`
+- `Fn.max(...numbers)`
+- `Fn.min(...numbers)`
+- `Fn.pow(base, exponent)`
+- `Fn.signum(number)`
+
+```typescript
+const maxVal = Fn.max(1, 5, 2);
+const absolute = Fn.abs(-10);
+```
+
+### String
+- `Fn.chomp(string)`
+- `Fn.endswith(string, suffix)`
+- `Fn.format(format, ...args)`
+- `Fn.join(separator, list)`
+- `Fn.lower(string)`
+- `Fn.upper(string)`
+- `Fn.replace(string, substring, replacement)`
+- `Fn.split(separator, string)`
+- `Fn.trim(string, characters)`
+- `Fn.substr(string, offset, length)`
+
+```typescript
+const greeting = Fn.format("Hello, %s!", "World");
+const joined = Fn.join(", ", ["a", "b", "c"]);
+```
+
+### Collection
+- `Fn.alltrue(list)`
+- `Fn.anytrue(list)`
+- `Fn.chunklist(list, size)`
+- `Fn.coalesce(...args)`
+- `Fn.compact(list)`
+- `Fn.concat(...lists)`
+- `Fn.contains(list, value)`
+- `Fn.distinct(list)`
+- `Fn.element(list, index)`
+- `Fn.flatten(list)`
+- `Fn.keys(map)`
+- `Fn.length(collection)`
+- `Fn.lookup(map, key, default)`
+- `Fn.merge(...maps)`
+- `Fn.one(list)`
+- `Fn.range(start, end, step)`
+- `Fn.reverse(list)`
+- `Fn.slice(list, start, end)`
+- `Fn.sort(list)`
+- `Fn.sum(list)`
+- `Fn.values(map)`
+- `Fn.zipmap(keys, values)`
+
+```typescript
+const merged = Fn.merge({ a: 1 }, { b: 2 });
+const hasValue = Fn.contains(["vpc-1", "vpc-2"], "vpc-1");
+```
+
+### Encoding
+- `Fn.base64decode(string)`
+- `Fn.base64encode(string)`
+- `Fn.jsondecode(string)`
+- `Fn.jsonencode(value)`
+- `Fn.urlencode(string)`
+- `Fn.yamldecode(string)`
+- `Fn.yamlencode(value)`
+
+```typescript
+const encoded = Fn.jsonencode({ key: "value" });
+```
+
+### Filesystem
+- `Fn.abspath(path)`
+- `Fn.dirname(path)`
+- `Fn.basename(path)`
+- `Fn.file(path)`
+- `Fn.fileexists(path)`
+- `Fn.fileset(path, pattern)`
+- `Fn.filebase64(path)`
+- `Fn.templatefile(path, vars)`
+
+```typescript
+const userData = Fn.templatefile("./user_data.sh.tftpl", {
+  hostname: "my-server"
+});
+```
+
+### Date/Time
+- `Fn.formatdate(format, timestamp)`
+- `Fn.plantimestamp()`
+- `Fn.timeadd(timestamp, duration)`
+- `Fn.timecmp(timestamp_a, timestamp_b)`
+- `Fn.timestamp()`
+
+### Hash/Crypto
+- `Fn.md5(string)`
+- `Fn.sha1(string)`
+- `Fn.sha256(string)`
+- `Fn.sha512(string)`
+- `Fn.uuid()`
+- `Fn.uuidv5(namespace, name)`
+- `Fn.base64sha256(string)`
+- `Fn.bcrypt(string, cost)`
+
+### IP Network
+- `Fn.cidrhost(prefix, hostnum)`
+- `Fn.cidrnetmask(prefix)`
+- `Fn.cidrsubnet(prefix, newbits, netnum)`
+- `Fn.cidrsubnets(prefix, ...newbits)`
+
+### Type
+- `Fn.can(expression)`
+- `Fn.nonsensitive(value)`
+- `Fn.sensitive(value)`
+- `Fn.tobool(value)`
+- `Fn.tolist(value)`
+- `Fn.tomap(value)`
+- `Fn.tonumber(value)`
+- `Fn.toset(value)`
+- `Fn.tostring(value)`
+- `Fn.try(...expressions)`
+
+### Conditionals
+- `Fn.conditional(condition, trueValue, falseValue)`
+
+```typescript
+const instanceType = Fn.conditional(
+  Op.eq(env, "prod"),
+  "t3.large",
+  "t3.micro"
+);
+```
+
+## Operators (Op)
+
+The `Op` class provides methods for Terraform operators.
+
+- `Op.not(a)`
+- `Op.negate(a)`
+- `Op.add(a, b)`
+- `Op.sub(a, b)`
+- `Op.mul(a, b)`
+- `Op.div(a, b)`
+- `Op.mod(a, b)`
+- `Op.gt(a, b)`
+- `Op.gte(a, b)`
+- `Op.lt(a, b)`
+- `Op.lte(a, b)`
+- `Op.eq(a, b)`
+- `Op.neq(a, b)`
+- `Op.and(a, b)`
+- `Op.or(a, b)`
+
+```typescript
+const isLarge = Op.gt(count, 10);
+const isValid = Op.and(Op.neq(id, ""), Op.not(isTerminated));
+```

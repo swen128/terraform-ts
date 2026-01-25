@@ -1,0 +1,135 @@
+---
+title: "Testing Infrastructure Code"
+description: "Learn how to write unit tests for your tfts infrastructure using the Testing utility."
+---
+
+Testing infrastructure code ensures that your configurations are correct before they are deployed. tfts provides a `Testing` utility class to help you synthesize stacks and assert on the generated Terraform JSON.
+
+## The Testing Class
+
+The `Testing` class is the primary entry point for writing tests in tfts. It provides methods for creating test applications, synthesizing stacks, and performing assertions.
+
+### Testing.app()
+
+Creates a new `App` instance configured for testing.
+
+```typescript
+import { Testing } from "tfts";
+
+const app = Testing.app();
+```
+
+### Testing.synth()
+
+Synthesizes a stack into a JSON object that can be used for assertions.
+
+```typescript
+import { Testing, Stack } from "tfts";
+
+const app = Testing.app();
+const stack = new Stack(app, "my-stack");
+// ... add resources to stack
+
+const json = Testing.synth(stack);
+```
+
+### Testing.synthScope()
+
+A helper method that creates a temporary scope, executes a callback to define resources, and returns the synthesized JSON.
+
+```typescript
+const json = Testing.synthScope((scope) => {
+  new MyConstruct(scope, "my-construct");
+});
+```
+
+### Testing.synthToJson()
+
+Synthesizes a stack and returns the result as a formatted JSON string.
+
+```typescript
+const jsonString = Testing.synthToJson(stack);
+```
+
+### Testing.renderConstructTree()
+
+Returns a visual representation of the construct tree, which is useful for debugging complex hierarchies.
+
+```typescript
+console.log(Testing.renderConstructTree(stack));
+```
+
+## Assertions
+
+tfts provides several assertion methods to verify the contents of the synthesized Terraform JSON.
+
+### Testing.toHaveResource()
+
+Asserts that the JSON contains a resource of a specific type. You can optionally provide properties to match.
+
+```typescript
+Testing.toHaveResource(json, "aws_instance", {
+  instance_type: "t3.micro"
+});
+```
+
+### Testing.toHaveResourceWithProperties()
+
+Similar to `toHaveResource`, but specifically emphasizes checking for a set of properties.
+
+```typescript
+Testing.toHaveResourceWithProperties(json, "aws_s3_bucket", {
+  bucket: "my-test-bucket",
+  force_destroy: true
+});
+```
+
+### Testing.toHaveDataSource()
+
+Asserts that the JSON contains a data source of a specific type.
+
+```typescript
+Testing.toHaveDataSource(json, "aws_ami", {
+  most_recent: true
+});
+```
+
+### Testing.toHaveProvider()
+
+Asserts that the JSON contains a provider configuration.
+
+```typescript
+Testing.toHaveProvider(json, "aws", {
+  region: "us-east-1"
+});
+```
+
+## Example Test File
+
+Here is a complete example of a test file using `bun:test`.
+
+```typescript
+import { describe, expect, it } from "bun:test";
+import { Testing, Stack } from "tfts";
+import { Instance } from "./.gen/providers/aws/instance";
+
+describe("MyStack", () => {
+  it("should contain an EC2 instance with correct type", () => {
+    const app = Testing.app();
+    const stack = new Stack(app, "test-stack");
+
+    new Instance(stack, "web-server", {
+      ami: "ami-0c55b159cbfafe1f0",
+      instanceType: "t2.micro",
+    });
+
+    const json = Testing.synth(stack);
+
+    expect(() => {
+      Testing.toHaveResource(json, "aws_instance", {
+        instance_type: "t2.micro",
+      });
+    }).not.toThrow();
+  });
+});
+```

@@ -1,0 +1,65 @@
+---
+title: "Assets"
+description: "Manage local files and directories as Terraform assets."
+---
+
+The `TerraformAsset` class allows you to include local files or directories in your Terraform configuration. This is particularly useful for Lambda function code, configuration files, or static website content.
+
+## Defining an Asset
+
+To create an asset, specify the local path and the type of asset.
+
+```typescript
+import { TerraformAsset, AssetType } from "tfts";
+
+const lambdaCode = new TerraformAsset(stack, "lambda_code", {
+  path: "./src/lambda",
+  type: AssetType.ARCHIVE,
+});
+```
+
+### Asset Types
+
+- `AssetType.FILE`: A single file.
+- `AssetType.DIRECTORY`: An entire directory.
+- `AssetType.ARCHIVE`: A directory that will be automatically zipped.
+
+## Properties
+
+- `asset.path`: The path to the asset in the output directory after synthesis.
+- `asset.sourcePath`: The original path to the asset on your local machine.
+- `asset.assetHash`: A unique hash based on the content of the asset, useful for triggering redeployments when the code changes.
+
+## Example: Lambda Deployment
+
+Assets are commonly used with AWS Lambda to upload function code.
+
+```typescript
+import { LambdaFunction, S3BucketObject } from "@cdktf/provider-aws";
+
+const asset = new TerraformAsset(stack, "my_lambda_asset", {
+  path: "./lambda-handler",
+  type: AssetType.ARCHIVE,
+});
+
+const bucket = new S3Bucket(stack, "code_bucket", {
+  bucket: "my-lambda-code-bucket",
+});
+
+const upload = new S3BucketObject(stack, "lambda_zip", {
+  bucket: bucket.bucket,
+  key: `code-${asset.assetHash}.zip`,
+  source: asset.path, // Use the synthesized path
+});
+
+new LambdaFunction(stack, "my_lambda", {
+  functionName: "MyFunction",
+  s3Bucket: bucket.bucket,
+  s3Key: upload.key,
+  handler: "index.handler",
+  runtime: "nodejs18.x",
+  role: iamRole.arn,
+});
+```
+
+By using `asset.path`, you ensure that Terraform points to the correct file location within the synthesized `cdktf.out` directory. The `asset.assetHash` ensures that the S3 object key changes whenever the source code is modified, forcing Terraform to update the Lambda function.

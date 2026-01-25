@@ -1,0 +1,82 @@
+---
+title: "Terraform Modules"
+description: "Use existing HCL modules within your TypeScript configuration."
+---
+
+tfts allows you to consume existing Terraform modules (HCL) using the `TerraformHclModule` class. This enables you to leverage the vast ecosystem of community-maintained modules while still writing your infrastructure in TypeScript.
+
+## Using a Module
+
+To use a module, you provide its source, version, and any required variables.
+
+```typescript
+import { TerraformHclModule } from "tfts";
+
+const vpc = new TerraformHclModule(stack, "vpc", {
+  source: "terraform-aws-modules/vpc/aws",
+  version: "5.0.0",
+  variables: {
+    name: "my-vpc",
+    cidr: "10.0.0.0/16",
+    azs: ["us-east-1a", "us-east-1b"],
+    public_subnets: ["10.0.1.0/24", "10.0.2.0/24"],
+  },
+});
+```
+
+## Managing Variables and Providers
+
+You can set variables after initialization using the `set` method:
+
+```typescript
+vpc.set("enable_nat_gateway", true);
+```
+
+If the module requires specific providers, you can pass them in the configuration:
+
+```typescript
+const vpc = new TerraformHclModule(stack, "vpc", {
+  source: "terraform-aws-modules/vpc/aws",
+  providers: [awsProvider],
+  variables: { /* ... */ },
+});
+```
+
+## Accessing Outputs
+
+Modules often expose outputs that you need to use in other parts of your configuration. `TerraformHclModule` provides typed methods to access these outputs.
+
+```typescript
+const vpcId = vpc.get("vpc_id");
+const publicSubnets = vpc.getList("public_subnets");
+const vpcCidr = vpc.getString("vpc_cidr_block");
+```
+
+Available methods:
+- `get(outputName)`: Returns a generic token.
+- `getString(outputName)`: Returns a string token.
+- `getNumber(outputName)`: Returns a number token.
+- `getBoolean(outputName)`: Returns a boolean token.
+- `getList(outputName)`: Returns a list token.
+
+## Example: VPC and EC2
+
+```typescript
+const vpc = new TerraformHclModule(stack, "vpc", {
+  source: "terraform-aws-modules/vpc/aws",
+  version: "5.0.0",
+  variables: {
+    name: "my-vpc",
+    cidr: "10.0.0.0/16",
+    // ...
+  },
+});
+
+new Instance(stack, "web", {
+  ami: "ami-123456",
+  instanceType: "t2.micro",
+  subnetId: vpc.getList("public_subnets")[0],
+});
+```
+
+Using `TerraformHclModule` is the fastest way to integrate complex, pre-built infrastructure components into your tfts project.

@@ -1,0 +1,36 @@
+---
+title: "Op Class Reference"
+description: "Terraform operators available via the Op class."
+---
+
+The `Op` class provides methods for performing logical and mathematical operations in Terraform expressions.
+
+## Logical Operators
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `not` | `Op.not(a: any)` | Logical NOT (`!a`). |
+| `and` | `Op.and(a: any, b: any)` | Logical AND (`a && b`). |
+| `or` | `Op.or(a: any, b: any)` | Logical OR (`a || b`). |
+| `eq` | `Op.eq(a: any, b: any)` | Equality (`a == b`). |
+| `neq` | `Op.neq(a: any, b: any)` | Inequality (`a != b`). |
+
+## Comparison Operators
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `gt` | `Op.gt(a: any, b: any)` | Greater than (`a > b`). |
+| `gte` | `Op.gte(a: any, b: any)` | Greater than or equal (`a >= b`). |
+| `lt` | `Op.lt(a: any, b: any)` | Less than (`a < b`). |
+| `lte` | `Op.lte(a: any, b: any)` | Less than or equal (`a <= b`). |
+
+## Mathematical Operators
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `negate` | `Op.negate(a: any)` | Unary negation (`-a`). |
+| `add` | `Op.add(a: any, b: any)` | Addition (`a + b`). |
+| `sub` | `Op.sub(a: any, b: any)` | Subtraction (`a - b`). |
+| `mul` | `Op.mul(a: any, b: any)` | Multiplication (`a * b`). |
+| `div` | `Op.div(a: any, b: any)` | Division (`a / b`). |
+| `mod` | `Op.mod(a: any, b: any)` | Modulo (`a % b`). |

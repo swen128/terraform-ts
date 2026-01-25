@@ -1,0 +1,55 @@
+---
+title: "TerraformDataSource"
+description: "Base class for all Terraform data sources."
+---
+
+`TerraformDataSource` represents a data source in Terraform.
+
+## Meta-Arguments
+
+All data sources support the following meta-arguments:
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `dependsOn` | `ITerraformAddressable[]` | Explicit dependencies. |
+| `count` | `number \| TerraformCount` | Data source count. |
+| `provider` | `TerraformProvider` | Specific provider instance. |
+| `forEach` | `TerraformIterator` | Iterator for multiple data sources. |
+
+## Methods
+
+### interpolationForAttribute()
+```typescript
+interpolationForAttribute(attr: string): IResolvable
+```
+Returns an interpolation token for a specific attribute.
+
+### getStringAttribute()
+```typescript
+getStringAttribute(name: string): string
+```
+Returns a string attribute value.
+
+### getNumberAttribute()
+```typescript
+getNumberAttribute(name: string): number
+```
+Returns a number attribute value.
+
+### getBooleanAttribute()
+```typescript
+getBooleanAttribute(name: string): boolean
+```
+Returns a boolean attribute value.
+
+### getListAttribute()
+```typescript
+getListAttribute(name: string): string[]
+```
+Returns a list attribute value.
+
+### getMapAttribute()
+```typescript
+getMapAttribute(name: string): Record<string, any>
+```
+Returns a map attribute value.

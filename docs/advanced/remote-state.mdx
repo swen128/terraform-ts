@@ -1,0 +1,58 @@
+---
+title: "Remote State"
+description: "Access outputs from other Terraform stacks."
+---
+
+Remote state allows you to share data between different Terraform configurations. In tfts, you can use `TerraformRemoteState` to read outputs from a previously deployed stack.
+
+## Data Sources for Remote State
+
+tfts provides several implementations of `TerraformRemoteState` depending on your backend:
+
+- `DataTerraformRemoteStateLocal`: For local state files.
+- `DataTerraformRemoteStateS3`: For state stored in Amazon S3.
+- `DataTerraformRemoteStateGcs`: For state stored in Google Cloud Storage.
+- `DataTerraformRemoteStateAzurerm`: For state stored in Azure Blob Storage.
+
+## Accessing Outputs
+
+Once you have defined a remote state data source, you can access its outputs using typed getter methods.
+
+```typescript
+import { DataTerraformRemoteStateS3 } from "tfts";
+
+const vpcState = new DataTerraformRemoteStateS3(stack, "vpc_state", {
+  bucket: "my-terraform-state",
+  key: "network/terraform.tfstate",
+  region: "us-east-1",
+});
+
+const vpcId = vpcState.getString("vpc_id");
+const privateSubnets = vpcState.getList("private_subnets");
+```
+
+Available methods include:
+- `get(outputName)`
+- `getString(outputName)`
+- `getNumber(outputName)`
+- `getList(outputName)`
+- `getBoolean(outputName)`
+
+## Cross-Stack References
+
+If you are managing multiple stacks within the same `App`, you can use `app.crossStackReference()` to automatically handle the dependency and state sharing.
+
+```typescript
+const networkStack = new NetworkStack(app, "network");
+const appStack = new AppStack(app, "app");
+
+// Accessing an output from networkStack in appStack
+const vpcId = app.crossStackReference(appStack, networkStack, "vpcId");
+
+new Instance(appStack, "web", {
+  vpcId: vpcId,
+  // ...
+});
+```
+
+This pattern simplifies the management of shared resources by abstracting away the manual configuration of remote state data sources and outputs.

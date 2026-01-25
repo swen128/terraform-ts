@@ -1,0 +1,85 @@
+---
+title: "Creating Reusable Constructs"
+description: "Learn how to build higher-level abstractions by creating your own constructs in tfts."
+---
+
+Constructs are the basic building blocks of tfts applications. By extending the `Construct` class, you can group multiple resources together into a single, reusable component. This allows you to encapsulate complex infrastructure patterns and share them across projects.
+
+## Extending the Construct Class
+
+To create a custom construct, define a class that extends `Construct`.
+
+```typescript
+import { Construct } from "tfts";
+import { Vpc } from "./.gen/providers/aws/vpc";
+import { Subnet } from "./.gen/providers/aws/subnet";
+
+export interface MyVpcProps {
+  cidrBlock: string;
+  publicSubnetCidr: string;
+}
+
+export class MyVpc extends Construct {
+  public readonly vpcId: string;
+  public readonly publicSubnetId: string;
+
+  constructor(scope: Construct, id: string, props: MyVpcProps) {
+    super(scope, id);
+
+    const vpc = new Vpc(this, "vpc", {
+      cidrBlock: props.cidrBlock,
+      enableDnsHostnames: true,
+    });
+
+    const subnet = new Subnet(this, "public-subnet", {
+      vpcId: vpc.id,
+      cidrBlock: props.publicSubnetCidr,
+    });
+
+    this.vpcId = vpc.id;
+    this.publicSubnetId = subnet.id;
+  }
+}
+```
+
+## Parameterized Infrastructure
+
+By passing a `props` object to the constructor, you can make your construct configurable. This allows you to reuse the same logic for different environments or use cases.
+
+```typescript
+// Usage
+const network = new MyVpc(stack, "network", {
+  cidrBlock: "10.0.0.0/16",
+  publicSubnetCidr: "10.0.1.0/24",
+});
+```
+
+## Composition Patterns
+
+Constructs can be composed of other constructs, allowing you to build deep hierarchies of infrastructure.
+
+```typescript
+export class WebApplication extends Construct {
+  constructor(scope: Construct, id: string, props: WebAppProps) {
+    super(scope, id);
+
+    const network = new MyVpc(this, "network", {
+      cidrBlock: "10.1.0.0/16",
+      publicSubnetCidr: "10.1.1.0/24",
+    });
+
+    new ComputeInstance(this, "server", {
+      vpcId: network.vpcId,
+      subnetId: network.publicSubnetId,
+      // ... other props
+    });
+  }
+}
+```
+
+## Best Practices
+
+- **Encapsulation**: Keep internal resources private or protected unless they need to be accessed from outside the construct.
+- **Naming**: Use descriptive IDs for child resources. tfts will automatically prefix these IDs with the construct's ID to ensure uniqueness in the Terraform configuration.
+- **Validation**: You can add validation logic inside the constructor to ensure that the provided properties are valid before synthesis.
+- **Defaults**: Provide sensible default values for optional properties to make your construct easier to use.

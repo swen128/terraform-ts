@@ -1,0 +1,49 @@
+---
+title: "Token System"
+description: "Understand how tfts handles lazy evaluation and cross-resource references."
+---
+
+The Token system is the core mechanism that allows tfts to handle values that are not known until Terraform runs. Tokens enable lazy evaluation, allowing you to reference resource attributes before they are actually created.
+
+## How Tokens Work
+
+In TypeScript, when you assign `resourceA.id` to a property of `resourceB`, the value of `resourceA.id` is not yet available. Instead of a literal string, tfts uses a **Token**.
+
+Tokens are represented internally as special markers: `${TfToken[unique_id]}`. These markers are placeholders that the framework resolves during the synthesis process.
+
+## Token Types
+
+tfts provides several functions to create and work with tokens:
+
+- `ref(fqn, attribute)`: Creates a reference token to a resource attribute (e.g., `aws_instance.main.id`).
+- `fn(name, ...args)`: Creates a token representing a Terraform function call (e.g., `element(var.list, 0)`).
+- `raw(value)`: Wraps a raw string as a token, preventing it from being escaped or modified.
+- `lazy(() => value)`: Creates a token whose value is calculated only when it is resolved during synthesis.
+
+## Resolution during Synthesis
+
+When you call `app.synth()`, the framework performs the following steps:
+
+1. **Traversal**: It walks the construct tree.
+2. **Resolution**: It identifies all token markers within the resource properties.
+3. **Mapping**: It replaces each marker with the actual Terraform HCL expression (e.g., `${aws_instance.main.id}`).
+
+This process is handled by the `resolveTokens()` function.
+
+## Creating Custom Tokens
+
+While most tokens are created automatically by the resource classes, you can create your own using `createToken()`.
+
+```typescript
+import { createToken } from "tfts";
+
+const myToken = createToken("my-custom-value");
+```
+
+## Why Tokens Matter
+
+Tokens allow tfts to maintain type safety while dealing with the dynamic nature of infrastructure. They ensure that:
+
+- **Dependencies are tracked**: By referencing a token from another resource, tfts automatically knows that the second resource depends on the first.
+- **Lazy Evaluation**: Values are only computed when needed, allowing for complex logic that depends on the final state of the tree.
+- **HCL Compatibility**: Tokens ensure that the generated HCL uses the correct Terraform interpolation syntax.

@@ -1,0 +1,83 @@
+---
+title: "Installation"
+description: "Get started with tfts by installing the SDK and setting up your environment."
+---
+
+## Prerequisites
+
+Before installing tfts, ensure you have the following requirements met:
+
+- **Node.js**: Version 18 or higher.
+- **Terraform CLI**: Installed and available in your system PATH.
+- **TypeScript**: Version 5.0 or higher is recommended.
+
+## Installing the SDK
+
+You can install tfts using your preferred package manager.
+
+<CodeGroup>
+
+```bash npm
+npm install tfts
+```
+
+```bash yarn
+yarn add tfts
+```
+
+```bash pnpm
+pnpm add tfts
+```
+
+```bash bun
+bun add tfts
+```
+
+</CodeGroup>
+
+## Verifying Installation
+
+To verify that tfts is installed correctly, you can check the version of the CLI:
+
+```bash
+npx tfts --version
+```
+
+If you are using Bun:
+
+```bash
+bun x tfts --version
+```
+
+## TypeScript Configuration
+
+tfts relies on modern TypeScript features. We recommend the following settings in your `tsconfig.json`:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  }
+}
+```
+
+## ESM Module Setup
+
+tfts is designed to work with ECMAScript Modules (ESM). Ensure your `package.json` includes the `type: module` field:
+
+```json package.json
+{
+  "name": "my-terraform-project",
+  "type": "module",
+  "dependencies": {
+    "tfts": "latest"
+  }
+}
+```

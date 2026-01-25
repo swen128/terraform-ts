@@ -1,0 +1,124 @@
+---
+title: "Variables, Outputs, and Locals"
+description: "Manage inputs, outputs, and local expressions in your tfts application."
+---
+
+tfts provides first-class support for Terraform variables, outputs, and locals, allowing you to create flexible and reusable infrastructure definitions.
+
+## TerraformVariable
+
+`TerraformVariable` allows you to define inputs for your stack. These can be provided via CLI arguments, environment variables, or `terraform.tfvars` files.
+
+### Configuration
+
+A variable can have several properties:
+- `type`: The data type (string, number, bool, list, map, etc.).
+- `default`: A default value if none is provided.
+- `description`: Documentation for the variable.
+- `sensitive`: If true, the value is masked in CLI output.
+- `nullable`: Whether the variable can be null.
+- `validation`: Custom validation rules.
+
+### Usage
+
+To use a variable's value, you access its typed properties: `value`, `stringValue`, `numberValue`, `booleanValue`, or `listValue`.
+
+```typescript
+import { TerraformVariable, TerraformStack } from "tfts";
+import { ComputeInstance } from "./.gen/providers/google/compute-instance";
+
+const region = new TerraformVariable(stack, "region", {
+  type: "string",
+  default: "us-central1",
+  description: "The GCP region to deploy to",
+});
+
+const instanceCount = new TerraformVariable(stack, "instance_count", {
+  type: "number",
+  default: 1,
+});
+
+new ComputeInstance(stack, "server", {
+  // ...
+  zone: `${region.stringValue}-a`,
+});
+```
+
+## TerraformOutput
+
+`TerraformOutput` is used to export information from your stack. This is useful for sharing data between stacks or displaying important information (like an IP address) after deployment.
+
+```typescript
+import { TerraformOutput } from "tfts";
+import { ComputeInstance } from "./.gen/providers/google/compute-instance";
+
+const instance = new ComputeInstance(stack, "web", { /* ... */ });
+
+new TerraformOutput(stack, "instance_ip", {
+  value: instance.networkInterface[0].accessConfig[0].natIp,
+  description: "The public IP of the web server",
+  sensitive: false,
+});
+```
+
+## TerraformLocal
+
+`TerraformLocal` (or "Locals") allows you to assign a name to an expression. This is useful for avoiding repetition and simplifying complex logic.
+
+```typescript
+import { TerraformLocal } from "tfts";
+
+const commonLabels = new TerraformLocal(stack, "common_labels", {
+  environment: "production",
+  team: "platform",
+});
+
+// Accessing locals
+new SomeResource(stack, "res", {
+  labels: commonLabels.expression,
+});
+```
+
+Like variables, locals provide helper properties to cast the expression to specific types: `asString`, `asNumber`, `asBoolean`, and `asList`.
+
+```typescript
+const namePrefix = new TerraformLocal(stack, "prefix", "prod-app");
+
+new SomeResource(stack, "bucket", {
+  name: `${namePrefix.asString}-storage`,
+});
+```
+
+## Complete Example
+
+Here is how these concepts look when combined:
+
+```typescript
+import { App, TerraformStack, TerraformVariable, TerraformOutput, TerraformLocal } from "tfts";
+import { StorageBucket } from "./.gen/providers/google/storage-bucket";
+
+const app = new App();
+const stack = new TerraformStack(app, "example");
+
+// Variable
+const env = new TerraformVariable(stack, "env", {
+  type: "string",
+  default: "dev",
+});
+
+// Local
+const bucketName = new TerraformLocal(stack, "bucket_name", `my-app-${env.stringValue}-data`);
+
+// Resource using Local
+const bucket = new StorageBucket(stack, "data", {
+  name: bucketName.asString,
+  location: "US",
+});
+
+// Output
+new TerraformOutput(stack, "bucket_url", {
+  value: bucket.selfLink,
+});
+
+app.synth();
+```

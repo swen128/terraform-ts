@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "tfts",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#7C3AED",
+    "light": "#A78BFA",
+    "dark": "#5B21B6"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -14,43 +14,105 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
-            "pages": ["index", "quickstart", "development"]
+            "group": "Getting Started",
+            "pages": ["index", "quickstart", "guides/installation", "guides/configuration"]
           },
           {
-            "group": "Customization",
-            "pages": ["essentials/settings", "essentials/navigation"]
+            "group": "Core Concepts",
+            "pages": ["guides/core-concepts", "guides/references", "guides/variables-outputs"]
           },
           {
-            "group": "Writing content",
+            "group": "Infrastructure",
+            "pages": ["guides/functions", "guides/backends"]
+          },
+          {
+            "group": "Advanced",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "advanced/aspects",
+              "advanced/iterators",
+              "advanced/remote-state",
+              "advanced/assets",
+              "advanced/modules",
+              "advanced/tokens"
             ]
           },
           {
-            "group": "AI tools",
-            "pages": ["ai-tools/cursor", "ai-tools/claude-code", "ai-tools/windsurf"]
+            "group": "Migration",
+            "pages": ["guides/migration-cdktf"]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "CLI Reference",
         "groups": [
           {
-            "group": "API documentation",
-            "pages": ["api-reference/introduction"]
+            "group": "Commands",
+            "pages": [
+              "cli-reference/overview",
+              "cli-reference/get",
+              "cli-reference/synth",
+              "cli-reference/diff",
+              "cli-reference/deploy",
+              "cli-reference/destroy",
+              "cli-reference/output",
+              "cli-reference/list",
+              "cli-reference/force-unlock"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": ["api-reference/app", "api-reference/stack", "api-reference/construct"]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Resources",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/resource",
+              "api-reference/data-source",
+              "api-reference/provider"
             ]
+          },
+          {
+            "group": "Declarations",
+            "pages": ["api-reference/variable", "api-reference/output", "api-reference/local"]
+          },
+          {
+            "group": "Backends",
+            "pages": ["api-reference/backends"]
+          },
+          {
+            "group": "Functions",
+            "pages": ["api-reference/functions", "api-reference/operators"]
+          },
+          {
+            "group": "Advanced",
+            "pages": ["api-reference/iterator", "api-reference/remote-state"]
+          }
+        ]
+      },
+      {
+        "tab": "Testing",
+        "groups": [
+          {
+            "group": "Testing",
+            "pages": ["testing/overview"]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Cloud Providers",
+            "pages": ["examples/aws", "examples/gcp"]
+          },
+          {
+            "group": "Patterns",
+            "pages": ["examples/multi-stack", "examples/reusable-constructs"]
           }
         ]
       }
@@ -58,14 +120,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/swen128/terraform-ts",
+          "icon": "github"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "npm",
+          "href": "https://www.npmjs.com/package/tfts",
+          "icon": "npm"
         }
       ]
     }
@@ -77,24 +139,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/swen128/terraform-ts"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/swen128/terraform-ts"
     }
   }
 }

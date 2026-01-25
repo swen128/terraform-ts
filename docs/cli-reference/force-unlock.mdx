@@ -1,0 +1,75 @@
+---
+title: "tfts force-unlock"
+description: "Release a stuck state lock"
+---
+
+Manually release a stuck Terraform state lock.
+
+## Usage
+
+```bash
+npx tfts force-unlock [stack] <lock-id> [options]
+```
+
+## Description
+
+The `force-unlock` command releases a state lock that was not properly released. This can happen when a Terraform operation is interrupted or crashes.
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `stack` | Stack name (optional, uses first stack if omitted) |
+| `lock-id` | The lock ID to release (required) |
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--output` | string | Output directory | `cdktf.out` |
+| `--force`, `-f` | boolean | Skip confirmation prompt | `false` |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts force-unlock abc123-lock-id
+```
+
+### Specific Stack
+
+```bash
+npx tfts force-unlock production abc123-lock-id
+```
+
+### Force Without Confirmation
+
+```bash
+npx tfts force-unlock --force abc123-lock-id
+```
+
+## When to Use
+
+You typically need this command when you see an error like:
+
+```
+Error: Error acquiring the state lock
+Lock Info:
+  ID:        abc123-lock-id
+  Path:      terraform.tfstate
+  Operation: OperationTypeApply
+  Who:       user@hostname
+  Version:   1.5.0
+  Created:   2024-01-01 12:00:00.000000000 +0000 UTC
+```
+
+## Safety
+
+Only use `force-unlock` when you're certain no other Terraform operations are running. Forcing an unlock while another operation is in progress can corrupt your state.
+
+Before using `force-unlock`:
+
+1. Verify no other team members are running Terraform
+2. Check for any stuck CI/CD pipelines
+3. Wait a few minutes for any in-progress operations to complete

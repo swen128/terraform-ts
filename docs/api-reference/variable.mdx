@@ -1,0 +1,45 @@
+---
+title: "TerraformVariable"
+description: "Defines a Terraform input variable."
+---
+
+`TerraformVariable` allows you to define input variables for your Terraform configuration.
+
+## Constructor
+
+```typescript
+new TerraformVariable(scope: Construct, id: string, config: TerraformVariableConfig)
+```
+
+### TerraformVariableConfig
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `type` | `string` | The type of the variable (e.g., `string`, `number`, `bool`, `list(string)`). |
+| `default` | `any` | The default value for the variable. |
+| `description` | `string` | A description of the variable. |
+| `sensitive` | `boolean` | Whether the variable contains sensitive information. |
+| `nullable` | `boolean` | Whether the variable can be null. |
+| `validation` | `TerraformVariableValidation[]` | Validation rules for the variable. |
+
+## Properties
+
+### value
+`readonly value: any`
+The value of the variable (as a token).
+
+### stringValue
+`readonly stringValue: string`
+The value of the variable cast to a string.
+
+### numberValue
+`readonly numberValue: number`
+The value of the variable cast to a number.
+
+### booleanValue
+`readonly booleanValue: boolean`
+The value of the variable cast to a boolean.
+
+### listValue
+`readonly listValue: string[]`
+The value of the variable cast to a list of strings.

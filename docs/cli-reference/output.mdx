@@ -1,0 +1,101 @@
+---
+title: "tfts output"
+description: "Display stack outputs"
+---
+
+Display the output values from a deployed stack.
+
+## Usage
+
+```bash
+npx tfts output [stack] [options]
+```
+
+## Description
+
+The `output` command shows the values of `TerraformOutput` resources defined in your stack after deployment.
+
+## Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `--app` | string | Command to run the tfts app | From cdktf.json |
+| `--output` | string | Output directory | `cdktf.out` |
+| `--skipSynth` | boolean | Skip synthesis step | `false` |
+| `--json` | boolean | Output in JSON format | `false` |
+
+## Examples
+
+### Basic Usage
+
+```bash
+npx tfts output
+```
+
+### Specific Stack
+
+```bash
+npx tfts output production
+```
+
+### JSON Output
+
+Get outputs in JSON format for scripting:
+
+```bash
+npx tfts output --json
+```
+
+### Skip Synthesis
+
+```bash
+npx tfts output --skipSynth
+```
+
+## Output Format
+
+### Default Format
+
+```
+instance_ip = "10.128.0.2"
+bucket_name = "my-bucket-abc123"
+```
+
+### JSON Format
+
+```json
+{
+  "instance_ip": {
+    "value": "10.128.0.2",
+    "type": "string"
+  },
+  "bucket_name": {
+    "value": "my-bucket-abc123",
+    "type": "string"
+  }
+}
+```
+
+## Using Outputs in Scripts
+
+```bash
+# Get a specific output value
+INSTANCE_IP=$(npx tfts output --json | jq -r '.instance_ip.value')
+echo "Instance IP: $INSTANCE_IP"
+```
+
+## Defining Outputs
+
+Outputs are defined in your stack:
+
+```typescript
+new TerraformOutput(this, "instance-ip", {
+  value: instance.networkInterface.get(0).networkIp,
+  description: "The internal IP of the instance",
+});
+
+new TerraformOutput(this, "secret", {
+  value: secret.value,
+  sensitive: true, // Hidden in logs
+});
+```
