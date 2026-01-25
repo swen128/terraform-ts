@@ -63,24 +63,31 @@ mv cdktf.json tfts.json
 
 ## Automated Migration
 
-### Using ast-grep
+### Using the Migration Script
 
-Automate import updates for large projects:
+tfts includes a migration script that handles both core and provider imports:
 
 ```bash
-# Update core imports
-ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
+# Download the script
+curl -O https://raw.githubusercontent.com/swen128/terraform-ts/main/scripts/migrate-from-cdktf.ts
 
-# Note: Provider imports require manual update or custom patterns
+# Run it on your project
+bun migrate-from-cdktf.ts .
+# or: npx tsx migrate-from-cdktf.ts .
 ```
 
-### Provider Import Pattern
+The script automatically:
+- Changes `from "cdktf"` → `from "tfts"`
+- Converts `@cdktf/provider-*/lib/provider` → `./.gen/providers/hashicorp/*/provider.js`
+- Converts `@cdktf/provider-*/lib/resource-name` → `./.gen/providers/hashicorp/*/resources/resource-name.js`
+- Converts `@cdktf/provider-*/lib/data-*` → `./.gen/providers/hashicorp/*/data-sources/*.js`
 
-For AWS provider:
+### Using ast-grep
+
+For simpler migrations (core imports only):
+
 ```bash
-ast-grep --pattern 'from "@cdktf/provider-aws/lib/$NAME"' \
-  --rewrite 'from "./.gen/providers/hashicorp/aws/$NAME.js"' \
-  --lang ts -U .
+ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
 ```
 
 ## Import Path Reference
