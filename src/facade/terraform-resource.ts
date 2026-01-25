@@ -1,6 +1,6 @@
-import { createToken, ref } from "../core/tokens.js";
+import { createToken, type IResolvable, type IResolveContext, ref } from "../core/tokens.js";
 import type { Construct } from "./construct.js";
-import type { ITerraformDependable } from "./terraform-addressable.js";
+import type { IInterpolatingParent, ITerraformDependable } from "./terraform-addressable.js";
 import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
 import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js";
@@ -47,7 +47,10 @@ type TerraformResourceMoveById = {
   readonly to: string;
 };
 
-export class TerraformResource extends TerraformElement implements ITerraformDependable {
+export class TerraformResource
+  extends TerraformElement
+  implements ITerraformDependable, IInterpolatingParent
+{
   readonly kind: ElementKind = "resource";
 
   public readonly terraformResourceType: string;
@@ -104,42 +107,51 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
 
   addMoveTarget(_moveTarget: string): void {}
 
-  interpolationForAttribute(attribute: string): string {
+  interpolationForAttribute(attribute: string): IResolvable {
     const suffix = this.forEach !== undefined ? ".*" : "";
     const token = ref(`${this.terraformResourceType}.${this.friendlyUniqueId}${suffix}`, attribute);
-    return createToken(token);
+    const tokenStr = createToken(token);
+    return {
+      creationStack: [],
+      resolve(_context: IResolveContext): unknown {
+        return tokenStr;
+      },
+      toString(): string {
+        return tokenStr;
+      },
+    };
   }
 
   getStringAttribute(attribute: string): string {
-    return this.interpolationForAttribute(attribute);
+    return this.interpolationForAttribute(attribute).toString();
   }
 
   getNumberAttribute(attribute: string): number {
-    return Number(this.interpolationForAttribute(attribute));
+    return Number(this.interpolationForAttribute(attribute).toString());
   }
 
   getListAttribute(attribute: string): string[] {
-    return [this.interpolationForAttribute(attribute)];
+    return [this.interpolationForAttribute(attribute).toString()];
   }
 
-  getBooleanAttribute(attribute: string): boolean {
-    return Boolean(this.interpolationForAttribute(attribute));
+  getBooleanAttribute(attribute: string): IResolvable {
+    return this.interpolationForAttribute(attribute);
   }
 
   getStringMapAttribute(attribute: string): Record<string, string> {
-    return { "": this.interpolationForAttribute(attribute) };
+    return { "": this.interpolationForAttribute(attribute).toString() };
   }
 
   getNumberMapAttribute(attribute: string): Record<string, number> {
-    return { "": Number(this.interpolationForAttribute(attribute)) };
+    return { "": Number(this.interpolationForAttribute(attribute).toString()) };
   }
 
-  getBooleanMapAttribute(attribute: string): Record<string, boolean> {
-    return { "": Boolean(this.interpolationForAttribute(attribute)) };
+  getBooleanMapAttribute(attribute: string): Record<string, IResolvable> {
+    return { "": this.interpolationForAttribute(attribute) };
   }
 
   getNumberListAttribute(attribute: string): number[] {
-    return [Number(this.interpolationForAttribute(attribute))];
+    return [Number(this.interpolationForAttribute(attribute).toString())];
   }
 
   protected synthesizeAttributes(): Record<string, unknown> {
