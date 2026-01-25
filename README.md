@@ -2,6 +2,8 @@
 
 A TypeScript SDK for defining Terraform infrastructure as code. Drop-in replacement for CDKTF.
 
+**[Documentation](https://tfts.mintlify.app/)**
+
 ## Installation
 
 ```bash
@@ -146,37 +148,21 @@ new GcsBackend(this, { bucket: "my-tf-state", prefix: "prod" });
 
 ## Migrating from CDKTF
 
-### Automated (using ast-grep)
+See the [Migration Guide](https://tfts.mintlify.app/guides/migration-cdktf) for detailed instructions.
+
+Quick start:
 
 ```bash
-# Rewrite imports
-ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
+# Remove CDKTF, add tfts
+npm remove cdktf cdktf-cli @cdktf/provider-aws @cdktf/provider-google
+npm install tfts
 
-# Update package.json
-npm remove cdktf
-npm add tfts
-```
+# Run migration script (rewrites imports)
+curl -O https://raw.githubusercontent.com/swen128/terraform-ts/main/scripts/migrate-from-cdktf.ts
+bun migrate-from-cdktf.ts .
 
-### Manual
-
-1. Update `package.json`:
-
-```diff
-- "cdktf": "^0.20.0"
-+ "tfts": "^0.3.0"
-```
-
-2. Update imports in all `.ts` files:
-
-```diff
-- import { App, TerraformStack } from "cdktf";
-+ import { App, TerraformStack } from "tfts";
-```
-
-3. Regenerate provider bindings:
-
-```bash
-tfts get
+# Regenerate provider bindings
+npx tfts get
 ```
 
 ## License
