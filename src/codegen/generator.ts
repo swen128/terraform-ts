@@ -62,8 +62,8 @@ function generateProviderClass(
 
   const configProps = generateConfigProperties(schema.provider?.block);
 
-  const content = `import { TerraformProvider } from "../../facade/terraform-provider.js";
-import type { Construct } from "../../facade/construct.js";
+  const content = `import { TerraformProvider } from "tfts";
+import type { Construct } from "tfts";
 
 export type ${configName} = {
   readonly alias?: string;
@@ -71,11 +71,11 @@ ${configProps}
 };
 
 export class ${className} extends TerraformProvider {
-  static readonly tfResourceType = "${constraint.fqn}";
+  static readonly tfResourceType = "${constraint.name}";
 
   constructor(scope: Construct, id: string, config: ${configName} = {}) {
     super(scope, id, {
-      terraformResourceType: "${constraint.fqn}",
+      terraformResourceType: "${constraint.name}",
       terraformGeneratorMetadata: {
         providerName: "${constraint.name}",
       },
@@ -107,11 +107,14 @@ function generateResourceClass(
 
   const baseClass = isDataSource ? "TerraformDataSource" : "TerraformResource";
   const baseImport = isDataSource
-    ? 'import { TerraformDataSource } from "../../facade/terraform-data-source.js";'
-    : 'import { TerraformResource } from "../../facade/terraform-resource.js";';
+    ? `import { TerraformDataSource } from "tfts";`
+    : `import { TerraformResource } from "tfts";`;
+
+  const { privateFields, assignments, synthesizeBody } = generateConfigStorage(schema.block);
+  const computedGetters = generateComputedGetters(schema.block);
 
   const content = `${baseImport}
-import type { Construct } from "../../facade/construct.js";
+import type { Construct } from "tfts";
 
 ${nestedInterfaces}
 
@@ -122,6 +125,8 @@ ${configProps}
 export class ${fullClassName} extends ${baseClass} {
   static readonly tfResourceType = "${resourceType}";
 
+${privateFields}
+
   constructor(scope: Construct, id: string, config: ${configName}) {
     super(scope, id, {
       terraformResourceType: "${resourceType}",
@@ -129,6 +134,15 @@ export class ${fullClassName} extends ${baseClass} {
         providerName: "${constraint.name}",
       },
     });
+${assignments}
+  }
+
+${computedGetters}
+
+  protected override synthesizeAttributes(): Record<string, unknown> {
+    return {
+${synthesizeBody}
+    };
   }
 }
 `;
@@ -138,6 +152,120 @@ export class ${fullClassName} extends ${baseClass} {
     path: `providers/${constraint.namespace}/${constraint.name}/${folder}/${shortName}.ts`,
     content,
   };
+}
+
+function generateConfigStorage(block: Block | undefined): {
+  privateFields: string;
+  assignments: string;
+  synthesizeBody: string;
+} {
+  if (block === undefined) {
+    return { privateFields: "", assignments: "", synthesizeBody: "" };
+  }
+
+  const fields: string[] = [];
+  const assigns: string[] = [];
+  const synth: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      // Skip computed-only attributes (they're outputs, not inputs)
+      if (attr.computed === true && attr.optional !== true && attr.required !== true) {
+        continue;
+      }
+
+      const tsType = attributeTypeToTS(attr.type);
+      const safePropName = safeName(name);
+      const fieldName = `_${safePropName}`;
+
+      fields.push(`  private ${fieldName}?: ${tsType};`);
+      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      synth.push(`      ${name}: this.${fieldName},`);
+    }
+  }
+
+  if (block.block_types !== undefined) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      const interfaceName = toPascalCase(name);
+      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const safePropName = safeName(name);
+      const fieldName = `_${safePropName}`;
+      const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+
+      fields.push(`  private ${fieldName}?: ${tsType};`);
+      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      synth.push(`      ${name}: this.${fieldName},`);
+    }
+  }
+
+  return {
+    privateFields: fields.join("\n"),
+    assignments: assigns.join("\n"),
+    synthesizeBody: synth.join("\n"),
+  };
+}
+
+function generateComputedGetters(block: Block | undefined): string {
+  if (block === undefined) return "";
+
+  const getters: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      if (attr.computed !== true) continue;
+
+      const safePropName = safeName(name);
+      const tsType = attributeTypeToTS(attr.type);
+      const getter = generateGetterForType(name, safePropName, tsType);
+      if (getter !== undefined) {
+        getters.push(getter);
+      }
+    }
+  }
+
+  return getters.join("\n\n");
+}
+
+function generateGetterForType(
+  attrName: string,
+  safePropName: string,
+  tsType: string,
+): string | undefined {
+  const stringTypes = new Set(["string", "string | undefined"]);
+  const numberTypes = new Set(["number", "number | undefined"]);
+  const booleanTypes = new Set(["boolean", "boolean | undefined"]);
+
+  if (stringTypes.has(tsType)) {
+    return `  get ${safePropName}(): string {
+    return this.getStringAttribute("${attrName}");
+  }`;
+  }
+
+  if (numberTypes.has(tsType)) {
+    return `  get ${safePropName}(): number {
+    return this.getNumberAttribute("${attrName}");
+  }`;
+  }
+
+  if (booleanTypes.has(tsType)) {
+    return `  get ${safePropName}(): boolean {
+    return this.getBooleanAttribute("${attrName}");
+  }`;
+  }
+
+  if (tsType.endsWith("[]")) {
+    return `  get ${safePropName}(): string[] {
+    return this.getListAttribute("${attrName}");
+  }`;
+  }
+
+  if (tsType.startsWith("Record<string,")) {
+    return `  get ${safePropName}(): Record<string, string> {
+    return this.getStringMapAttribute("${attrName}");
+  }`;
+  }
+
+  return undefined;
 }
 
 function generateConfigProperties(block: Block | undefined): string {

@@ -1,4 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  cleanupWorkDir,
+  fetchProviderSchema,
+  generateProviderBindings,
+  parseProviderConstraint,
+} from "../codegen/index.js";
 import { findConfig, readConfig } from "./config.js";
 
 export type GetOptions = {
@@ -41,58 +49,32 @@ export async function get(options: GetOptions = {}): Promise<void> {
   console.log("\nGeneration complete!");
 }
 
-function parseProviderSpec(spec: string): {
-  namespace: string;
-  name: string;
-  version: string;
-} {
-  const atIndex = spec.indexOf("@");
-  const fullName = atIndex === -1 ? spec : spec.slice(0, atIndex);
-  const version = atIndex === -1 ? "latest" : spec.slice(atIndex + 1);
-  const parts = fullName.split("/");
-  const namespace = parts.length > 1 ? (parts[0] ?? "hashicorp") : "hashicorp";
-  const name = parts.length > 1 ? (parts[1] ?? fullName) : fullName;
-  return { namespace, name, version };
-}
-
 async function generateProvider(providerSpec: string, outputDir: string): Promise<void> {
-  const { namespace, name, version } = parseProviderSpec(providerSpec);
+  const constraint = parseProviderConstraint(providerSpec);
+  const workDir = join(tmpdir(), `tfts-schema-${constraint.name}-${Date.now()}`);
 
-  const providerDir = `${outputDir}/providers/${namespace}/${name}`;
-  await mkdir(providerDir, { recursive: true });
+  try {
+    console.log(`    Fetching schema for ${constraint.fqn}@${constraint.version ?? "latest"}...`);
 
-  console.log(`    Fetching schema for ${namespace}/${name}@${version}...`);
+    const schema = fetchProviderSchema(constraint, workDir);
+    const result = generateProviderBindings(constraint, schema);
 
-  const indexContent = `export * from "./${name}-provider.js";
-`;
+    if (result.isErr()) {
+      console.error(`    Error: ${result.error.message}`);
+      return;
+    }
 
-  const className = capitalize(name);
-  const providerContent = `import { TerraformProvider } from "../../../facade/terraform-provider.js";
-import type { Construct } from "../../../facade/construct.js";
+    for (const file of result.value) {
+      const filePath = join(outputDir, file.path);
+      const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+      await mkdir(dir, { recursive: true });
+      await writeFile(filePath, file.content);
+    }
 
-export type ${className}ProviderConfig = {
-  readonly alias?: string;
-  readonly region?: string;
-};
-
-export class ${className}Provider extends TerraformProvider {
-  static readonly tfResourceType = "${namespace}/${name}";
-
-  constructor(scope: Construct, id: string, config: ${className}ProviderConfig = {}) {
-    super(scope, id, {
-      terraformResourceType: "${namespace}/${name}",
-      terraformGeneratorMetadata: {
-        providerName: "${name}",
-        providerVersion: "${version}",
-      },
-      terraformProviderSource: "${namespace}/${name}",
-    });
+    console.log(`    Generated ${result.value.length} files`);
+  } finally {
+    cleanupWorkDir(workDir);
   }
-}
-`;
-
-  await writeFile(`${providerDir}/index.ts`, indexContent);
-  await writeFile(`${providerDir}/${name}-provider.ts`, providerContent);
 }
 
 function parseModuleSpec(spec: string): {

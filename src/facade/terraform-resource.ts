@@ -5,6 +5,7 @@ import type { ElementKind } from "./terraform-element.js";
 import { TerraformElement } from "./terraform-element.js";
 import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js";
 import type { TerraformProvider } from "./terraform-provider.js";
+import { deepMerge, type JsonObject } from "./util.js";
 
 export type { ITerraformDependable } from "./terraform-addressable.js";
 
@@ -146,11 +147,11 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
   }
 
   override toTerraform(): Record<string, unknown> {
-    const attributes = {
+    const base: JsonObject = {
       ...this.synthesizeAttributes(),
       ...this.terraformMetaArguments,
-      ...this.rawOverrides,
     };
+    const attributes = deepMerge(base, this.rawOverrides);
 
     return {
       resource: {
