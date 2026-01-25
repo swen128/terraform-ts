@@ -103,17 +103,6 @@ export function walkTreePost<T>(
   return result;
 }
 
-export function getChildren(
-  node: ConstructNode,
-  kind?: ConstructMetadata["kind"],
-): readonly ConstructNode[] {
-  if (!kind) {
-    return node.children;
-  }
-
-  return node.children.filter((c) => c.metadata.kind === kind);
-}
-
 export function getDescendants(
   node: ConstructNode,
   kind?: ConstructMetadata["kind"],
@@ -125,33 +114,6 @@ export function getDescendants(
       result.push(child);
     }
     result.push(...getDescendants(child, kind));
-  }
-
-  return result;
-}
-
-export function findAncestor(
-  tree: ConstructNode,
-  nodePath: readonly string[],
-  predicate: (node: ConstructNode) => boolean,
-): ConstructNode | undefined {
-  const ancestorPaths = getAncestorPaths(nodePath);
-
-  for (const path of ancestorPaths) {
-    const node = findNode(tree, path);
-    if (node && predicate(node)) {
-      return node;
-    }
-  }
-
-  return undefined;
-}
-
-export function getAncestorPaths(path: readonly string[]): readonly (readonly string[])[] {
-  const result: (readonly string[])[] = [];
-
-  for (let i = path.length - 1; i >= 0; i--) {
-    result.push(path.slice(0, i));
   }
 
   return result;
@@ -169,15 +131,4 @@ export function pathEquals(a: readonly string[], b: readonly string[]): boolean 
   }
 
   return true;
-}
-
-export function pathToString(path: readonly string[]): string {
-  return path.join("/");
-}
-
-export function stringToPath(pathString: string): readonly string[] {
-  if (pathString === "") {
-    return [];
-  }
-  return pathString.split("/");
 }

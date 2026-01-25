@@ -193,44 +193,8 @@ export type BastionConnectionDef = {
   readonly certificate?: string;
 };
 
-export type IteratorDef = {
-  readonly type: "list" | "map" | "complex-list" | "resource";
-  readonly expression: unknown;
-  readonly keyAttribute?: string;
-};
-
-export type CountDef = {
-  readonly count: number | string;
-};
-
-export type AssetType = "FILE" | "DIRECTORY" | "ARCHIVE";
-
-export type AssetDef = {
-  readonly path: string;
-  readonly type: AssetType;
-  readonly assetHash?: string;
-  readonly fileName?: string;
-};
-
-export type ImportDef = {
-  readonly id: string;
-  readonly provider?: string;
-};
-
-export type MoveDef = {
-  readonly from: string;
-  readonly to: string;
-};
-
 export type ValidationError = {
   readonly path: readonly string[];
   readonly message: string;
   readonly level: "error" | "warning" | "info";
-};
-
-export type Annotation = {
-  readonly constructPath: string;
-  readonly level: "info" | "warning" | "error";
-  readonly message: string;
-  readonly stacktrace?: readonly string[];
 };

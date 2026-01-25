@@ -55,11 +55,6 @@ const TokenSchema: z.ZodType<Token> = z.union([
 
 export type TokenResolver = (token: Token) => unknown;
 
-export type TokenContext = {
-  readonly stack: string;
-  readonly resources: ReadonlyMap<string, string>;
-};
-
 export type IResolvable = {
   readonly creationStack: readonly string[];
   resolve(context: IResolveContext): unknown;
@@ -78,22 +73,6 @@ export type IPostProcessor = {
   postProcess(input: unknown, context: IResolveContext): unknown;
 };
 
-export type IStringProducer = {
-  produce(context: IResolveContext): string | undefined;
-};
-
-export type INumberProducer = {
-  produce(context: IResolveContext): number | undefined;
-};
-
-export type IListProducer = {
-  produce(context: IResolveContext): string[] | undefined;
-};
-
-export type IAnyProducer = {
-  produce(context: IResolveContext): unknown;
-};
-
 const TOKEN_MARKER = "${TfToken[";
 const TOKEN_MARKER_END = "]}";
 
@@ -107,17 +86,6 @@ export function createToken(token: Token): string {
   const id = tokenCounter++;
   tokenMap.set(id, token);
   return `${TOKEN_MARKER}${id}${TOKEN_MARKER_END}`;
-}
-
-export function createNumberToken(token: Token): number {
-  const id = tokenCounter++;
-  tokenMap.set(id, token);
-  const encoded = (NUMBER_TOKEN_MARKER | id) >>> 0;
-  const buffer = new ArrayBuffer(8);
-  const view = new DataView(buffer);
-  view.setUint32(0, encoded, false);
-  view.setUint32(4, 0, false);
-  return view.getFloat64(0, false);
 }
 
 export function ref(fqn: string, attribute: string): RefToken {

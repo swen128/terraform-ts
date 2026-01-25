@@ -1,26 +1,5 @@
-import { getDescendants, walkTree } from "./tree.js";
+import { getDescendants } from "./tree.js";
 import type { ConstructNode, ValidationError } from "./types.js";
-
-export function validateTree(tree: ConstructNode): readonly ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  walkTree(tree, (node) => {
-    errors.push(...validateNode(node));
-  });
-
-  const circularDeps = detectCircularDependencies(tree);
-  if (circularDeps) {
-    for (const cycle of circularDeps) {
-      errors.push({
-        path: [],
-        message: `Circular dependency detected: ${cycle.join(" -> ")}`,
-        level: "error",
-      });
-    }
-  }
-
-  return errors;
-}
 
 export function validateNode(node: ConstructNode): readonly ValidationError[] {
   const errors: ValidationError[] = [];
@@ -254,14 +233,4 @@ export function detectCircularDependencies(
 
 export function hasErrors(errors: readonly ValidationError[]): boolean {
   return errors.some((e) => e.level === "error");
-}
-
-export function formatValidationErrors(errors: readonly ValidationError[]): string {
-  return errors
-    .map((e) => {
-      const path = e.path.length > 0 ? `[${e.path.join("/")}] ` : "";
-      const level = e.level.toUpperCase();
-      return `${level}: ${path}${e.message}`;
-    })
-    .join("\n");
 }

@@ -126,10 +126,6 @@ export function toCamelCase(str: string): string {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
-export function toSnakeCase(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
 export function generateBlockInterface(name: string, block: Block): string {
   const interfaceName = blockToInterfaceName(name);
   const properties: string[] = [];
