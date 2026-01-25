@@ -252,7 +252,9 @@ export function resolveTokens(value: unknown, resolver: TokenResolver): unknown 
     if (obj.success) {
       const result: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(obj.data)) {
-        result[key] = resolveTokens(val, resolver);
+        const resolvedKey = resolveStringTokens(key, resolver);
+        const keyStr = typeof resolvedKey === "string" ? resolvedKey : key;
+        result[keyStr] = resolveTokens(val, resolver);
       }
       return result;
     }

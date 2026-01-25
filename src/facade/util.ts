@@ -20,8 +20,12 @@ function transformKeys(obj: JsonObject, transform: (key: string) => string): Jso
   return Object.fromEntries(entries);
 }
 
+function containsTokenMarker(str: string): boolean {
+  return str.includes("TfToken[") || str.includes("${");
+}
+
 export function keysToSnakeCase(obj: JsonObject): JsonObject {
-  return transformKeys(obj, camelToSnakeCase);
+  return transformKeys(obj, (key) => (containsTokenMarker(key) ? key : camelToSnakeCase(key)));
 }
 
 export function camelToSnakeCase(str: string): string {

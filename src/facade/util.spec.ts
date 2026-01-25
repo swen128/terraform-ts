@@ -73,4 +73,33 @@ describe("keysToSnakeCase", () => {
     const result = keysToSnakeCase(input);
     expect(result).toEqual({ defined_value: "yes" });
   });
+
+  test("preserves keys containing TfToken markers", () => {
+    const input = { "${TfToken[123]}": "tokenValue", normalKey: "normalValue" };
+    const result = keysToSnakeCase(input);
+    expect(result).toEqual({
+      "${TfToken[123]}": "tokenValue",
+      normal_key: "normalValue",
+    });
+  });
+
+  test("preserves keys containing terraform expressions", () => {
+    const input = { "${google_resource.name.id}": "value" };
+    const result = keysToSnakeCase(input);
+    expect(result).toEqual({ "${google_resource.name.id}": "value" });
+  });
+
+  test("preserves nested object keys with token markers", () => {
+    const input = {
+      resourceManagerTags: {
+        "${TfToken[1]}": "${TfToken[2]}",
+      },
+    };
+    const result = keysToSnakeCase(input);
+    expect(result).toEqual({
+      resource_manager_tags: {
+        "${TfToken[1]}": "${TfToken[2]}",
+      },
+    });
+  });
 });

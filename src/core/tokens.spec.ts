@@ -136,5 +136,38 @@ describe("tokens", () => {
 
       expect(result).toEqual({ a: 1, b: "str" });
     });
+
+    test("resolves tokens in object keys", () => {
+      const keyToken = ref("google_tags_tag_key.env", "id");
+      const valueToken = ref("google_tags_tag_value.prod", "id");
+      const keyStr = createToken(keyToken);
+      const valueStr = createToken(valueToken);
+
+      const result = resolveTokens({ [keyStr]: valueStr }, (t) => tokenToString(t));
+
+      expect(result).toEqual({
+        "${google_tags_tag_key.env.id}": "${google_tags_tag_value.prod.id}",
+      });
+    });
+
+    test("resolves nested tokens in object keys", () => {
+      const keyToken = ref("resource.key", "attr");
+      const keyStr = createToken(keyToken);
+
+      const result = resolveTokens(
+        {
+          outer: {
+            [keyStr]: "value",
+          },
+        },
+        (t) => tokenToString(t),
+      );
+
+      expect(result).toEqual({
+        outer: {
+          "${resource.key.attr}": "value",
+        },
+      });
+    });
   });
 });
