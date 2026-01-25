@@ -1,6 +1,6 @@
 {
   "name": "tfts",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "TypeScript-first infrastructure as code for Terraform",
   "type": "module",
   "workspaces": [
