@@ -244,13 +244,13 @@ export function resolveTokens(value: unknown, resolver: TokenResolver): unknown 
   if (typeof value === "object") {
     const obj = z.record(z.string(), z.unknown()).safeParse(value);
     if (obj.success) {
-      const result: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(obj.data)) {
-        const resolvedKey = resolveStringTokens(key, resolver);
-        const keyStr = typeof resolvedKey === "string" ? resolvedKey : key;
-        result[keyStr] = resolveTokens(val, resolver);
-      }
-      return result;
+      return Object.fromEntries(
+        Object.entries(obj.data).map(([key, val]) => {
+          const resolvedKey = resolveStringTokens(key, resolver);
+          const keyStr = typeof resolvedKey === "string" ? resolvedKey : key;
+          return [keyStr, resolveTokens(val, resolver)];
+        }),
+      );
     }
   }
 

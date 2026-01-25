@@ -97,13 +97,14 @@ export class TerraformAsset extends Construct {
   }
 
   private hashDirectory(dirPath: string, hash: ReturnType<typeof createHash>): void {
-    const entries = readdirSync(dirPath, { withFileTypes: true });
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    const entries = readdirSync(dirPath, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    for (const entry of entries) {
       const fullPath = join(dirPath, entry.name);
       hash.update(entry.name);
       if (entry.isFile()) {
-        const content = readFileSync(fullPath);
-        hash.update(content);
+        hash.update(readFileSync(fullPath));
       } else if (entry.isDirectory()) {
         this.hashDirectory(fullPath, hash);
       }
@@ -130,8 +131,7 @@ export class TerraformAsset extends Construct {
 
   private copyDirectory(src: string, dest: string): void {
     mkdirSync(dest, { recursive: true });
-    const entries = readdirSync(src, { withFileTypes: true });
-    for (const entry of entries) {
+    for (const entry of readdirSync(src, { withFileTypes: true })) {
       const srcPath = join(src, entry.name);
       const destPath = join(dest, entry.name);
       if (entry.isDirectory()) {

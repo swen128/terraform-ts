@@ -240,21 +240,19 @@ ${synthesizeBody}
 }
 
 function generateComplexClasses(block: Block, resourceClassName: string): string {
-  const classes: string[] = [];
+  const attrClasses = Object.entries(block.attributes ?? {}).flatMap(([name, attr]) => {
+    if (!isComputedListOfObjects(attr)) return [];
 
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      if (!isComputedListOfObjects(attr)) continue;
+    const blockClassName = toPascalCase(name);
+    const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+    const listName = `${resourceClassName}${blockClassName}List`;
+    const fields = extractObjectFieldsFromListType(attr.type);
+    if (fields === undefined) return [];
 
-      const blockClassName = toPascalCase(name);
-      const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
-      const listName = `${resourceClassName}${blockClassName}List`;
-      const fields = extractObjectFieldsFromListType(attr.type);
-      if (fields === undefined) continue;
+    const getters = generateOutputReferenceGettersFromFields(fields);
 
-      const getters = generateOutputReferenceGettersFromFields(fields);
-
-      classes.push(`export class ${outputRefName} extends ComplexObject {
+    return [
+      `export class ${outputRefName} extends ComplexObject {
   constructor(terraformResource: IInterpolatingParent, terraformAttribute: string, complexObjectIndex: number, complexObjectIsFromSet: boolean) {
     super(terraformResource, terraformAttribute, complexObjectIsFromSet, complexObjectIndex);
   }
@@ -266,38 +264,38 @@ export class ${listName} extends ComplexList {
   get(index: number): ${outputRefName} {
     return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, this.wrapsSet);
   }
-}`);
-    }
-  }
+}`,
+    ];
+  });
 
-  if (block.block_types !== undefined) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const blockClassName = toPascalCase(name);
-      const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
-      const listName = `${resourceClassName}${blockClassName}List`;
-      const isArray = isBlockTypeArray(blockType);
+  const blockClasses = Object.entries(block.block_types ?? {}).flatMap(([name, blockType]) => {
+    const blockClassName = toPascalCase(name);
+    const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+    const listName = `${resourceClassName}${blockClassName}List`;
+    const isArray = isBlockTypeArray(blockType);
 
-      const getters = generateOutputReferenceGetters(blockType.block);
+    const getters = generateOutputReferenceGetters(blockType.block);
 
-      classes.push(`export class ${outputRefName} extends ComplexObject {
+    const refClass = `export class ${outputRefName} extends ComplexObject {
   constructor(terraformResource: IInterpolatingParent, terraformAttribute: string, complexObjectIndex: number, complexObjectIsFromSet: boolean) {
     super(terraformResource, terraformAttribute, complexObjectIsFromSet, complexObjectIndex);
   }
 
 ${getters}
-}`);
+}`;
 
-      if (isArray) {
-        classes.push(`export class ${listName} extends ComplexList {
+    const listClass = isArray
+      ? `export class ${listName} extends ComplexList {
   get(index: number): ${outputRefName} {
     return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, this.wrapsSet);
   }
-}`);
-      }
-    }
-  }
+}`
+      : null;
 
-  return classes.join("\n\n");
+    return listClass !== null ? [refClass, listClass] : [refClass];
+  });
+
+  return [...attrClasses, ...blockClasses].join("\n\n");
 }
 
 function generateOutputReferenceGettersFromFields(fields: Record<string, AttributeType>): string {
@@ -353,46 +351,41 @@ function generateComplexObjectGetter(
 }
 
 function generateComputedBlockGetters(block: Block, resourceClassName: string): string {
-  const getters: string[] = [];
+  const attrGetters = Object.entries(block.attributes ?? {}).flatMap(([name, attr]) => {
+    if (!isComputedListOfObjects(attr)) return [];
 
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      if (!isComputedListOfObjects(attr)) continue;
+    const camelName = toCamelCase(name.replace(/_/g, "-"));
+    const blockClassName = toPascalCase(name);
+    const listName = `${resourceClassName}${blockClassName}List`;
 
-      const camelName = toCamelCase(name.replace(/_/g, "-"));
-      const blockClassName = toPascalCase(name);
+    return [
+      `  private _${camelName}Output = new ${listName}(this, "${name}", false);
+  get ${camelName}(): ${listName} {
+    return this._${camelName}Output;
+  }`,
+    ];
+  });
+
+  const blockGetters = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
+    const camelName = toCamelCase(name.replace(/_/g, "-"));
+    const blockClassName = toPascalCase(name);
+    const isArray = isBlockTypeArray(blockType);
+
+    if (isArray) {
       const listName = `${resourceClassName}${blockClassName}List`;
-
-      getters.push(`  private _${camelName}Output = new ${listName}(this, "${name}", false);
+      return `  private _${camelName}Output = new ${listName}(this, "${name}", false);
   get ${camelName}(): ${listName} {
     return this._${camelName}Output;
-  }`);
+  }`;
     }
-  }
-
-  if (block.block_types !== undefined) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const camelName = toCamelCase(name.replace(/_/g, "-"));
-      const blockClassName = toPascalCase(name);
-      const isArray = isBlockTypeArray(blockType);
-
-      if (isArray) {
-        const listName = `${resourceClassName}${blockClassName}List`;
-        getters.push(`  private _${camelName}Output = new ${listName}(this, "${name}", false);
-  get ${camelName}(): ${listName} {
-    return this._${camelName}Output;
-  }`);
-      } else {
-        const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
-        getters.push(`  private _${camelName}Output = new ${outputRefName}(this, "${name}", 0, false);
+    const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+    return `  private _${camelName}Output = new ${outputRefName}(this, "${name}", 0, false);
   get ${camelName}(): ${outputRefName} {
     return this._${camelName}Output;
-  }`);
-      }
-    }
-  }
+  }`;
+  });
 
-  return getters.join("\n\n");
+  return [...attrGetters, ...blockGetters].join("\n\n");
 }
 
 function generateProviderConfigStorage(block: Block | undefined): {
@@ -404,40 +397,35 @@ function generateProviderConfigStorage(block: Block | undefined): {
     return { privateFields: "", assignments: "", synthesizeBody: "" };
   }
 
-  const fields: string[] = [];
-  const assigns: string[] = [];
-  const synth: string[] = [];
+  const attrEntries = Object.entries(block.attributes ?? {}).map(([name, attr]) => {
+    const tsType = attributeTypeToTS(attr.type);
+    const camelPropName = safeCamelName(name);
+    const fieldName = `_${camelPropName}`;
+    return {
+      field: `  private ${fieldName}?: ${tsType};`,
+      assign: `    this.${fieldName} = config.${camelPropName};`,
+      synth: `      ${name}: this.${fieldName},`,
+    };
+  });
 
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      const tsType = attributeTypeToTS(attr.type);
-      const camelPropName = safeCamelName(name);
-      const fieldName = `_${camelPropName}`;
+  const blockEntries = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
+    const interfaceName = toPascalCase(name);
+    const isArray = isBlockTypeArray(blockType);
+    const camelPropName = safeCamelName(name);
+    const fieldName = `_${camelPropName}`;
+    const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+    return {
+      field: `  private ${fieldName}?: ${tsType};`,
+      assign: `    this.${fieldName} = config.${camelPropName};`,
+      synth: `      ${name}: this.${fieldName},`,
+    };
+  });
 
-      fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
-      synth.push(`      ${name}: this.${fieldName},`);
-    }
-  }
-
-  if (block.block_types !== undefined) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const interfaceName = toPascalCase(name);
-      const isArray = isBlockTypeArray(blockType);
-      const camelPropName = safeCamelName(name);
-      const fieldName = `_${camelPropName}`;
-      const tsType = isArray ? `${interfaceName}[]` : interfaceName;
-
-      fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
-      synth.push(`      ${name}: this.${fieldName},`);
-    }
-  }
-
+  const allEntries = [...attrEntries, ...blockEntries];
   return {
-    privateFields: fields.join("\n"),
-    assignments: assigns.join("\n"),
-    synthesizeBody: synth.join("\n"),
+    privateFields: allEntries.map((e) => e.field).join("\n"),
+    assignments: allEntries.map((e) => e.assign).join("\n"),
+    synthesizeBody: allEntries.map((e) => e.synth).join("\n"),
   };
 }
 
@@ -540,23 +528,17 @@ function generateConfigGetter(
 function generateComputedGetters(block: Block | undefined): string {
   if (block === undefined) return "";
 
-  const getters: string[] = [];
-
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      if (attr.computed !== true) continue;
-      if (isComputedListOfObjects(attr)) continue;
+  return Object.entries(block.attributes ?? {})
+    .flatMap(([name, attr]) => {
+      if (attr.computed !== true) return [];
+      if (isComputedListOfObjects(attr)) return [];
 
       const camelPropName = safeCamelName(name);
       const tsType = attributeTypeToTS(attr.type);
       const getter = generateGetterForType(name, camelPropName, tsType);
-      if (getter !== undefined) {
-        getters.push(getter);
-      }
-    }
-  }
-
-  return getters.join("\n\n");
+      return getter !== undefined ? [getter] : [];
+    })
+    .join("\n\n");
 }
 
 function generateGetterForType(
@@ -604,94 +586,79 @@ function generateGetterForType(
 function generateConfigProperties(block: Block | undefined): string {
   if (block === undefined) return "";
 
-  const lines: string[] = [];
+  const attrLines = Object.entries(block.attributes ?? {}).flatMap(([name, attr]) => {
+    if (isComputedListOfObjects(attr)) return [];
 
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      if (isComputedListOfObjects(attr)) continue;
+    const tsType = attributeTypeToTS(attr.type);
+    const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
+    const optionalMark = isOptional ? "?" : "";
+    return [`  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`];
+  });
 
-      const tsType = attributeTypeToTS(attr.type);
-      const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
-      const optionalMark = isOptional ? "?" : "";
-      lines.push(`  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`);
-    }
-  }
+  const blockLines = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
+    const interfaceName = toPascalCase(name);
+    const isArray = isBlockTypeArray(blockType);
+    const isOptional = (blockType.min_items ?? 0) === 0;
+    const optionalMark = isOptional ? "?" : "";
+    const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+    return `  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`;
+  });
 
-  if (block.block_types) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const interfaceName = toPascalCase(name);
-      const isArray = isBlockTypeArray(blockType);
-      const isOptional = (blockType.min_items ?? 0) === 0;
-      const optionalMark = isOptional ? "?" : "";
-      const tsType = isArray ? `${interfaceName}[]` : interfaceName;
-      lines.push(`  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`);
-    }
-  }
-
-  return lines.join("\n");
+  return [...attrLines, ...blockLines].join("\n");
 }
 
 function generateNestedInterfaces(block: Block): string {
-  const interfaces: string[] = [];
-
-  if (block.block_types) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      interfaces.push(generateBlockInterface(name, blockType.block));
-      interfaces.push(generateNestedInterfaces(blockType.block));
-    }
-  }
-
-  return interfaces.filter(Boolean).join("\n\n");
+  return Object.entries(block.block_types ?? {})
+    .flatMap(([name, blockType]) => [
+      generateBlockInterface(name, blockType.block),
+      generateNestedInterfaces(blockType.block),
+    ])
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function generateToTerraformFunctions(block: Block, prefix: string = ""): string {
-  const functions: string[] = [];
-
-  if (block.block_types) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
+  return Object.entries(block.block_types ?? {})
+    .flatMap(([name, blockType]) => {
       const funcPrefix = prefix ? `${prefix}${toPascalCase(name)}` : safeCamelName(name);
-      functions.push(generateSingleToTerraformFunction(name, blockType.block, funcPrefix));
-      functions.push(generateToTerraformFunctions(blockType.block, funcPrefix));
-    }
-  }
-
-  return functions.filter(Boolean).join("\n\n");
+      return [
+        generateSingleToTerraformFunction(name, blockType.block, funcPrefix),
+        generateToTerraformFunctions(blockType.block, funcPrefix),
+      ];
+    })
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function generateSingleToTerraformFunction(name: string, block: Block, funcPrefix: string): string {
   const funcName = `${funcPrefix}ToTerraform`;
   const typeName = toPascalCase(name);
-  const body: string[] = [];
 
-  if (block.attributes) {
-    for (const [attrName, attr] of Object.entries(block.attributes)) {
-      if (attr.computed === true && attr.optional !== true && attr.required !== true) {
-        continue;
-      }
-      const camelAttrName = safeCamelName(attrName);
-      body.push(`    ${attrName}: config?.${camelAttrName},`);
+  const attrLines = Object.entries(block.attributes ?? {}).flatMap(([attrName, attr]) => {
+    if (attr.computed === true && attr.optional !== true && attr.required !== true) {
+      return [];
     }
-  }
+    const camelAttrName = safeCamelName(attrName);
+    return [`    ${attrName}: config?.${camelAttrName},`];
+  });
 
-  if (block.block_types) {
-    for (const [blockName, blockType] of Object.entries(block.block_types)) {
-      const camelBlockName = safeCamelName(blockName);
-      const nestedFuncPrefix = `${funcPrefix}${toPascalCase(blockName)}`;
-      const nestedFuncName = `${nestedFuncPrefix}ToTerraform`;
-      const isArray = isBlockTypeArray(blockType);
+  const blockLines = Object.entries(block.block_types ?? {}).map(([blockName, blockType]) => {
+    const camelBlockName = safeCamelName(blockName);
+    const nestedFuncPrefix = `${funcPrefix}${toPascalCase(blockName)}`;
+    const nestedFuncName = `${nestedFuncPrefix}ToTerraform`;
+    const isArray = isBlockTypeArray(blockType);
 
-      if (isArray) {
-        body.push(`    ${blockName}: config?.${camelBlockName}?.map(${nestedFuncName}),`);
-      } else {
-        body.push(`    ${blockName}: ${nestedFuncName}(config?.${camelBlockName}),`);
-      }
-    }
-  }
+    return isArray
+      ? `    ${blockName}: config?.${camelBlockName}?.map(${nestedFuncName}),`
+      : `    ${blockName}: ${nestedFuncName}(config?.${camelBlockName}),`;
+  });
+
+  const body = [...attrLines, ...blockLines].join("\n");
 
   return `function ${funcName}(config: ${typeName} | undefined): Record<string, unknown> | undefined {
   if (config === undefined) return undefined;
   return {
-${body.join("\n")}
+${body}
   };
 }`;
 }
@@ -701,29 +668,21 @@ function toCamelCase(str: string): string {
 }
 
 function generateIndexFile(constraint: ProviderConstraint, schema: ProviderSchema): GeneratedFile {
-  const exports: string[] = [];
+  const resourceExports = Object.keys(schema.resource_schemas ?? {}).map((resourceType) => {
+    const shortName = resourceType.replace(`${constraint.name}_`, "");
+    const kebabName = shortName.replace(/_/g, "-");
+    const camelName = toCamelCase(kebabName);
+    return `export * as ${camelName} from "./lib/${kebabName}/index.js";`;
+  });
 
-  exports.push(`export * from "./lib/provider/index.js";`);
+  const dataExports = Object.keys(schema.data_source_schemas ?? {}).map((dataType) => {
+    const shortName = dataType.replace(`${constraint.name}_`, "");
+    const kebabName = shortName.replace(/_/g, "-");
+    const camelName = `data${constraint.name.charAt(0).toUpperCase() + constraint.name.slice(1)}${toPascalCase(shortName)}`;
+    return `export * as ${camelName} from "./lib/data-${constraint.name}-${kebabName}/index.js";`;
+  });
 
-  if (schema.resource_schemas) {
-    for (const resourceType of Object.keys(schema.resource_schemas)) {
-      const shortName = resourceType.replace(`${constraint.name}_`, "");
-      const kebabName = shortName.replace(/_/g, "-");
-      const camelName = toCamelCase(kebabName);
-      exports.push(`export * as ${camelName} from "./lib/${kebabName}/index.js";`);
-    }
-  }
-
-  if (schema.data_source_schemas) {
-    for (const dataType of Object.keys(schema.data_source_schemas)) {
-      const shortName = dataType.replace(`${constraint.name}_`, "");
-      const kebabName = shortName.replace(/_/g, "-");
-      const camelName = `data${constraint.name.charAt(0).toUpperCase() + constraint.name.slice(1)}${toPascalCase(shortName)}`;
-      exports.push(
-        `export * as ${camelName} from "./lib/data-${constraint.name}-${kebabName}/index.js";`,
-      );
-    }
-  }
+  const exports = [`export * from "./lib/provider/index.js";`, ...resourceExports, ...dataExports];
 
   return {
     path: `providers/${constraint.namespace}/${constraint.name}/index.ts`,

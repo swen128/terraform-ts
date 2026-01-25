@@ -36,15 +36,17 @@ export async function get(options: GetOptions = {}): Promise<void> {
   console.log("Generating provider bindings...");
   console.log(`  Output: ${output}`);
 
-  for (const provider of providers) {
+  await providers.reduce(async (prev, provider) => {
+    await prev;
     console.log(`  Generating: ${provider}`);
     await generateProvider(provider, `${cwd}/${output}`);
-  }
+  }, Promise.resolve());
 
-  for (const module of modules) {
+  await modules.reduce(async (prev, module) => {
+    await prev;
     console.log(`  Generating: ${module}`);
     await generateModule(module, `${cwd}/${output}`);
-  }
+  }, Promise.resolve());
 
   console.log("\nGeneration complete!");
 }
@@ -68,12 +70,14 @@ async function generateProvider(providerSpec: string, outputDir: string): Promis
       return;
     }
 
-    for (const file of result.value) {
-      const filePath = join(outputDir, file.path);
-      const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-      await mkdir(dir, { recursive: true });
-      await writeFile(filePath, file.content);
-    }
+    await Promise.all(
+      result.value.map(async (file) => {
+        const filePath = join(outputDir, file.path);
+        const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+        await mkdir(dir, { recursive: true });
+        await writeFile(filePath, file.content);
+      }),
+    );
 
     console.log(`    Generated ${result.value.length} files`);
   } finally {

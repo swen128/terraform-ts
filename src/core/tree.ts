@@ -36,14 +36,10 @@ export function findNode(tree: ConstructNode, path: readonly string[]): Construc
     return tree;
   }
 
-  for (const child of tree.children) {
-    const found = findNode(child, path);
-    if (found) {
-      return found;
-    }
-  }
-
-  return undefined;
+  return tree.children.reduce<ConstructNode | undefined>(
+    (found, child) => found ?? findNode(child, path),
+    undefined,
+  );
 }
 
 export function updateNode(
@@ -79,13 +75,10 @@ export function walkTree<T>(
   visitor: (node: ConstructNode, depth: number) => T,
   depth = 0,
 ): readonly T[] {
-  const result: T[] = [visitor(tree, depth)];
-
-  for (const child of tree.children) {
-    result.push(...walkTree(child, visitor, depth + 1));
-  }
-
-  return result;
+  return [
+    visitor(tree, depth),
+    ...tree.children.flatMap((child) => walkTree(child, visitor, depth + 1)),
+  ];
 }
 
 export function walkTreePost<T>(
@@ -93,42 +86,22 @@ export function walkTreePost<T>(
   visitor: (node: ConstructNode, depth: number) => T,
   depth = 0,
 ): readonly T[] {
-  const result: T[] = [];
-
-  for (const child of tree.children) {
-    result.push(...walkTreePost(child, visitor, depth + 1));
-  }
-
-  result.push(visitor(tree, depth));
-  return result;
+  return [
+    ...tree.children.flatMap((child) => walkTreePost(child, visitor, depth + 1)),
+    visitor(tree, depth),
+  ];
 }
 
 export function getDescendants(
   node: ConstructNode,
   kind?: ConstructMetadata["kind"],
 ): readonly ConstructNode[] {
-  const result: ConstructNode[] = [];
-
-  for (const child of node.children) {
-    if (!kind || child.metadata.kind === kind) {
-      result.push(child);
-    }
-    result.push(...getDescendants(child, kind));
-  }
-
-  return result;
+  return node.children.flatMap((child) => [
+    ...(!kind || child.metadata.kind === kind ? [child] : []),
+    ...getDescendants(child, kind),
+  ]);
 }
 
 export function pathEquals(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
+  return a.length === b.length && a.every((val, i) => val === b[i]);
 }

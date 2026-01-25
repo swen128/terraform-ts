@@ -122,10 +122,7 @@ export class App extends Construct {
     }
 
     if (!this.skipValidation) {
-      const errors: string[] = [];
-      for (const construct of this.node.findAll()) {
-        errors.push(...construct.node.validate());
-      }
+      const errors = this.node.findAll().flatMap((construct) => construct.node.validate());
       if (errors.length > 0) {
         return;
       }

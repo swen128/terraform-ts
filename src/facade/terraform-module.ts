@@ -69,16 +69,13 @@ export abstract class TerraformModule extends TerraformElement {
     if (this._providers === undefined || this._providers.length === 0) {
       return undefined;
     }
-    const result: Record<string, string> = {};
-    for (const p of this._providers) {
-      if (p instanceof TerraformProvider) {
-        result[p.terraformResourceType] = p.fqn;
-      } else {
-        const key = `${p.provider.terraformResourceType}.${p.moduleAlias}`;
-        result[key] = p.provider.fqn;
-      }
-    }
-    return result;
+    return Object.fromEntries(
+      this._providers.map((p) =>
+        p instanceof TerraformProvider
+          ? [p.terraformResourceType, p.fqn]
+          : [`${p.provider.terraformResourceType}.${p.moduleAlias}`, p.provider.fqn],
+      ),
+    );
   }
 
   override toTerraform(): Record<string, unknown> {

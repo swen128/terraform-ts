@@ -106,10 +106,7 @@ export class TerraformStack extends TerraformElement {
       },
     };
 
-    for (const element of elements) {
-      const fragment = element.toTerraform();
-      result = deepMerge(result, fragment);
-    }
+    result = elements.reduce((acc, element) => deepMerge(acc, element.toTerraform()), result);
 
     const resolved = resolveTokens(result, (token: Token) => tokenToString(token));
     if (resolved === null || typeof resolved !== "object" || Array.isArray(resolved)) {

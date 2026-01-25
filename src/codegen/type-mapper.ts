@@ -128,19 +128,14 @@ export function toCamelCase(str: string): string {
 
 export function generateBlockInterface(name: string, block: Block): string {
   const interfaceName = blockToInterfaceName(name);
-  const properties: string[] = [];
-
-  if (block.attributes) {
-    for (const [attrName, attr] of Object.entries(block.attributes)) {
-      properties.push(`  ${attributeToConfigProperty(attrName, attr)}`);
-    }
-  }
-
-  if (block.block_types) {
-    for (const [blockName, blockType] of Object.entries(block.block_types)) {
-      properties.push(`  ${blockToConfigProperty(blockName, blockType)}`);
-    }
-  }
+  const properties = [
+    ...Object.entries(block.attributes ?? {}).map(
+      ([attrName, attr]) => `  ${attributeToConfigProperty(attrName, attr)}`,
+    ),
+    ...Object.entries(block.block_types ?? {}).map(
+      ([blockName, blockType]) => `  ${blockToConfigProperty(blockName, blockType)}`,
+    ),
+  ];
 
   return `export type ${interfaceName} = {\n${properties.join("\n")}\n};`;
 }

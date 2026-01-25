@@ -27,20 +27,19 @@ function buildNestedObject(overrides: Map<string, unknown>): Record<string, unkn
 
   for (const [path, value] of overrides) {
     const parts = path.split(".");
-    let currentPath = "";
-    let current = result;
-
-    for (const key of parts.slice(0, -1)) {
-      const nextPath = currentPath === "" ? key : `${currentPath}.${key}`;
-      let next = nodes.get(nextPath);
-      if (next === undefined) {
-        next = {};
-        nodes.set(nextPath, next);
-        current[key] = next;
-      }
-      current = next;
-      currentPath = nextPath;
-    }
+    const { current } = parts.slice(0, -1).reduce(
+      (acc, key) => {
+        const nextPath = acc.currentPath === "" ? key : `${acc.currentPath}.${key}`;
+        let next = nodes.get(nextPath);
+        if (next === undefined) {
+          next = {};
+          nodes.set(nextPath, next);
+          acc.current[key] = next;
+        }
+        return { current: next, currentPath: nextPath };
+      },
+      { current: result, currentPath: "" },
+    );
 
     const lastKey = parts[parts.length - 1];
     if (lastKey !== undefined) {

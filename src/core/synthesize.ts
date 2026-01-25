@@ -40,13 +40,13 @@ function makeUniqueId(components: readonly string[]): string {
 
   const hash = md5Hash(filtered.join("/")).slice(0, HASH_LEN).toUpperCase();
 
-  const deduped: string[] = [];
-  for (const c of filtered) {
-    const lastItem = deduped[deduped.length - 1];
-    if (deduped.length === 0 || lastItem === undefined || !lastItem.endsWith(c)) {
-      deduped.push(c);
+  const deduped = filtered.reduce<string[]>((acc, c) => {
+    const lastItem = acc[acc.length - 1];
+    if (acc.length === 0 || lastItem === undefined || !lastItem.endsWith(c)) {
+      acc.push(c);
     }
-  }
+    return acc;
+  }, []);
 
   const human = deduped
     .filter((x) => x !== HIDDEN_FROM_HUMAN_ID)

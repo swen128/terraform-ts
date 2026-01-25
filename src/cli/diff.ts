@@ -79,15 +79,11 @@ export async function diff(options: DiffOptions = {}): Promise<void> {
     console.log();
   }
 
-  const planArgs = ["plan"];
-  if (options.refreshOnly === true) {
-    planArgs.push("-refresh-only");
-  }
-  if (options.target !== undefined) {
-    for (const t of options.target) {
-      planArgs.push("-target", t);
-    }
-  }
+  const planArgs = [
+    "plan",
+    ...(options.refreshOnly === true ? ["-refresh-only"] : []),
+    ...(options.target ?? []).flatMap((t) => ["-target", t]),
+  ];
 
   const planCode = await runCommand("terraform", planArgs, stackDir);
   if (planCode !== 0) {

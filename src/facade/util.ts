@@ -40,24 +40,26 @@ export function snakeToCamelCase(str: string): string {
 }
 
 export function deepMerge(target: JsonObject, source: JsonObject): JsonObject {
-  const result = { ...target };
-  for (const [key, sourceValue] of Object.entries(source)) {
-    const targetValue = result[key];
-    if (
-      targetValue !== undefined &&
-      targetValue !== null &&
-      typeof targetValue === "object" &&
-      !Array.isArray(targetValue) &&
-      sourceValue !== null &&
-      typeof sourceValue === "object" &&
-      !Array.isArray(sourceValue)
-    ) {
-      const targetObj = Object.fromEntries(Object.entries(targetValue));
-      const sourceObj = Object.fromEntries(Object.entries(sourceValue));
-      result[key] = deepMerge(targetObj, sourceObj);
-    } else {
-      result[key] = sourceValue;
-    }
-  }
-  return result;
+  return Object.entries(source).reduce(
+    (result, [key, sourceValue]) => {
+      const targetValue = result[key];
+      const shouldDeepMerge =
+        targetValue !== undefined &&
+        targetValue !== null &&
+        typeof targetValue === "object" &&
+        !Array.isArray(targetValue) &&
+        sourceValue !== null &&
+        typeof sourceValue === "object" &&
+        !Array.isArray(sourceValue);
+
+      result[key] = shouldDeepMerge
+        ? deepMerge(
+            Object.fromEntries(Object.entries(targetValue)),
+            Object.fromEntries(Object.entries(sourceValue)),
+          )
+        : sourceValue;
+      return result;
+    },
+    { ...target },
+  );
 }

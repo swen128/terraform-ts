@@ -143,14 +143,13 @@ function removeMetadata(item: unknown): unknown {
   }
 
   const obj = Object.fromEntries(Object.entries(item));
-  const cleaned: Record<string, unknown> = {};
-
-  for (const key of Object.keys(obj).sort()) {
-    if (key === "//") continue;
-    cleaned[key] = removeMetadata(obj[key]);
-  }
-
-  return cleaned;
+  return Object.keys(obj)
+    .sort()
+    .filter((key) => key !== "//")
+    .reduce<Record<string, unknown>>((cleaned, key) => {
+      cleaned[key] = removeMetadata(obj[key]);
+      return cleaned;
+    }, {});
 }
 
 function renderTree(construct: IConstruct, level: number, isLast: boolean): string {
@@ -178,25 +177,17 @@ function hasResourceWithProperties(
   resourceType: string,
   expectedProps: Record<string, unknown>,
 ): boolean {
-  const block = config[blockType];
-  if (!block) return false;
-
-  const resources = block[resourceType];
-  if (!resources) return false;
-
-  const instances = Object.values(resources);
-  if (instances.length === 0) return false;
-
-  for (const instance of instances) {
-    if (typeof instance === "object" && instance !== null && !Array.isArray(instance)) {
-      const rec = Object.fromEntries(Object.entries(instance));
-      if (matchesProperties(rec, expectedProps)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  const resources = config[blockType]?.[resourceType];
+  return (
+    resources !== undefined &&
+    Object.values(resources).some(
+      (instance) =>
+        typeof instance === "object" &&
+        instance !== null &&
+        !Array.isArray(instance) &&
+        matchesProperties(Object.fromEntries(Object.entries(instance)), expectedProps),
+    )
+  );
 }
 
 function hasProviderWithProperties(
@@ -204,45 +195,38 @@ function hasProviderWithProperties(
   providerType: string,
   expectedProps: Record<string, unknown>,
 ): boolean {
-  const providers = config.provider;
-  if (!providers) return false;
-
-  const providerList = providers[providerType];
-  if (!providerList || !Array.isArray(providerList)) return false;
-
-  for (const provider of providerList) {
-    if (typeof provider === "object" && provider !== null && !Array.isArray(provider)) {
-      const rec = Object.fromEntries(Object.entries(provider));
-      if (matchesProperties(rec, expectedProps)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  const providerList = config.provider?.[providerType];
+  return (
+    Array.isArray(providerList) &&
+    providerList.some(
+      (provider) =>
+        typeof provider === "object" &&
+        provider !== null &&
+        !Array.isArray(provider) &&
+        matchesProperties(Object.fromEntries(Object.entries(provider)), expectedProps),
+    )
+  );
 }
 
 function matchesProperties(
   actual: Record<string, unknown>,
   expected: Record<string, unknown>,
 ): boolean {
-  for (const [key, value] of Object.entries(expected)) {
-    if (!Object.prototype.hasOwnProperty.call(actual, key)) return false;
-
+  return Object.entries(expected).every(([key, value]) => {
     const actualValue = actual[key];
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      if (typeof actualValue !== "object" || actualValue === null || Array.isArray(actualValue)) {
-        return false;
-      }
-      const actualRec = Object.fromEntries(Object.entries(actualValue));
-      const expectedRec = Object.fromEntries(Object.entries(value));
-      if (!matchesProperties(actualRec, expectedRec)) {
-        return false;
-      }
-    } else if (actualValue !== value) {
-      return false;
-    }
-  }
+    const isNestedObject = typeof value === "object" && value !== null && !Array.isArray(value);
 
-  return true;
+    return (
+      Object.prototype.hasOwnProperty.call(actual, key) &&
+      (isNestedObject
+        ? typeof actualValue === "object" &&
+          actualValue !== null &&
+          !Array.isArray(actualValue) &&
+          matchesProperties(
+            Object.fromEntries(Object.entries(actualValue)),
+            Object.fromEntries(Object.entries(value)),
+          )
+        : actualValue === value)
+    );
+  });
 }

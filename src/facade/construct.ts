@@ -107,11 +107,7 @@ export class Node {
   }
 
   validate(): string[] {
-    const errors: string[] = [];
-    for (const validation of this._validations) {
-      errors.push(...validation.validate());
-    }
-    return errors;
+    return this._validations.flatMap((validation) => validation.validate());
   }
 }
 

@@ -40,39 +40,19 @@ export function listMapperHcl(elementMapper: Mapper, _isBlockType?: boolean): Ma
 
 export function hashMapper(elementMapper: Mapper): Mapper {
   return (x: unknown): unknown => {
-    if (!canInspect(x)) {
+    if (!canInspect(x) || typeof x === "string" || typeof x !== "object" || x === null) {
       return x;
     }
-    if (typeof x === "string") {
-      return x;
-    }
-    if (typeof x !== "object" || x === null) {
-      return x;
-    }
-    const ret: Record<string, unknown> = {};
-    for (const key of Object.keys(x)) {
-      ret[key] = elementMapper((x as Record<string, unknown>)[key]);
-    }
-    return ret;
+    return Object.fromEntries(Object.entries(x).map(([key, value]) => [key, elementMapper(value)]));
   };
 }
 
 export function hashMapperHcl(elementMapper: Mapper): Mapper {
   return (x: unknown): unknown => {
-    if (!canInspect(x)) {
+    if (!canInspect(x) || typeof x === "string" || typeof x !== "object" || x === null) {
       return x;
     }
-    if (typeof x === "string") {
-      return x;
-    }
-    if (typeof x !== "object" || x === null) {
-      return x;
-    }
-    const ret: Record<string, unknown> = {};
-    for (const key of Object.keys(x)) {
-      ret[key] = elementMapper((x as Record<string, unknown>)[key]);
-    }
-    return ret;
+    return Object.fromEntries(Object.entries(x).map(([key, value]) => [key, elementMapper(value)]));
   };
 }
 

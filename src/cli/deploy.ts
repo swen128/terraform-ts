@@ -79,15 +79,11 @@ export async function deploy(options: DeployOptions = {}): Promise<void> {
     console.log();
   }
 
-  const applyArgs = ["apply"];
-  if (options.autoApprove === true) {
-    applyArgs.push("-auto-approve");
-  }
-  if (options.target !== undefined) {
-    for (const t of options.target) {
-      applyArgs.push("-target", t);
-    }
-  }
+  const applyArgs = [
+    "apply",
+    ...(options.autoApprove === true ? ["-auto-approve"] : []),
+    ...(options.target ?? []).flatMap((t) => ["-target", t]),
+  ];
 
   const applyCode = await runCommand("terraform", applyArgs, stackDir);
   if (applyCode !== 0) {

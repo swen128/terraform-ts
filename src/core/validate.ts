@@ -91,22 +91,28 @@ function validateVariable(node: ConstructNode): readonly ValidationError[] {
   const { variable } = node.metadata;
 
   if (variable.validation) {
-    for (const validation of variable.validation) {
-      if (!validation.condition) {
-        errors.push({
-          path: node.path,
-          message: "Variable validation must have a condition",
-          level: "error",
-        });
-      }
-      if (!validation.errorMessage) {
-        errors.push({
-          path: node.path,
-          message: "Variable validation must have an errorMessage",
-          level: "error",
-        });
-      }
-    }
+    errors.push(
+      ...variable.validation.flatMap((validation) => [
+        ...(!validation.condition
+          ? [
+              {
+                path: node.path,
+                message: "Variable validation must have a condition",
+                level: "error" as const,
+              },
+            ]
+          : []),
+        ...(!validation.errorMessage
+          ? [
+              {
+                path: node.path,
+                message: "Variable validation must have an errorMessage",
+                level: "error" as const,
+              },
+            ]
+          : []),
+      ]),
+    );
   }
 
   return errors;
@@ -185,13 +191,11 @@ export function detectCircularDependencies(
 ): readonly (readonly string[])[] | null {
   const stacks = getDescendants(tree, "stack");
 
-  const graph = new Map<string, readonly string[]>();
-
-  for (const stack of stacks) {
-    if (stack.metadata.kind === "stack") {
-      graph.set(stack.id, stack.metadata.dependencies);
-    }
-  }
+  const graph = new Map<string, readonly string[]>(
+    stacks.flatMap((stack) =>
+      stack.metadata.kind === "stack" ? [[stack.id, stack.metadata.dependencies] as const] : [],
+    ),
+  );
 
   const cycles: string[][] = [];
   const visited = new Set<string>();
@@ -224,7 +228,7 @@ export function detectCircularDependencies(
     return false;
   }
 
-  for (const [nodeId] of graph) {
+  for (const nodeId of graph.keys()) {
     dfs(nodeId);
   }
 

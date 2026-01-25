@@ -79,15 +79,11 @@ export async function destroy(options: DestroyOptions = {}): Promise<void> {
     console.log();
   }
 
-  const destroyArgs = ["destroy"];
-  if (options.autoApprove === true) {
-    destroyArgs.push("-auto-approve");
-  }
-  if (options.target !== undefined) {
-    for (const t of options.target) {
-      destroyArgs.push("-target", t);
-    }
-  }
+  const destroyArgs = [
+    "destroy",
+    ...(options.autoApprove === true ? ["-auto-approve"] : []),
+    ...(options.target ?? []).flatMap((t) => ["-target", t]),
+  ];
 
   const destroyCode = await runCommand("terraform", destroyArgs, stackDir);
   if (destroyCode !== 0) {

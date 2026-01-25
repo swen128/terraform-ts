@@ -31,11 +31,6 @@ export function readConfig(configPath: string): TftsConfig {
 
 export function findConfig(cwd: string): string | null {
   const configNames = ["cdktf.json", "tfts.json"];
-  for (const name of configNames) {
-    const configPath = `${cwd}/${name}`;
-    if (existsSync(configPath)) {
-      return configPath;
-    }
-  }
-  return null;
+  const found = configNames.map((name) => `${cwd}/${name}`).find((path) => existsSync(path));
+  return found ?? null;
 }
