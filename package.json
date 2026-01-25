@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "workspaces": ["e2e-tests/*"],
+  "files": ["src", "dist"],
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
