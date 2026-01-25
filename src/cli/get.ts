@@ -56,8 +56,12 @@ async function generateProvider(providerSpec: string, outputDir: string): Promis
   try {
     console.log(`    Fetching schema for ${constraint.fqn}@${constraint.version ?? "latest"}...`);
 
-    const schema = fetchProviderSchema(constraint, workDir);
-    const result = generateProviderBindings(constraint, schema);
+    const { schema, resolvedVersion } = fetchProviderSchema(constraint, workDir);
+    const constraintWithVersion = {
+      ...constraint,
+      version: resolvedVersion ?? constraint.version,
+    };
+    const result = generateProviderBindings(constraintWithVersion, schema);
 
     if (result.isErr()) {
       console.error(`    Error: ${result.error.message}`);

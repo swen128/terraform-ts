@@ -1,11 +1,34 @@
 import { execSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { type ProviderConstraint, parseTerraformSchema, type TerraformSchema } from "./schema.js";
+
+export type FetchSchemaResult = {
+  readonly schema: TerraformSchema;
+  readonly resolvedVersion: string | undefined;
+};
+
+export function parseProviderVersionFromLockFile(
+  lockFilePath: string,
+  providerFqn: string,
+): string | undefined {
+  const content = readFileSync(lockFilePath, "utf-8");
+
+  // HCL format: provider "registry.terraform.io/hashicorp/google" { version = "1.2.3" ... }
+  const escapedFqn = providerFqn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const providerBlockRegex = new RegExp(`provider\\s+"${escapedFqn}"\\s*\\{([^}]+)\\}`, "s");
+  const blockMatch = content.match(providerBlockRegex);
+  if (blockMatch === null) {
+    return undefined;
+  }
+
+  const versionMatch = blockMatch[1]?.match(/version\s*=\s*"([^"]+)"/);
+  return versionMatch?.[1];
+}
 
 export function fetchProviderSchema(
   constraint: ProviderConstraint,
   workDir: string,
-): TerraformSchema {
+): FetchSchemaResult {
   const tfConfig = {
     terraform: {
       required_providers: {
@@ -32,7 +55,15 @@ export function fetchProviderSchema(
   });
 
   const rawSchema: unknown = JSON.parse(schemaOutput.toString());
-  return parseTerraformSchema(rawSchema);
+  const schema = parseTerraformSchema(rawSchema);
+
+  const lockFilePath = `${workDir}/.terraform.lock.hcl`;
+  const resolvedVersion = parseProviderVersionFromLockFile(
+    lockFilePath,
+    `registry.terraform.io/${constraint.fqn}`,
+  );
+
+  return { schema, resolvedVersion };
 }
 
 export function cleanupWorkDir(workDir: string): void {
