@@ -61,18 +61,6 @@ export abstract class TerraformModule extends TerraformElement {
     return this.interpolationForOutput(output);
   }
 
-  getNumber(output: string): number {
-    return Number(this.interpolationForOutput(output));
-  }
-
-  getList(output: string): string[] {
-    return [this.interpolationForOutput(output)];
-  }
-
-  getBoolean(output: string): boolean {
-    return Boolean(this.interpolationForOutput(output));
-  }
-
   protected synthesizeAttributes(): Record<string, unknown> {
     return {};
   }

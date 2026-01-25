@@ -12,7 +12,8 @@ export type ElementKind =
   | "variable"
   | "local"
   | "module"
-  | "remote-state";
+  | "remote-state"
+  | "import";
 
 export type TerraformElementMetadata = {
   readonly path: string;

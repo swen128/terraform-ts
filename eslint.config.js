@@ -103,6 +103,7 @@ export default [
     files: ["src/facade/**/*.ts"],
     rules: {
       "functional/no-throw-statements": "off",
+      "@typescript-eslint/consistent-type-assertions": "off",
     },
   },
   {

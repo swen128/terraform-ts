@@ -32,6 +32,21 @@ export type TerraformResourceConfig = TerraformMetaArguments & {
   };
 };
 
+type TerraformResourceImport = {
+  readonly id: string;
+  readonly provider?: TerraformProvider;
+};
+
+type TerraformResourceMoveByTarget = {
+  readonly moveTarget: string;
+  readonly index?: string | number;
+};
+
+type TerraformResourceMoveById = {
+  readonly from: string;
+  readonly to: string;
+};
+
 export class TerraformResource extends TerraformElement implements ITerraformDependable {
   readonly kind: ElementKind = "resource";
 
@@ -46,6 +61,9 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
   public provider?: TerraformProvider;
   public lifecycle?: TerraformResourceLifecycle;
   public forEach?: ITerraformIterator;
+  private _imported?: TerraformResourceImport;
+  private _movedByTarget?: TerraformResourceMoveByTarget;
+  private _movedById?: TerraformResourceMoveById;
 
   constructor(scope: Construct, id: string, config: TerraformResourceConfig) {
     super(scope, id, config.terraformResourceType);
@@ -61,6 +79,30 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
     this.lifecycle = config.lifecycle;
     this.forEach = config.forEach;
   }
+
+  importFrom(id: string, provider?: TerraformProvider): void {
+    this._imported = { id, provider };
+  }
+
+  moveTo(moveTarget: string, index?: string | number): void {
+    this._movedByTarget = { moveTarget, index };
+  }
+
+  moveToId(id: string): void {
+    this._movedById = {
+      from: `${this.terraformResourceType}.${this.friendlyUniqueId}`,
+      to: id,
+    };
+  }
+
+  moveFromId(id: string): void {
+    this._movedById = {
+      from: id,
+      to: `${this.terraformResourceType}.${this.friendlyUniqueId}`,
+    };
+  }
+
+  addMoveTarget(_moveTarget: string): void {}
 
   interpolationForAttribute(attribute: string): string {
     const suffix = this.forEach !== undefined ? ".*" : "";
@@ -153,13 +195,43 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
     };
     const attributes = deepMerge(base, this.rawOverrides);
 
-    return {
+    const result: Record<string, unknown> = {
       resource: {
         [this.terraformResourceType]: {
           [this.friendlyUniqueId]: attributes,
         },
       },
     };
+
+    if (this._imported !== undefined) {
+      result["import"] = [
+        {
+          to: `${this.terraformResourceType}.${this.friendlyUniqueId}`,
+          id: this._imported.id,
+          provider: this._imported.provider?.fqn,
+        },
+      ];
+    }
+
+    if (this._movedByTarget !== undefined) {
+      result["moved"] = [
+        {
+          from: `${this.terraformResourceType}.${this.friendlyUniqueId}`,
+          to: this._movedByTarget.moveTarget,
+        },
+      ];
+    }
+
+    if (this._movedById !== undefined) {
+      result["moved"] = [
+        {
+          from: this._movedById.from,
+          to: this._movedById.to,
+        },
+      ];
+    }
+
+    return result;
   }
 
   override toMetadata(): Record<string, unknown> {

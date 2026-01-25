@@ -135,8 +135,11 @@ export class Construct implements IConstruct {
     this._scope = scope;
 
     if (scope !== undefined) {
-      this._path = [...scope._path, id];
-      scope.node.addChild(this);
+      const scopePath = scope._path ?? [];
+      this._path = [...scopePath, id];
+      if (scope._path !== undefined) {
+        scope.node.addChild(this);
+      }
     } else {
       this._path = id !== "" ? [id] : [];
     }
