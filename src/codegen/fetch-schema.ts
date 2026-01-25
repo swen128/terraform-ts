@@ -29,12 +29,17 @@ export function fetchProviderSchema(
   constraint: ProviderConstraint,
   workDir: string,
 ): FetchSchemaResult {
+  const providerConfig: { source: string; version?: string } = {
+    source: constraint.fqn,
+  };
+  if (constraint.version !== undefined) {
+    providerConfig.version = constraint.version;
+  }
+
   const tfConfig = {
     terraform: {
       required_providers: {
-        [constraint.name]: {
-          source: constraint.fqn,
-        },
+        [constraint.name]: providerConfig,
       },
     },
   };
