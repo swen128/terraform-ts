@@ -1,6 +1,6 @@
 {
   "name": "tfts",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "TypeScript-first infrastructure as code for Terraform",
   "type": "module",
   "workspaces": [
@@ -30,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pnd280/tfts"
+    "url": "https://github.com/swen128/terraform-ts"
   },
   "scripts": {
     "build": "tsc",
