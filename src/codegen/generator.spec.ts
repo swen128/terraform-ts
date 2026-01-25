@@ -367,4 +367,72 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("class FunctionLabelsOutputReference extends ComplexObject");
     expect(content).toContain("class FunctionLabelsList extends ComplexList");
   });
+
+  test("generates toTerraform functions that filter unknown properties", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_service: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  config: {
+                    nesting_mode: "list",
+                    max_items: 1,
+                    block: {
+                      attributes: {
+                        timeout: { type: "number", optional: true },
+                        enabled: { type: "bool", optional: true },
+                      },
+                      block_types: {
+                        nested: {
+                          nesting_mode: "list",
+                          block: {
+                            attributes: {
+                              key: { type: "string", required: true },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/service/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("function configToTerraform(");
+    expect(content).toContain("timeout: config?.timeout,");
+    expect(content).toContain("enabled: config?.enabled,");
+    expect(content).toContain("nested: config?.nested?.map(configNestedToTerraform),");
+
+    expect(content).toContain("function configNestedToTerraform(");
+    expect(content).toContain("key: config?.key,");
+
+    expect(content).toContain("config: configToTerraform(this._config),");
+  });
 });

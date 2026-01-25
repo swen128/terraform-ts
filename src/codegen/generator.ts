@@ -187,6 +187,7 @@ function generateResourceClass(
   const configName = `${fullClassName}Config`;
   const configProps = generateConfigProperties(schema.block);
   const nestedInterfaces = generateNestedInterfaces(schema.block);
+  const toTerraformFunctions = generateToTerraformFunctions(schema.block);
   const complexClasses = generateComplexClasses(schema.block, className);
   const hasComplexClasses = complexClasses.length > 0;
 
@@ -209,6 +210,8 @@ function generateResourceClass(
 import type { Construct${complexTypeImports}, ${metaArgsImport} } from "tfts";
 
 ${nestedInterfaces}
+
+${toTerraformFunctions}
 
 ${complexClasses}
 
@@ -518,10 +521,15 @@ function generateConfigStorage(
       const camelPropName = safeCamelName(name);
       const fieldName = `_${camelPropName}`;
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+      const toTerraformFunc = `${camelPropName}ToTerraform`;
 
       fields.push(`  private ${fieldName}?: ${tsType};`);
       assigns.push(`    this.${fieldName} = config.${camelPropName};`);
-      synth.push(`      ${name}: this.${fieldName},`);
+      if (isArray) {
+        synth.push(`      ${name}: this.${fieldName}?.map(${toTerraformFunc}),`);
+      } else {
+        synth.push(`      ${name}: ${toTerraformFunc}(this.${fieldName}),`);
+      }
     }
   }
 
@@ -672,6 +680,62 @@ function generateNestedInterfaces(block: Block): string {
   }
 
   return interfaces.filter(Boolean).join("\n\n");
+}
+
+function generateToTerraformFunctions(block: Block, prefix: string = ""): string {
+  const functions: string[] = [];
+
+  if (block.block_types) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      if (isComputedOnlyBlock(blockType.block)) continue;
+
+      const funcPrefix = prefix ? `${prefix}${toPascalCase(name)}` : safeCamelName(name);
+      functions.push(generateSingleToTerraformFunction(name, blockType.block, funcPrefix));
+      functions.push(generateToTerraformFunctions(blockType.block, funcPrefix));
+    }
+  }
+
+  return functions.filter(Boolean).join("\n\n");
+}
+
+function generateSingleToTerraformFunction(name: string, block: Block, funcPrefix: string): string {
+  const funcName = `${funcPrefix}ToTerraform`;
+  const typeName = toPascalCase(name);
+  const body: string[] = [];
+
+  if (block.attributes) {
+    for (const [attrName, attr] of Object.entries(block.attributes)) {
+      if (attr.computed === true && attr.optional !== true && attr.required !== true) {
+        continue;
+      }
+      const camelAttrName = safeCamelName(attrName);
+      body.push(`    ${attrName}: config?.${camelAttrName},`);
+    }
+  }
+
+  if (block.block_types) {
+    for (const [blockName, blockType] of Object.entries(block.block_types)) {
+      if (isComputedOnlyBlock(blockType.block)) continue;
+
+      const camelBlockName = safeCamelName(blockName);
+      const nestedFuncPrefix = `${funcPrefix}${toPascalCase(blockName)}`;
+      const nestedFuncName = `${nestedFuncPrefix}ToTerraform`;
+      const isArray = isBlockTypeArray(blockType);
+
+      if (isArray) {
+        body.push(`    ${blockName}: config?.${camelBlockName}?.map(${nestedFuncName}),`);
+      } else {
+        body.push(`    ${blockName}: ${nestedFuncName}(config?.${camelBlockName}),`);
+      }
+    }
+  }
+
+  return `function ${funcName}(config: ${typeName} | undefined): Record<string, unknown> | undefined {
+  if (config === undefined) return undefined;
+  return {
+${body.join("\n")}
+  };
+}`;
 }
 
 function toCamelCase(str: string): string {
