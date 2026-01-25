@@ -288,18 +288,18 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain('get name(): string {');
+    expect(content).toContain("get name(): string {");
     expect(content).toContain('return this.getStringAttribute("name");');
 
-    expect(content).toContain('get description(): string {');
+    expect(content).toContain("get description(): string {");
     expect(content).toContain('return this.getStringAttribute("description");');
 
-    expect(content).toContain('get count(): number {');
+    expect(content).toContain("get count(): number {");
     expect(content).toContain('return this.getNumberAttribute("count");');
 
-    expect(content).toContain('get enabled(): boolean {');
+    expect(content).toContain("get enabled(): boolean {");
     expect(content).toContain('return this.getBooleanAttribute("enabled");');
 
-    expect(content).toContain('get id(): string {');
+    expect(content).toContain("get id(): string {");
   });
 });

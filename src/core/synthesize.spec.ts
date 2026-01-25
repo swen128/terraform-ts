@@ -30,16 +30,12 @@ describe("generateLogicalId", () => {
     });
 
     test("removes spaces from resource ID", () => {
-      expect(generateLogicalId(["stack", "Cash Register Logger"])).toBe(
-        "CashRegisterLogger",
-      );
+      expect(generateLogicalId(["stack", "Cash Register Logger"])).toBe("CashRegisterLogger");
     });
 
     test("handles IDs containing slashes as single component", () => {
       const id = "projects/my-project/secrets/my-secret/versions/1";
-      expect(generateLogicalId(["stack", id])).toBe(
-        "projectsmy-projectsecretsmy-secretversions1",
-      );
+      expect(generateLogicalId(["stack", id])).toBe("projectsmy-projectsecretsmy-secretversions1");
     });
   });
 

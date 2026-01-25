@@ -26,7 +26,7 @@ export function attributeTypeToTS(type: AttributeType | undefined): string {
       return `Record<string, ${attributeTypeToTS(inner)}>`;
     case "object":
       return `{ ${Object.entries(inner)
-        .map(([k, v]) => `${safeName(k)}?: ${attributeTypeToTS(v)}`)
+        .map(([k, v]) => `${safeCamelName(k)}?: ${attributeTypeToTS(v)}`)
         .join("; ")} }`;
     case "tuple":
       return `[${inner.map(attributeTypeToTS).join(", ")}]`;
@@ -38,7 +38,7 @@ export function attributeToConfigProperty(name: string, attr: Attribute): string
   const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
   const optionalMark = isOptional ? "?" : "";
   const readonlyMark = "readonly ";
-  return `${readonlyMark}${safeName(name)}${optionalMark}: ${tsType};`;
+  return `${readonlyMark}${safeCamelName(name)}${optionalMark}: ${tsType};`;
 }
 
 export function blockToConfigProperty(name: string, block: BlockType): string {
@@ -47,60 +47,66 @@ export function blockToConfigProperty(name: string, block: BlockType): string {
   const isOptional = (block.min_items ?? 0) === 0;
   const optionalMark = isOptional ? "?" : "";
   const tsType = isArray ? `${innerType}[]` : innerType;
-  return `readonly ${safeName(name)}${optionalMark}: ${tsType};`;
+  return `readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`;
 }
 
 export function blockToInterfaceName(name: string): string {
   return toPascalCase(name);
 }
 
+const JS_RESERVED = new Set([
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "new",
+  "null",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+]);
+
 export function safeName(name: string): string {
-  const reserved = [
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "enum",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "new",
-    "null",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "yield",
-  ];
-  if (reserved.includes(name)) {
+  if (JS_RESERVED.has(name)) {
     return `${name}_`;
   }
   if (/^\d/.test(name)) {
     return `_${name}`;
   }
   return name;
+}
+
+export function safeCamelName(name: string): string {
+  const camel = toCamelCase(name);
+  return safeName(camel);
 }
 
 export function toPascalCase(str: string): string {

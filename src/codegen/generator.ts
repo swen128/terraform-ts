@@ -9,7 +9,7 @@ import type {
 import {
   attributeTypeToTS,
   generateBlockInterface,
-  safeName,
+  safeCamelName,
   toPascalCase,
 } from "./type-mapper.js";
 
@@ -434,11 +434,11 @@ function generateProviderConfigStorage(block: Block | undefined): {
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
       const tsType = attributeTypeToTS(attr.type);
-      const safePropName = safeName(name);
-      const fieldName = `_${safePropName}`;
+      const camelPropName = safeCamelName(name);
+      const fieldName = `_${camelPropName}`;
 
       fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
       synth.push(`      ${name}: this.${fieldName},`);
     }
   }
@@ -447,12 +447,12 @@ function generateProviderConfigStorage(block: Block | undefined): {
     for (const [name, blockType] of Object.entries(block.block_types)) {
       const interfaceName = toPascalCase(name);
       const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-      const safePropName = safeName(name);
-      const fieldName = `_${safePropName}`;
+      const camelPropName = safeCamelName(name);
+      const fieldName = `_${camelPropName}`;
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
 
       fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
       synth.push(`      ${name}: this.${fieldName},`);
     }
   }
@@ -490,14 +490,14 @@ function generateConfigStorage(
       if (isComputedListOfObjects(attr)) continue;
 
       const tsType = attributeTypeToTS(attr.type);
-      const safePropName = safeName(name);
-      const fieldName = `_${safePropName}`;
+      const camelPropName = safeCamelName(name);
+      const fieldName = `_${camelPropName}`;
 
       fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
       synth.push(`      ${name}: this.${fieldName},`);
 
-      const getter = generateConfigGetter(name, safePropName, tsType);
+      const getter = generateConfigGetter(name, camelPropName, tsType);
       if (getter !== undefined) {
         getters.push(getter);
       }
@@ -510,12 +510,12 @@ function generateConfigStorage(
 
       const interfaceName = toPascalCase(name);
       const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
-      const safePropName = safeName(name);
-      const fieldName = `_${safePropName}`;
+      const camelPropName = safeCamelName(name);
+      const fieldName = `_${camelPropName}`;
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
 
       fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
       synth.push(`      ${name}: this.${fieldName},`);
     }
   }
@@ -568,9 +568,9 @@ function generateComputedGetters(block: Block | undefined): string {
       if (attr.computed !== true) continue;
       if (isComputedListOfObjects(attr)) continue;
 
-      const safePropName = safeName(name);
+      const camelPropName = safeCamelName(name);
       const tsType = attributeTypeToTS(attr.type);
-      const getter = generateGetterForType(name, safePropName, tsType);
+      const getter = generateGetterForType(name, camelPropName, tsType);
       if (getter !== undefined) {
         getters.push(getter);
       }
@@ -634,7 +634,7 @@ function generateConfigProperties(block: Block | undefined): string {
       const tsType = attributeTypeToTS(attr.type);
       const isOptional = attr.required !== true || attr.optional === true || attr.computed === true;
       const optionalMark = isOptional ? "?" : "";
-      lines.push(`  readonly ${safeName(name)}${optionalMark}: ${tsType};`);
+      lines.push(`  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`);
     }
   }
 
@@ -647,7 +647,7 @@ function generateConfigProperties(block: Block | undefined): string {
       const isOptional = (blockType.min_items ?? 0) === 0;
       const optionalMark = isOptional ? "?" : "";
       const tsType = isArray ? `${interfaceName}[]` : interfaceName;
-      lines.push(`  readonly ${safeName(name)}${optionalMark}: ${tsType};`);
+      lines.push(`  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`);
     }
   }
 
