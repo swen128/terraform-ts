@@ -341,22 +341,26 @@ export function generateLogicalId(path: readonly string[]): string {
   }
 
   if (path.length === 1) {
-    return path[0] ?? "";
+    return sanitizeLogicalId(path[0] ?? "");
   }
 
   const stackIndex = 1;
   const components = path.slice(stackIndex);
 
   if (components.length === 1) {
-    return components[0] ?? "";
+    return sanitizeLogicalId(components[0] ?? "");
   }
 
   return makeUniqueId(components);
 }
 
+function sanitizeLogicalId(id: string): string {
+  return id.replace(/[^A-Za-z0-9_-]/g, "");
+}
+
 function makeUniqueId(components: readonly string[]): string {
   const hash = simpleHash(components.join("/"));
-  const lastComponent = components[components.length - 1] ?? "";
+  const lastComponent = sanitizeLogicalId(components[components.length - 1] ?? "");
   return `${lastComponent}_${hash.slice(0, 8)}`;
 }
 

@@ -95,8 +95,7 @@ export abstract class TerraformElement extends Construct {
   }
 
   private computeLogicalId(): string {
-    const pathParts = this.node.path.split("/");
-    return generateLogicalId(pathParts);
+    return generateLogicalId(this._path);
   }
 
   overrideLogicalId(newLogicalId: string): void {
