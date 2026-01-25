@@ -166,9 +166,9 @@ function generateResourceClass(
   const prefix = isDataSource ? "Data" : "";
   const fullClassName = `${prefix}${className}`;
   const configName = `${fullClassName}Config`;
-  const configProps = generateConfigProperties(schema.block);
-  const nestedInterfaces = generateNestedInterfaces(schema.block);
-  const toTerraformFunctions = generateToTerraformFunctions(schema.block);
+  const configProps = generateConfigProperties(schema.block, fullClassName);
+  const nestedInterfaces = generateNestedInterfaces(schema.block, fullClassName);
+  const toTerraformFunctions = generateToTerraformFunctions(schema.block, fullClassName);
   const complexClasses = generateComplexClasses(schema.block, className);
   const hasComplexClasses = complexClasses.length > 0;
 
@@ -457,7 +457,7 @@ function isReservedGetterName(name: string): boolean {
 
 function generateConfigStorage(
   block: Block | undefined,
-  _resourceClassName: string,
+  resourceClassName: string,
 ): ConfigStorageResult {
   if (block === undefined) {
     return { privateFields: "", assignments: "", synthesizeBody: "", configGetters: "" };
@@ -478,12 +478,12 @@ function generateConfigStorage(
     });
 
   const blockEntries = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
-    const interfaceName = toPascalCase(name);
+    const fullTypeName = `${resourceClassName}${toPascalCase(name)}`;
     const isArray = isBlockTypeArray(blockType);
     const camelPropName = safeCamelName(name);
     const fieldName = getFieldName(camelPropName);
-    const tsType = isArray ? `${interfaceName}[]` : interfaceName;
-    const toTerraformFunc = `${camelPropName}ToTerraform`;
+    const tsType = isArray ? `${fullTypeName}[]` : fullTypeName;
+    const toTerraformFunc = `${fullTypeName}ToTerraform`;
     const synthExpr = isArray
       ? `this.${fieldName}?.map(${toTerraformFunc})`
       : `${toTerraformFunc}(this.${fieldName})`;
@@ -608,7 +608,7 @@ function generateGetterForType(
   return undefined;
 }
 
-function generateConfigProperties(block: Block | undefined): string {
+function generateConfigProperties(block: Block | undefined, resourcePrefix: string = ""): string {
   if (block === undefined) return "";
 
   const attrLines = Object.entries(block.attributes ?? {}).flatMap(([name, attr]) => {
@@ -621,11 +621,13 @@ function generateConfigProperties(block: Block | undefined): string {
   });
 
   const blockLines = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
-    const interfaceName = toPascalCase(name);
+    const fullTypeName = resourcePrefix
+      ? `${resourcePrefix}${toPascalCase(name)}`
+      : toPascalCase(name);
     const isArray = isBlockTypeArray(blockType);
     const isOptional = (blockType.min_items ?? 0) === 0;
     const optionalMark = isOptional ? "?" : "";
-    const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+    const tsType = isArray ? `${fullTypeName}[]` : fullTypeName;
     return `  readonly ${safeCamelName(name)}${optionalMark}: ${tsType};`;
   });
 

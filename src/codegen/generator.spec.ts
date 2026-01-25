@@ -362,7 +362,7 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("get serviceConfig(): FunctionServiceConfigOutputReference");
     expect(content).not.toContain("FunctionServiceConfigList");
 
-    expect(content).toContain("readonly labels?: Labels[];");
+    expect(content).toContain("readonly labels?: FunctionLabels[];");
 
     expect(content).toContain("class FunctionLabelsOutputReference extends ComplexObject");
     expect(content).toContain("class FunctionLabelsList extends ComplexList");
@@ -425,15 +425,15 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain("function configToTerraform(");
+    expect(content).toContain("function ServiceConfigToTerraform(");
     expect(content).toContain("timeout: config?.timeout,");
     expect(content).toContain("enabled: config?.enabled,");
-    expect(content).toContain("nested: config?.nested?.map(configNestedToTerraform),");
+    expect(content).toContain("nested: config?.nested?.map(ServiceConfigNestedToTerraform),");
 
-    expect(content).toContain("function configNestedToTerraform(");
+    expect(content).toContain("function ServiceConfigNestedToTerraform(");
     expect(content).toContain("key: config?.key,");
 
-    expect(content).toContain("config: configToTerraform(this._config),");
+    expect(content).toContain("config: ServiceConfigToTerraform(this._config),");
   });
 
   test("generates config and synthesizeAttributes for empty blocks (blocks with only computed attrs)", () => {
@@ -482,11 +482,11 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain("readonly ttlConfig?: TtlConfig;");
-    expect(content).toContain("private _ttlConfig?: TtlConfig;");
+    expect(content).toContain("readonly ttlConfig?: FieldTtlConfig;");
+    expect(content).toContain("private _ttlConfig?: FieldTtlConfig;");
     expect(content).toContain("this._ttlConfig = config.ttlConfig;");
-    expect(content).toContain("ttl_config: ttlConfigToTerraform(this._ttlConfig),");
-    expect(content).toContain("function ttlConfigToTerraform(");
+    expect(content).toContain("ttl_config: FieldTtlConfigToTerraform(this._ttlConfig),");
+    expect(content).toContain("function FieldTtlConfigToTerraform(");
   });
 
   test("uses prefixed field names for reserved attributes that conflict with base class", () => {
@@ -585,8 +585,71 @@ describe("generateProviderBindings", () => {
 
     const content = resourceFile!.content;
 
-    expect(content).toContain("private _tfScope?: Scope;");
+    expect(content).toContain("private _tfScope?: ApplicationScope;");
     expect(content).not.toContain("private _scope?:");
+  });
+
+  test("prefixes nested block type names with resource class name for CDKTF compatibility", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_monitoring_alert_policy: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  conditions: {
+                    nesting_mode: "list",
+                    block: {
+                      attributes: {
+                        display_name: { type: "string", optional: true },
+                      },
+                      block_types: {
+                        condition_threshold: {
+                          nesting_mode: "list",
+                          max_items: 1,
+                          block: {
+                            attributes: {
+                              comparison: { type: "string", required: true },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/monitoring-alert-policy/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("export type MonitoringAlertPolicyConditions = {");
+    expect(content).toContain("export type MonitoringAlertPolicyConditionsConditionThreshold = {");
+    expect(content).toContain(
+      "readonly conditionThreshold?: MonitoringAlertPolicyConditionsConditionThreshold;",
+    );
   });
 
   test("generates nested block interfaces for provider", () => {
