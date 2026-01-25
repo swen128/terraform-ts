@@ -34,7 +34,6 @@ export function fetchProviderSchema(
       required_providers: {
         [constraint.name]: {
           source: constraint.fqn,
-          ...(constraint.version !== undefined ? { version: constraint.version } : {}),
         },
       },
     },
