@@ -98,6 +98,7 @@ export function generateProviderBindings(
   }
 
   files.push(generateIndexFile(constraint, providerSchema));
+  files.push(generatePackageJson(constraint));
 
   return ok(files);
 }
@@ -570,5 +571,27 @@ function generateIndexFile(constraint: ProviderConstraint, schema: ProviderSchem
   return {
     path: `providers/${constraint.namespace}/${constraint.name}/index.ts`,
     content: exports.join("\n") + "\n",
+  };
+}
+
+function generatePackageJson(constraint: ProviderConstraint): GeneratedFile {
+  const content = JSON.stringify(
+    {
+      name: `@cdktf/provider-${constraint.name}`,
+      version: "0.0.0",
+      main: "./index.ts",
+      types: "./index.ts",
+      exports: {
+        ".": "./index.ts",
+        "./lib/*": "./lib/*/index.ts",
+      },
+    },
+    null,
+    2,
+  );
+
+  return {
+    path: `providers/${constraint.namespace}/${constraint.name}/package.json`,
+    content: content + "\n",
   };
 }
