@@ -247,11 +247,10 @@ export class ${listName} extends ComplexList {
 
   if (block.block_types !== undefined) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (!isComputedOnlyBlock(blockType.block)) continue;
-
       const blockClassName = toPascalCase(name);
       const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
       const listName = `${resourceClassName}${blockClassName}List`;
+      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
 
       const getters = generateOutputReferenceGetters(blockType.block);
 
@@ -261,13 +260,15 @@ export class ${listName} extends ComplexList {
   }
 
 ${getters}
-}
+}`);
 
-export class ${listName} extends ComplexList {
+      if (isArray) {
+        classes.push(`export class ${listName} extends ComplexList {
   get(index: number): ${outputRefName} {
     return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, true);
   }
 }`);
+      }
     }
   }
 
@@ -278,9 +279,9 @@ function generateOutputReferenceGettersFromFields(fields: Record<string, Attribu
   const getters: string[] = [];
 
   for (const [name, fieldType] of Object.entries(fields)) {
-    const safePropName = safeName(name);
+    const camelName = toCamelCase(name.replace(/_/g, "-"));
     const tsType = attributeTypeToTS(fieldType);
-    const getter = generateComplexObjectGetter(name, safePropName, tsType);
+    const getter = generateComplexObjectGetter(name, camelName, tsType);
     if (getter !== undefined) {
       getters.push(getter);
     }
@@ -294,9 +295,9 @@ function generateOutputReferenceGetters(block: Block): string {
 
   if (block.attributes !== undefined) {
     for (const [name, attr] of Object.entries(block.attributes)) {
-      const safePropName = safeName(name);
+      const camelName = toCamelCase(name.replace(/_/g, "-"));
       const tsType = attributeTypeToTS(attr.type);
-      const getter = generateComplexObjectGetter(name, safePropName, tsType);
+      const getter = generateComplexObjectGetter(name, camelName, tsType);
       if (getter !== undefined) {
         getters.push(getter);
       }
@@ -343,29 +344,36 @@ function generateComputedBlockGetters(block: Block, resourceClassName: string): 
     for (const [name, attr] of Object.entries(block.attributes)) {
       if (!isComputedListOfObjects(attr)) continue;
 
-      const safePropName = safeName(name);
+      const camelName = toCamelCase(name.replace(/_/g, "-"));
       const blockClassName = toPascalCase(name);
       const listName = `${resourceClassName}${blockClassName}List`;
 
-      getters.push(`  private _${safePropName} = new ${listName}(this, "${name}", false);
-  get ${safePropName}(): ${listName} {
-    return this._${safePropName};
+      getters.push(`  private _${camelName}Output = new ${listName}(this, "${name}", false);
+  get ${camelName}(): ${listName} {
+    return this._${camelName}Output;
   }`);
     }
   }
 
   if (block.block_types !== undefined) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (!isComputedOnlyBlock(blockType.block)) continue;
-
-      const safePropName = safeName(name);
+      const camelName = toCamelCase(name.replace(/_/g, "-"));
       const blockClassName = toPascalCase(name);
-      const listName = `${resourceClassName}${blockClassName}List`;
+      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
 
-      getters.push(`  private _${safePropName} = new ${listName}(this, "${name}", false);
-  get ${safePropName}(): ${listName} {
-    return this._${safePropName};
+      if (isArray) {
+        const listName = `${resourceClassName}${blockClassName}List`;
+        getters.push(`  private _${camelName}Output = new ${listName}(this, "${name}", false);
+  get ${camelName}(): ${listName} {
+    return this._${camelName}Output;
   }`);
+      } else {
+        const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
+        getters.push(`  private _${camelName}Output = new ${outputRefName}(this, "${name}", 0, false);
+  get ${camelName}(): ${outputRefName} {
+    return this._${camelName}Output;
+  }`);
+      }
     }
   }
 
