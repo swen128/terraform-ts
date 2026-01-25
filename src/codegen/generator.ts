@@ -14,15 +14,23 @@ import {
 } from "./type-mapper.js";
 
 function isComputedOnlyBlock(block: Block): boolean {
-  if (block.attributes !== undefined) {
-    for (const attr of Object.values(block.attributes)) {
+  const hasAttributes = block.attributes !== undefined && Object.keys(block.attributes).length > 0;
+  const hasBlockTypes = block.block_types !== undefined && Object.keys(block.block_types).length > 0;
+
+  // Empty blocks are valid config options (e.g., bigquery_profile: {})
+  if (!hasAttributes && !hasBlockTypes) {
+    return false;
+  }
+
+  if (hasAttributes) {
+    for (const attr of Object.values(block.attributes ?? {})) {
       if (attr.required === true || attr.optional === true) {
         return false;
       }
     }
   }
-  if (block.block_types !== undefined) {
-    for (const blockType of Object.values(block.block_types)) {
+  if (hasBlockTypes) {
+    for (const blockType of Object.values(block.block_types ?? {})) {
       if (!isComputedOnlyBlock(blockType.block)) {
         return false;
       }
