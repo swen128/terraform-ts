@@ -12,7 +12,7 @@ import { synthCommand } from "./commands/synth.js";
 const parsed = cli(
   {
     name: "tfts",
-    version: "0.3.4",
+    version: "0.3.5",
     help: {
       description: "Terraform TypeScript SDK",
     },
