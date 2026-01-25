@@ -532,6 +532,7 @@ function generateComputedGetters(block: Block | undefined): string {
     .flatMap(([name, attr]) => {
       if (attr.computed !== true) return [];
       if (isComputedListOfObjects(attr)) return [];
+      if (isConfigurableAttr(attr)) return [];
 
       const camelPropName = safeCamelName(name);
       const tsType = attributeTypeToTS(attr.type);
