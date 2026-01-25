@@ -102,17 +102,11 @@ class Fn {
     return {
       creationStack: [],
       resolve(_context: IResolveContext): unknown {
-        const resolved =
-          typeof list === "string"
-            ? list
-            : list.resolve(_context);
+        const resolved = typeof list === "string" ? list : list.resolve(_context);
         return createToken(fn("element", resolved, index));
       },
       toString(): string {
-        const resolved =
-          typeof list === "string"
-            ? list
-            : list.toString();
+        const resolved = typeof list === "string" ? list : list.toString();
         return createToken(fn("element", resolved, index));
       },
     };

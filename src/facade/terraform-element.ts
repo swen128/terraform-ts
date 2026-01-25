@@ -76,6 +76,13 @@ export abstract class TerraformElement extends Construct {
     return this._fqnToken;
   }
 
+  get rawFqn(): string {
+    if (this._elementType === undefined || this._elementType === "") {
+      throw new Error("Element type not set");
+    }
+    return `${this._elementType}.${this.friendlyUniqueId}`;
+  }
+
   get friendlyUniqueId(): string {
     if (this._friendlyUniqueId === undefined) {
       if (this._logicalIdOverride !== undefined && this._logicalIdOverride !== "") {

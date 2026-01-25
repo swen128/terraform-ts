@@ -90,6 +90,7 @@ export default [
     files: ["**/*.spec.ts", "**/*.test.ts"],
     rules: {
       "functional/no-throw-statements": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   {

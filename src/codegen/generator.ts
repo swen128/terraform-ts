@@ -42,9 +42,12 @@ type AttributeType =
   | ["object", Record<string, AttributeType>]
   | ["tuple", AttributeType[]];
 
-function isComputedListOfObjects(
-  attr: { type?: AttributeType; computed?: boolean; required?: boolean; optional?: boolean },
-): attr is { type: ["list", ["object", Record<string, AttributeType>]]; computed: true } {
+function isComputedListOfObjects(attr: {
+  type?: AttributeType;
+  computed?: boolean;
+  required?: boolean;
+  optional?: boolean;
+}): boolean {
   if (attr.computed !== true) return false;
   if (attr.required === true || attr.optional === true) return false;
   if (attr.type === undefined) return false;
@@ -56,10 +59,16 @@ function isComputedListOfObjects(
   return true;
 }
 
-function getObjectTypeFields(
-  type: ["list", ["object", Record<string, AttributeType>]],
-): Record<string, AttributeType> {
-  return type[1][1];
+function extractObjectFieldsFromListType(
+  type: AttributeType | undefined,
+): Record<string, AttributeType> | undefined {
+  if (type === undefined) return undefined;
+  if (!Array.isArray(type)) return undefined;
+  if (type[0] !== "list") return undefined;
+  const inner = type[1];
+  if (!Array.isArray(inner)) return undefined;
+  if (inner[0] !== "object") return undefined;
+  return inner[1];
 }
 
 export type GeneratedFile = {
@@ -111,6 +120,15 @@ function generateProviderClass(
   const configName = `${className}Config`;
 
   const configProps = generateConfigProperties(schema.provider?.block);
+  const { privateFields, assignments, synthesizeBody } = generateProviderConfigStorage(
+    schema.provider?.block,
+  );
+
+  const hasVersion =
+    constraint.version !== undefined &&
+    constraint.version !== "latest" &&
+    constraint.version !== "";
+  const versionLine = hasVersion ? `\n        providerVersion: "${constraint.version}",` : "";
 
   const content = `import { TerraformProvider } from "tfts";
 import type { Construct } from "tfts";
@@ -123,14 +141,24 @@ ${configProps}
 export class ${className} extends TerraformProvider {
   static readonly tfResourceType = "${constraint.name}";
 
+${privateFields}
+
   constructor(scope: Construct, id: string, config: ${configName} = {}) {
     super(scope, id, {
       terraformResourceType: "${constraint.name}",
       terraformGeneratorMetadata: {
-        providerName: "${constraint.name}",
+        providerName: "${constraint.name}",${versionLine}
       },
       terraformProviderSource: "${constraint.fqn}",
+      alias: config.alias,
     });
+${assignments}
+  }
+
+  protected override synthesizeAttributes(): Record<string, unknown> {
+    return {
+${synthesizeBody}
+    };
   }
 }
 `;
@@ -169,14 +197,17 @@ function generateResourceClass(
   const computedBlockGetters = generateComputedBlockGetters(schema.block, className);
 
   const complexTypeImports = hasComplexClasses ? ", IInterpolatingParent" : "";
+  const metaArgsImport = isDataSource
+    ? "TerraformDataSourceMetaArguments"
+    : "TerraformMetaArguments";
   const content = `import { ${baseImport}${complexImports} } from "tfts";
-import type { Construct${complexTypeImports} } from "tfts";
+import type { Construct${complexTypeImports}, ${metaArgsImport} } from "tfts";
 
 ${nestedInterfaces}
 
 ${complexClasses}
 
-export type ${configName} = {
+export type ${configName} = ${metaArgsImport} & {
 ${configProps}
 };
 
@@ -191,6 +222,10 @@ ${privateFields}
       terraformGeneratorMetadata: {
         providerName: "${constraint.name}",
       },
+      dependsOn: config.dependsOn,
+      count: config.count,
+      provider: config.provider,${isDataSource ? "" : "\n      lifecycle: config.lifecycle,"}
+      forEach: config.forEach,
     });
 ${assignments}
   }
@@ -225,7 +260,8 @@ function generateComplexClasses(block: Block, resourceClassName: string): string
       const blockClassName = toPascalCase(name);
       const outputRefName = `${resourceClassName}${blockClassName}OutputReference`;
       const listName = `${resourceClassName}${blockClassName}List`;
-      const fields = getObjectTypeFields(attr.type);
+      const fields = extractObjectFieldsFromListType(attr.type);
+      if (fields === undefined) continue;
 
       const getters = generateOutputReferenceGettersFromFields(fields);
 
@@ -378,6 +414,52 @@ function generateComputedBlockGetters(block: Block, resourceClassName: string): 
   }
 
   return getters.join("\n\n");
+}
+
+function generateProviderConfigStorage(block: Block | undefined): {
+  privateFields: string;
+  assignments: string;
+  synthesizeBody: string;
+} {
+  if (block === undefined) {
+    return { privateFields: "", assignments: "", synthesizeBody: "" };
+  }
+
+  const fields: string[] = [];
+  const assigns: string[] = [];
+  const synth: string[] = [];
+
+  if (block.attributes !== undefined) {
+    for (const [name, attr] of Object.entries(block.attributes)) {
+      const tsType = attributeTypeToTS(attr.type);
+      const safePropName = safeName(name);
+      const fieldName = `_${safePropName}`;
+
+      fields.push(`  private ${fieldName}?: ${tsType};`);
+      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      synth.push(`      ${name}: this.${fieldName},`);
+    }
+  }
+
+  if (block.block_types !== undefined) {
+    for (const [name, blockType] of Object.entries(block.block_types)) {
+      const interfaceName = toPascalCase(name);
+      const isArray = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
+      const safePropName = safeName(name);
+      const fieldName = `_${safePropName}`;
+      const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+
+      fields.push(`  private ${fieldName}?: ${tsType};`);
+      assigns.push(`    this.${fieldName} = config.${safePropName};`);
+      synth.push(`      ${name}: this.${fieldName},`);
+    }
+  }
+
+  return {
+    privateFields: fields.join("\n"),
+    assignments: assigns.join("\n"),
+    synthesizeBody: synth.join("\n"),
+  };
 }
 
 function generateConfigStorage(

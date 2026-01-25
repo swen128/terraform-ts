@@ -6,16 +6,19 @@ import type { ITerraformIterator, TerraformCount } from "./terraform-iterator.js
 import type { TerraformProvider } from "./terraform-provider.js";
 import type { ITerraformDependable } from "./terraform-resource.js";
 
-export type TerraformDataSourceConfig = {
+export type TerraformDataSourceMetaArguments = {
+  readonly dependsOn?: ITerraformDependable[];
+  readonly count?: number | TerraformCount;
+  readonly provider?: TerraformProvider;
+  readonly forEach?: ITerraformIterator;
+};
+
+export type TerraformDataSourceConfig = TerraformDataSourceMetaArguments & {
   readonly terraformResourceType: string;
   readonly terraformGeneratorMetadata?: {
     readonly providerName: string;
     readonly providerVersion?: string;
   };
-  readonly dependsOn?: ITerraformDependable[];
-  readonly count?: number | TerraformCount;
-  readonly provider?: TerraformProvider;
-  readonly forEach?: ITerraformIterator;
 };
 
 export class TerraformDataSource extends TerraformElement implements ITerraformDependable {

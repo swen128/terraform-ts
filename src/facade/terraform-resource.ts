@@ -72,7 +72,7 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
     this.terraformGeneratorMetadata = config.terraformGeneratorMetadata;
 
     if (config.dependsOn !== undefined) {
-      this.dependsOn = config.dependsOn.map((d) => d.fqn);
+      this.dependsOn = config.dependsOn.map((d) => d.rawFqn);
     }
     this.count = config.count;
     this.provider = config.provider;
@@ -194,6 +194,13 @@ export class TerraformResource extends TerraformElement implements ITerraformDep
       ...this.terraformMetaArguments,
     };
     const attributes = deepMerge(base, this.rawOverrides);
+
+    attributes["//"] = {
+      metadata: {
+        path: this.node.path,
+        uniqueId: this.friendlyUniqueId,
+      },
+    };
 
     const result: Record<string, unknown> = {
       resource: {
