@@ -439,6 +439,20 @@ type ConfigStorageResult = {
 const isConfigurableAttr = (attr: Attribute): boolean =>
   !(attr.computed === true && attr.optional !== true && attr.required !== true);
 
+const RESERVED_FIELD_NAMES = new Set(["id", "scope", "path", "kind", "node", "configId"]);
+const RESERVED_GETTER_NAMES = new Set(["kind", "node"]);
+
+function getFieldName(camelPropName: string): string {
+  if (RESERVED_FIELD_NAMES.has(camelPropName)) {
+    return `_tf${camelPropName.charAt(0).toUpperCase()}${camelPropName.slice(1)}`;
+  }
+  return `_${camelPropName}`;
+}
+
+function isReservedGetterName(name: string): boolean {
+  return RESERVED_GETTER_NAMES.has(name);
+}
+
 function generateConfigStorage(
   block: Block | undefined,
   _resourceClassName: string,
@@ -452,8 +466,7 @@ function generateConfigStorage(
     .map(([name, attr]) => {
       const tsType = attributeTypeToTS(attr.type);
       const camelPropName = safeCamelName(name);
-      // Use different field name for 'id' to avoid conflict with Construct._id
-      const fieldName = name === "id" ? "_configId" : `_${camelPropName}`;
+      const fieldName = getFieldName(camelPropName);
       return {
         field: `  private ${fieldName}?: ${tsType};`,
         assign: `    this.${fieldName} = config.${camelPropName};`,
@@ -466,7 +479,7 @@ function generateConfigStorage(
     const interfaceName = toPascalCase(name);
     const isArray = isBlockTypeArray(blockType);
     const camelPropName = safeCamelName(name);
-    const fieldName = `_${camelPropName}`;
+    const fieldName = getFieldName(camelPropName);
     const tsType = isArray ? `${interfaceName}[]` : interfaceName;
     const toTerraformFunc = `${camelPropName}ToTerraform`;
     const synthExpr = isArray
@@ -501,6 +514,10 @@ function generateConfigGetter(
   safePropName: string,
   tsType: string,
 ): string | undefined {
+  if (isReservedGetterName(safePropName)) {
+    return undefined;
+  }
+
   const stringTypes = new Set(["string", "string | undefined"]);
   const numberTypes = new Set(["number", "number | undefined"]);
   const booleanTypes = new Set(["boolean", "boolean | undefined"]);
@@ -548,6 +565,10 @@ function generateGetterForType(
   safePropName: string,
   tsType: string,
 ): string | undefined {
+  if (isReservedGetterName(safePropName)) {
+    return undefined;
+  }
+
   const stringTypes = new Set(["string", "string | undefined"]);
   const numberTypes = new Set(["number", "number | undefined"]);
   const booleanTypes = new Set(["boolean", "boolean | undefined"]);

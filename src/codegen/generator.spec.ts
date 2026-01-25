@@ -488,4 +488,145 @@ describe("generateProviderBindings", () => {
     expect(content).toContain("ttl_config: ttlConfigToTerraform(this._ttlConfig),");
     expect(content).toContain("function ttlConfigToTerraform(");
   });
+
+  test("uses prefixed field names for reserved attributes that conflict with base class", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_resource: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                  id: { type: "string", optional: true },
+                  scope: { type: "string", optional: true },
+                  path: { type: "string", optional: true },
+                  config_id: { type: "string", optional: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/resource/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("private _tfId?: string;");
+    expect(content).toContain("private _tfScope?: string;");
+    expect(content).toContain("private _tfPath?: string;");
+    expect(content).toContain("private _tfConfigId?: string;");
+
+    expect(content).not.toContain("private _id?:");
+    expect(content).not.toContain("private _scope?:");
+    expect(content).not.toContain("private _path?:");
+    expect(content).not.toContain("private _configId?:");
+  });
+
+  test("uses prefixed field names for reserved block types that conflict with base class", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_application: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  scope: {
+                    nesting_mode: "list",
+                    max_items: 1,
+                    block: {
+                      attributes: {
+                        type: { type: "string", required: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/application/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("private _tfScope?: Scope;");
+    expect(content).not.toContain("private _scope?:");
+  });
+
+  test("skips generating getters for reserved names like kind that conflict with base class", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_entity: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                  kind: { type: "string", computed: true },
+                  node: { type: "string", computed: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/entity/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).not.toContain("get kind():");
+    expect(content).not.toContain("get node():");
+  });
 });
