@@ -61,6 +61,21 @@ describe("tokens", () => {
       expect(tokenToString(token)).toBe('${upper("hello")}');
     });
 
+    test("converts fn token with nested terraform expression - tolist case", () => {
+      const token = fn("tolist", raw("google_resource.main.dns_resource_record"));
+      expect(tokenToString(token)).toBe("${tolist(google_resource.main.dns_resource_record)}");
+    });
+
+    test("converts fn token with ref argument", () => {
+      const token = fn("tolist", ref("google_resource.main", "dns_resource_record"));
+      expect(tokenToString(token)).toBe("${tolist(google_resource.main.dns_resource_record)}");
+    });
+
+    test("does not double-quote terraform expressions passed as strings", () => {
+      const token = fn("tolist", "${google_resource.main.dns_resource_record}");
+      expect(tokenToString(token)).toBe("${tolist(google_resource.main.dns_resource_record)}");
+    });
+
     test("converts raw token", () => {
       const token = raw("${var.foo}");
       expect(tokenToString(token)).toBe("${var.foo}");

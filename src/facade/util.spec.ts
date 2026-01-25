@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { keysToSnakeCase, camelToSnakeCase } from "./util.js";
+import { camelToSnakeCase, keysToSnakeCase } from "./util.js";
 
 describe("camelToSnakeCase", () => {
   test("converts camelCase to snake_case", () => {
@@ -16,6 +16,18 @@ describe("camelToSnakeCase", () => {
 
   test("leaves lowercase unchanged", () => {
     expect(camelToSnakeCase("domains")).toBe("domains");
+  });
+
+  test("leaves SCREAMING_SNAKE_CASE unchanged", () => {
+    expect(camelToSnakeCase("PROJECT")).toBe("PROJECT");
+    expect(camelToSnakeCase("REGION")).toBe("REGION");
+    expect(camelToSnakeCase("PROJECT_ID")).toBe("PROJECT_ID");
+    expect(camelToSnakeCase("AWS_ACCESS_KEY_ID")).toBe("AWS_ACCESS_KEY_ID");
+  });
+
+  test("leaves snake_case with numbers unchanged", () => {
+    expect(camelToSnakeCase("workflow_v2")).toBe("workflow_v2");
+    expect(camelToSnakeCase("api_v1_endpoint")).toBe("api_v1_endpoint");
   });
 });
 

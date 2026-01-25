@@ -6,20 +6,32 @@ function propertyAccess(expression: unknown, path: (string | number | undefined)
     .filter((p) => p !== undefined)
     .map((p) => (typeof p === "number" ? `[${p}]` : `["${p}"]`))
     .join("");
+
+  function appendPath(resolved: string): string {
+    if (resolved.startsWith("${") && resolved.endsWith("}")) {
+      return `\${${resolved.slice(2, -1)}${pathStr}}`;
+    }
+    return `${resolved}${pathStr}`;
+  }
+
   return {
     creationStack: [],
     resolve(_context: IResolveContext): unknown {
       if (typeof expression === "string") {
-        return `${expression}${pathStr}`;
+        return appendPath(expression);
       }
       const resolved =
         typeof (expression as IResolvable).resolve === "function"
           ? (expression as IResolvable).resolve(_context)
           : expression;
+      if (typeof resolved === "string") {
+        return appendPath(resolved);
+      }
       return `${resolved}${pathStr}`;
     },
     toString(): string {
-      return createToken(raw(`${expression}${pathStr}`));
+      const exprStr = String(expression);
+      return createToken(raw(appendPath(exprStr)));
     },
   };
 }

@@ -29,6 +29,9 @@ export function keysToSnakeCase(obj: JsonObject): JsonObject {
 }
 
 export function camelToSnakeCase(str: string): string {
+  if (!/[a-z]/.test(str)) {
+    return str;
+  }
   return str.replace(/[A-Z]/g, (letter: string) => `_${letter.toLowerCase()}`);
 }
 

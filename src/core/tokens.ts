@@ -149,12 +149,31 @@ export function tokenToString(token: Token): string {
   }
 }
 
+function tokenToExpression(token: Token): string {
+  switch (token.kind) {
+    case "ref":
+      return `${token.fqn}.${token.attribute}`;
+    case "fn":
+      return `${token.name}(${token.args.map(argToString).join(", ")})`;
+    case "raw":
+      if (token.expression.startsWith("${") && token.expression.endsWith("}")) {
+        return token.expression.slice(2, -1);
+      }
+      return token.expression;
+    case "lazy":
+      return tokenToExpression(resolveToken(token));
+  }
+}
+
 function escapeStringForTerraform(str: string): string {
   return str.replace(/\n/g, "\\n").replace(/\${/g, "$${");
 }
 
 function argToString(arg: unknown): string {
   if (typeof arg === "string") {
+    if (arg.startsWith("${") && arg.endsWith("}")) {
+      return arg.slice(2, -1);
+    }
     if (arg !== '"' && arg.startsWith('"') && arg.endsWith('"')) {
       return escapeStringForTerraform(arg);
     }
@@ -169,7 +188,7 @@ function argToString(arg: unknown): string {
   if (arg !== null && typeof arg === "object") {
     const token = asToken(arg);
     if (token !== null) {
-      return tokenToString(token);
+      return tokenToExpression(token);
     }
     const entries = Object.entries(arg);
     return `{${entries.map(([k, v]) => `"${k}" = ${argToString(v)}`).join(", ")}}`;
