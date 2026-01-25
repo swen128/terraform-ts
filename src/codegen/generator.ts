@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "neverthrow";
 import type {
+  Attribute,
   Block,
   ProviderConstraint,
   ProviderSchema,
@@ -454,70 +455,69 @@ function generateProviderConfigStorage(block: Block | undefined): {
   };
 }
 
-function generateConfigStorage(
-  block: Block | undefined,
-  _resourceClassName: string,
-): {
+type ConfigStorageResult = {
   privateFields: string;
   assignments: string;
   synthesizeBody: string;
   configGetters: string;
-} {
+};
+
+const isConfigurableAttr = (attr: Attribute): boolean =>
+  !(attr.computed === true && attr.optional !== true && attr.required !== true);
+
+function generateConfigStorage(
+  block: Block | undefined,
+  _resourceClassName: string,
+): ConfigStorageResult {
   if (block === undefined) {
     return { privateFields: "", assignments: "", synthesizeBody: "", configGetters: "" };
   }
 
-  const fields: string[] = [];
-  const assigns: string[] = [];
-  const synth: string[] = [];
-  const getters: string[] = [];
-
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
-      if (attr.computed === true && attr.optional !== true && attr.required !== true) {
-        continue;
-      }
-      if (isComputedListOfObjects(attr)) continue;
-
+  const attrEntries = Object.entries(block.attributes ?? {})
+    .filter(([, attr]) => isConfigurableAttr(attr) && !isComputedListOfObjects(attr))
+    .map(([name, attr]) => {
       const tsType = attributeTypeToTS(attr.type);
       const camelPropName = safeCamelName(name);
       const fieldName = `_${camelPropName}`;
+      return {
+        field: `  private ${fieldName}?: ${tsType};`,
+        assign: `    this.${fieldName} = config.${camelPropName};`,
+        synth: `      ${name}: this.${fieldName},`,
+        getter: generateConfigGetter(name, camelPropName, tsType),
+      };
+    });
 
-      fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
-      synth.push(`      ${name}: this.${fieldName},`);
-
-      const getter = generateConfigGetter(name, camelPropName, tsType);
-      if (getter !== undefined) {
-        getters.push(getter);
-      }
-    }
-  }
-
-  if (block.block_types !== undefined) {
-    for (const [name, blockType] of Object.entries(block.block_types)) {
-      const interfaceName = toPascalCase(name);
-      const isArray = isBlockTypeArray(blockType);
-      const camelPropName = safeCamelName(name);
-      const fieldName = `_${camelPropName}`;
-      const tsType = isArray ? `${interfaceName}[]` : interfaceName;
-      const toTerraformFunc = `${camelPropName}ToTerraform`;
-
-      fields.push(`  private ${fieldName}?: ${tsType};`);
-      assigns.push(`    this.${fieldName} = config.${camelPropName};`);
-      if (isArray) {
-        synth.push(`      ${name}: this.${fieldName}?.map(${toTerraformFunc}),`);
-      } else {
-        synth.push(`      ${name}: ${toTerraformFunc}(this.${fieldName}),`);
-      }
-    }
-  }
+  const blockEntries = Object.entries(block.block_types ?? {}).map(([name, blockType]) => {
+    const interfaceName = toPascalCase(name);
+    const isArray = isBlockTypeArray(blockType);
+    const camelPropName = safeCamelName(name);
+    const fieldName = `_${camelPropName}`;
+    const tsType = isArray ? `${interfaceName}[]` : interfaceName;
+    const toTerraformFunc = `${camelPropName}ToTerraform`;
+    const synthExpr = isArray
+      ? `this.${fieldName}?.map(${toTerraformFunc})`
+      : `${toTerraformFunc}(this.${fieldName})`;
+    return {
+      field: `  private ${fieldName}?: ${tsType};`,
+      assign: `    this.${fieldName} = config.${camelPropName};`,
+      synth: `      ${name}: ${synthExpr},`,
+    };
+  });
 
   return {
-    privateFields: fields.join("\n"),
-    assignments: assigns.join("\n"),
-    synthesizeBody: synth.join("\n"),
-    configGetters: getters.join("\n\n"),
+    privateFields: [...attrEntries.map((e) => e.field), ...blockEntries.map((e) => e.field)].join(
+      "\n",
+    ),
+    assignments: [...attrEntries.map((e) => e.assign), ...blockEntries.map((e) => e.assign)].join(
+      "\n",
+    ),
+    synthesizeBody: [...attrEntries.map((e) => e.synth), ...blockEntries.map((e) => e.synth)].join(
+      "\n",
+    ),
+    configGetters: attrEntries
+      .map((e) => e.getter)
+      .filter((g) => g !== undefined)
+      .join("\n\n"),
   };
 }
 
