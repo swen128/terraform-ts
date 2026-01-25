@@ -3,6 +3,7 @@ import { cli } from "cleye";
 import { deployCommand } from "./commands/deploy.js";
 import { destroyCommand } from "./commands/destroy.js";
 import { diffCommand } from "./commands/diff.js";
+import { forceUnlockCommand } from "./commands/force-unlock.js";
 import { getCommand } from "./commands/get.js";
 import { listCommand } from "./commands/list.js";
 import { outputCommand } from "./commands/output.js";
@@ -23,6 +24,7 @@ const parsed = cli(
       destroyCommand,
       listCommand,
       outputCommand,
+      forceUnlockCommand,
     ],
   },
   () => {

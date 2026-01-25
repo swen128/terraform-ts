@@ -88,6 +88,7 @@ terraform apply
 | `tfts destroy` | Destroy the stack (terraform destroy) |
 | `tfts output` | Show stack outputs (terraform output) |
 | `tfts list` | List all stacks |
+| `tfts force-unlock` | Release a stuck state lock |
 
 ## Core Concepts
 
