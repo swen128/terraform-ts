@@ -589,6 +589,55 @@ describe("generateProviderBindings", () => {
     expect(content).not.toContain("private _scope?:");
   });
 
+  test("generates nested block interfaces for provider", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: {
+            block: {
+              attributes: {
+                region: { type: "string", optional: true },
+              },
+              block_types: {
+                batching: {
+                  nesting_mode: "list",
+                  max_items: 1,
+                  block: {
+                    attributes: {
+                      enable_batching: { type: "bool", optional: true },
+                      send_after: { type: "string", optional: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          resource_schemas: {},
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const providerFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/provider/index.ts",
+    );
+    expect(providerFile).toBeDefined();
+
+    const content = providerFile!.content;
+
+    expect(content).toContain("export type Batching = {");
+    expect(content).toContain("readonly enableBatching?: boolean;");
+    expect(content).toContain("readonly sendAfter?: string;");
+  });
+
   test("skips generating getters for reserved names like kind that conflict with base class", () => {
     const schema: TerraformSchema = {
       format_version: "1.0",

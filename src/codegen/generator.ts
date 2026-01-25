@@ -103,10 +103,10 @@ function generateProviderClass(
   const className = `${toPascalCase(constraint.name)}Provider`;
   const configName = `${className}Config`;
 
-  const configProps = generateConfigProperties(schema.provider?.block);
-  const { privateFields, assignments, synthesizeBody } = generateProviderConfigStorage(
-    schema.provider?.block,
-  );
+  const block = schema.provider?.block;
+  const configProps = generateConfigProperties(block);
+  const nestedInterfaces = block ? generateNestedInterfaces(block) : "";
+  const { privateFields, assignments, synthesizeBody } = generateProviderConfigStorage(block);
 
   const hasVersion =
     constraint.version !== undefined &&
@@ -116,6 +116,8 @@ function generateProviderClass(
 
   const content = `import { TerraformProvider } from "tfts";
 import type { Construct } from "tfts";
+
+${nestedInterfaces}
 
 export type ${configName} = {
   readonly alias?: string;
