@@ -78,26 +78,22 @@ export function generateProviderBindings(
     );
   }
 
-  const files: GeneratedFile[] = [];
+  const resourceFiles = Object.entries(providerSchema.resource_schemas ?? {}).map(
+    ([resourceType, resourceSchema]) =>
+      generateResourceClass(constraint, resourceType, resourceSchema, false),
+  );
 
-  files.push(generateProviderClass(constraint, providerSchema));
+  const dataSourceFiles = Object.entries(providerSchema.data_source_schemas ?? {}).map(
+    ([dataType, dataSchema]) => generateResourceClass(constraint, dataType, dataSchema, true),
+  );
 
-  if (providerSchema.resource_schemas !== undefined) {
-    for (const [resourceType, resourceSchema] of Object.entries(providerSchema.resource_schemas)) {
-      files.push(generateResourceClass(constraint, resourceType, resourceSchema, false));
-    }
-  }
-
-  if (providerSchema.data_source_schemas !== undefined) {
-    for (const [dataType, dataSchema] of Object.entries(providerSchema.data_source_schemas)) {
-      files.push(generateResourceClass(constraint, dataType, dataSchema, true));
-    }
-  }
-
-  files.push(generateIndexFile(constraint, providerSchema));
-  files.push(generatePackageJson(constraint));
-
-  return ok(files);
+  return ok([
+    generateProviderClass(constraint, providerSchema),
+    ...resourceFiles,
+    ...dataSourceFiles,
+    generateIndexFile(constraint, providerSchema),
+    generatePackageJson(constraint),
+  ]);
 }
 
 function generateProviderClass(
@@ -305,35 +301,25 @@ ${getters}
 }
 
 function generateOutputReferenceGettersFromFields(fields: Record<string, AttributeType>): string {
-  const getters: string[] = [];
-
-  for (const [name, fieldType] of Object.entries(fields)) {
-    const camelName = toCamelCase(name.replace(/_/g, "-"));
-    const tsType = attributeTypeToTS(fieldType);
-    const getter = generateComplexObjectGetter(name, camelName, tsType);
-    if (getter !== undefined) {
-      getters.push(getter);
-    }
-  }
-
-  return getters.join("\n\n");
+  return Object.entries(fields)
+    .flatMap(([name, fieldType]) => {
+      const camelName = toCamelCase(name.replace(/_/g, "-"));
+      const tsType = attributeTypeToTS(fieldType);
+      const getter = generateComplexObjectGetter(name, camelName, tsType);
+      return getter !== undefined ? [getter] : [];
+    })
+    .join("\n\n");
 }
 
 function generateOutputReferenceGetters(block: Block): string {
-  const getters: string[] = [];
-
-  if (block.attributes !== undefined) {
-    for (const [name, attr] of Object.entries(block.attributes)) {
+  return Object.entries(block.attributes ?? {})
+    .flatMap(([name, attr]) => {
       const camelName = toCamelCase(name.replace(/_/g, "-"));
       const tsType = attributeTypeToTS(attr.type);
       const getter = generateComplexObjectGetter(name, camelName, tsType);
-      if (getter !== undefined) {
-        getters.push(getter);
-      }
-    }
-  }
-
-  return getters.join("\n\n");
+      return getter !== undefined ? [getter] : [];
+    })
+    .join("\n\n");
 }
 
 function generateComplexObjectGetter(
