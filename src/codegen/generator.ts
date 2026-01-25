@@ -13,33 +13,6 @@ import {
   toPascalCase,
 } from "./type-mapper.js";
 
-function isComputedOnlyBlock(block: Block): boolean {
-  const hasAttributes = block.attributes !== undefined && Object.keys(block.attributes).length > 0;
-  const hasBlockTypes =
-    block.block_types !== undefined && Object.keys(block.block_types).length > 0;
-
-  // Empty blocks are valid config options (e.g., bigquery_profile: {})
-  if (!hasAttributes && !hasBlockTypes) {
-    return false;
-  }
-
-  if (hasAttributes) {
-    for (const attr of Object.values(block.attributes ?? {})) {
-      if (attr.required === true || attr.optional === true) {
-        return false;
-      }
-    }
-  }
-  if (hasBlockTypes) {
-    for (const blockType of Object.values(block.block_types ?? {})) {
-      if (!isComputedOnlyBlock(blockType.block)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 function isBlockTypeArray(blockType: { nesting_mode: string; max_items?: number }): boolean {
   const isListOrSet = blockType.nesting_mode === "list" || blockType.nesting_mode === "set";
   return isListOrSet && blockType.max_items !== 1;
@@ -294,7 +267,7 @@ ${getters}
 
 export class ${listName} extends ComplexList {
   get(index: number): ${outputRefName} {
-    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, true);
+    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, this.wrapsSet);
   }
 }`);
     }
@@ -320,7 +293,7 @@ ${getters}
       if (isArray) {
         classes.push(`export class ${listName} extends ComplexList {
   get(index: number): ${outputRefName} {
-    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, true);
+    return new ${outputRefName}(this.terraformResource, this.terraformAttribute, index, this.wrapsSet);
   }
 }`);
       }
@@ -523,8 +496,6 @@ function generateConfigStorage(
 
   if (block.block_types !== undefined) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (isComputedOnlyBlock(blockType.block)) continue;
-
       const interfaceName = toPascalCase(name);
       const isArray = isBlockTypeArray(blockType);
       const camelPropName = safeCamelName(name);
@@ -662,8 +633,6 @@ function generateConfigProperties(block: Block | undefined): string {
 
   if (block.block_types) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (isComputedOnlyBlock(blockType.block)) continue;
-
       const interfaceName = toPascalCase(name);
       const isArray = isBlockTypeArray(blockType);
       const isOptional = (blockType.min_items ?? 0) === 0;
@@ -681,8 +650,6 @@ function generateNestedInterfaces(block: Block): string {
 
   if (block.block_types) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (isComputedOnlyBlock(blockType.block)) continue;
-
       interfaces.push(generateBlockInterface(name, blockType.block));
       interfaces.push(generateNestedInterfaces(blockType.block));
     }
@@ -696,8 +663,6 @@ function generateToTerraformFunctions(block: Block, prefix: string = ""): string
 
   if (block.block_types) {
     for (const [name, blockType] of Object.entries(block.block_types)) {
-      if (isComputedOnlyBlock(blockType.block)) continue;
-
       const funcPrefix = prefix ? `${prefix}${toPascalCase(name)}` : safeCamelName(name);
       functions.push(generateSingleToTerraformFunction(name, blockType.block, funcPrefix));
       functions.push(generateToTerraformFunctions(blockType.block, funcPrefix));
@@ -724,8 +689,6 @@ function generateSingleToTerraformFunction(name: string, block: Block, funcPrefi
 
   if (block.block_types) {
     for (const [blockName, blockType] of Object.entries(block.block_types)) {
-      if (isComputedOnlyBlock(blockType.block)) continue;
-
       const camelBlockName = safeCamelName(blockName);
       const nestedFuncPrefix = `${funcPrefix}${toPascalCase(blockName)}`;
       const nestedFuncName = `${nestedFuncPrefix}ToTerraform`;

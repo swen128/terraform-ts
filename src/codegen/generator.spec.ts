@@ -435,4 +435,57 @@ describe("generateProviderBindings", () => {
 
     expect(content).toContain("config: configToTerraform(this._config),");
   });
+
+  test("generates config and synthesizeAttributes for empty blocks (blocks with only computed attrs)", () => {
+    const schema: TerraformSchema = {
+      format_version: "1.0",
+      provider_schemas: {
+        "registry.terraform.io/hashicorp/test": {
+          provider: { block: {} },
+          resource_schemas: {
+            test_field: {
+              version: 0,
+              block: {
+                attributes: {
+                  name: { type: "string", required: true },
+                },
+                block_types: {
+                  ttl_config: {
+                    nesting_mode: "list",
+                    max_items: 1,
+                    block: {
+                      attributes: {
+                        state: { type: "string", computed: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const result = generateProviderBindings(
+      { namespace: "hashicorp", name: "test", fqn: "hashicorp/test", version: "1.0.0" },
+      schema,
+    );
+
+    expect(result.isOk()).toBe(true);
+    const files = result._unsafeUnwrap();
+
+    const resourceFile = files.find(
+      (f) => f.path === "providers/hashicorp/test/lib/field/index.ts",
+    );
+    expect(resourceFile).toBeDefined();
+
+    const content = resourceFile!.content;
+
+    expect(content).toContain("readonly ttlConfig?: TtlConfig;");
+    expect(content).toContain("private _ttlConfig?: TtlConfig;");
+    expect(content).toContain("this._ttlConfig = config.ttlConfig;");
+    expect(content).toContain("ttl_config: ttlConfigToTerraform(this._ttlConfig),");
+    expect(content).toContain("function ttlConfigToTerraform(");
+  });
 });

@@ -1,10 +1,21 @@
 import { createToken, fn, type IResolvable, type IResolveContext, raw } from "../core/tokens.js";
 import type { IInterpolatingParent } from "./terraform-addressable.js";
 
+const TERRAFORM_IDENTIFIER_REGEX = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
+
 function propertyAccess(expression: unknown, path: (string | number | undefined)[]): IResolvable {
   const pathStr = path
     .filter((p) => p !== undefined)
-    .map((p) => (typeof p === "number" ? `[${p}]` : `["${p}"]`))
+    .map((p) => {
+      if (typeof p === "number") {
+        return `[${p}]`;
+      }
+      // Use dot notation for valid Terraform identifiers, bracket notation for others
+      if (TERRAFORM_IDENTIFIER_REGEX.test(p)) {
+        return `.${p}`;
+      }
+      return `["${p}"]`;
+    })
     .join("");
 
   function appendPath(resolved: string): string {
