@@ -33,17 +33,21 @@ import { App, TerraformStack, TerraformOutput, TerraformVariable, Fn } from "tft
 
 ### Step 3: Update Provider Imports
 
-CDKTF uses pre-built provider packages (`@cdktf/provider-*`). tfts generates providers locally.
+CDKTF uses pre-built provider packages (`@cdktf/provider-*`). tfts generates providers locally in `.gen/`.
 
 ```typescript
 // Before (CDKTF pre-built providers)
 import { GoogleProvider } from "@cdktf/provider-google/lib/provider";
 import { ComputeInstance } from "@cdktf/provider-google/lib/compute-instance";
+import * as google from "@cdktf/provider-google";
 
-// After (tfts generated providers)
-import { GoogleProvider } from "./.gen/providers/hashicorp/google/provider.js";
-import { ComputeInstance } from "./.gen/providers/hashicorp/google/resources/compute-instance.js";
+// After (tfts generated providers - paths relative to your file)
+import { GoogleProvider } from "../../../.gen/providers/hashicorp/google/lib/provider/index.js";
+import { ComputeInstance } from "../../../.gen/providers/hashicorp/google/lib/compute-instance/index.js";
+import * as google from "../../../.gen/providers/hashicorp/google/index.js";
 ```
+
+Note: The relative path depth (`../../../`) depends on your file's location relative to the project root.
 
 ### Step 4: Regenerate Provider Bindings
 
@@ -63,42 +67,99 @@ mv cdktf.json tfts.json
 
 ## Automated Migration
 
-### Using the Migration Script
+Save this script as `migrate-from-cdktf.ts` and run with `bun migrate-from-cdktf.ts .`:
 
-tfts includes a migration script that handles both core and provider imports:
+```typescript
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 
-```bash
-# Download the script
-curl -O https://raw.githubusercontent.com/swen128/terraform-ts/main/scripts/migrate-from-cdktf.ts
+function migrateFile(filePath: string, projectRoot: string): { modified: boolean; changes: string[] } {
+  const content = readFileSync(filePath, "utf-8");
+  let newContent = content;
+  const changes: string[] = [];
+  const fileDir = dirname(filePath);
+  const relToGen = relative(fileDir, join(projectRoot, ".gen"));
 
-# Run it on your project
-bun migrate-from-cdktf.ts .
-# or: npx tsx migrate-from-cdktf.ts .
+  const cdktfCorePattern = /from\s+["']cdktf["']/g;
+  if (cdktfCorePattern.test(newContent)) {
+    newContent = newContent.replace(cdktfCorePattern, 'from "tfts"');
+    changes.push('from "cdktf" -> from "tfts"');
+  }
+
+  const namespaceImportPattern = /from\s+["']@cdktf\/provider-([^/"']+)["']/g;
+  newContent = newContent.replace(namespaceImportPattern, (_, provider) => {
+    const newPath = `${relToGen}/providers/hashicorp/${provider}/index.js`;
+    changes.push(`@cdktf/provider-${provider} -> ${newPath}`);
+    return `from "${newPath}"`;
+  });
+
+  const namedImportPattern = /from\s+["']@cdktf\/provider-([^/"']+)\/lib\/([^"']+)["']/g;
+  newContent = newContent.replace(namedImportPattern, (_, provider, modulePath) => {
+    const newPath = `${relToGen}/providers/hashicorp/${provider}/lib/${modulePath}/index.js`;
+    changes.push(`@cdktf/provider-${provider}/lib/${modulePath} -> ${newPath}`);
+    return `from "${newPath}"`;
+  });
+
+  if (content !== newContent) writeFileSync(filePath, newContent);
+  return { modified: content !== newContent, changes };
+}
+
+function findTypeScriptFiles(dir: string): string[] {
+  const files: string[] = [];
+  const skipDirs = new Set(["node_modules", ".gen", "cdktf.out", "dist", ".git"]);
+  function walk(currentDir: string) {
+    for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
+      const fullPath = join(currentDir, entry.name);
+      if (entry.isDirectory() && !skipDirs.has(entry.name)) walk(fullPath);
+      else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) files.push(fullPath);
+    }
+  }
+  walk(dir);
+  return files;
+}
+
+const targetDir = resolve(process.argv[2] || ".");
+if (!existsSync(targetDir) || !statSync(targetDir).isDirectory()) {
+  console.error(`Error: "${targetDir}" is not a valid directory`);
+  process.exit(1);
+}
+
+console.log(`Migrating CDKTF -> tfts in: ${targetDir}\n`);
+const files = findTypeScriptFiles(targetDir);
+let totalModified = 0;
+
+for (const file of files) {
+  const { modified, changes } = migrateFile(file, targetDir);
+  if (modified) {
+    totalModified++;
+    console.log(file);
+    for (const change of changes) console.log(`  ${change}`);
+  }
+}
+
+console.log(`\n${totalModified} file(s) modified`);
+if (totalModified > 0) console.log("\nNext: npx tfts get");
 ```
 
-The script automatically:
-- Changes `from "cdktf"` → `from "tfts"`
-- Converts `@cdktf/provider-*/lib/provider` → `./.gen/providers/hashicorp/*/provider.js`
-- Converts `@cdktf/provider-*/lib/resource-name` → `./.gen/providers/hashicorp/*/resources/resource-name.js`
-- Converts `@cdktf/provider-*/lib/data-*` → `./.gen/providers/hashicorp/*/data-sources/*.js`
+The script converts:
+- `from "cdktf"` → `from "tfts"`
+- `@cdktf/provider-X` → `{relPath}/.gen/providers/hashicorp/X/index.js`
+- `@cdktf/provider-X/lib/Y` → `{relPath}/.gen/providers/hashicorp/X/lib/Y/index.js`
 
-### Using ast-grep
 
-For simpler migrations (core imports only):
-
-```bash
-ast-grep --pattern 'from "cdktf"' --rewrite 'from "tfts"' --lang ts -U .
-```
 
 ## Import Path Reference
 
 | CDKTF Import | tfts Import |
 |--------------|-------------|
 | `from "cdktf"` | `from "tfts"` |
-| `from "@cdktf/provider-google/lib/provider"` | `from "./.gen/providers/hashicorp/google/provider.js"` |
-| `from "@cdktf/provider-google/lib/compute-instance"` | `from "./.gen/providers/hashicorp/google/resources/compute-instance.js"` |
-| `from "@cdktf/provider-aws/lib/provider"` | `from "./.gen/providers/hashicorp/aws/provider.js"` |
-| `from "@cdktf/provider-aws/lib/s3-bucket"` | `from "./.gen/providers/hashicorp/aws/resources/s3-bucket.js"` |
+| `from "@cdktf/provider-google"` | `from "{relPath}/.gen/providers/hashicorp/google/index.js"` |
+| `from "@cdktf/provider-google/lib/provider"` | `from "{relPath}/.gen/providers/hashicorp/google/lib/provider/index.js"` |
+| `from "@cdktf/provider-google/lib/compute-instance"` | `from "{relPath}/.gen/providers/hashicorp/google/lib/compute-instance/index.js"` |
+| `from "@cdktf/provider-aws"` | `from "{relPath}/.gen/providers/hashicorp/aws/index.js"` |
+| `from "@cdktf/provider-aws/lib/s3-bucket"` | `from "{relPath}/.gen/providers/hashicorp/aws/lib/s3-bucket/index.js"` |
+
+`{relPath}` = relative path from your file to project root (e.g., `../../..` for `src/stacks/my-stack/`)
 
 ## API Compatibility
 
