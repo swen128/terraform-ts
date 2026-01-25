@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { get } from "./get.js";
 import { synth } from "./synth.js";
 
